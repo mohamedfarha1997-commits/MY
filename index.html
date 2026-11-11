@@ -400,10 +400,20 @@ function doWriteMain(){
   if(!FS.h||!FS.ok)return;
   var body=JSON.stringify({app:'khat-entaj',v:3,savedAt:S.savedAt||0,data:S});
   if(FS.lastOut[FS_MAIN]===body)return;
-  FS.q=FS.q.then(function(){return FS.h.getFileHandle(FS_MAIN,{create:true});})
-    .then(function(fh){return fh.createWritable().then(function(w){return w.write(body).then(function(){return w.close();});}).then(function(){return fh.getFile();});})
+  FS.q=FS.q.then(function(){
+      return FS.h.getFileHandle(FS_MAIN,{create:true}).then(function(fh){
+        return fh.createWritable().then(function(w){
+          return w.write(body).then(function(){return w.close();},function(e){
+            return w.abort().catch(function(){}).then(function(){throw e;});
+          });
+        }).then(function(){return fh.getFile();});
+      });
+    })
     .then(function(f){FS.lastOut[FS_MAIN]=body;FS.cache={m:f.lastModified,s:f.size,d:JSON.parse(body).data};FS.err=null;FS.at=Date.now();})
-    .catch(function(){FS.err='تعذّر الحفظ في الملف، اتأكد إن الملف مش مفتوح في برنامج تاني';});
+    .catch(function(e){
+      FS.err='تعذّر الحفظ في الملف ('+((e&&e.name)||'خطأ')+')، هيعيد المحاولة';
+      clearTimeout(FS.wt);FS.wt=setTimeout(doWriteMain,3000);
+    });
   return FS.q;
 }
 function fsWriteRecipes(){S.recipesAt=Date.now();fsWriteMain();}
