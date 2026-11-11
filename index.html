@@ -362,11 +362,14 @@ function fsLoad(){
 }
 function fsArm(){
   if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
-  document.addEventListener('pointerdown',function h(){
-    if(!authed())return;
-    document.removeEventListener('pointerdown',h,true);FS.armed=false;
-    if(!FS.ok)ACT.fsGrant({});
-  },true);
+  var evs=['pointerdown','touchend','click','keydown'];
+  function off(){evs.forEach(function(e){document.removeEventListener(e,h,true);});FS.armed=false;}
+  function h(){
+    if(!FS.h||FS.ok){off();return;}
+    if(!authed()||FS.granting)return;
+    ACT.fsGrant({});
+  }
+  evs.forEach(function(e){document.addEventListener(e,h,true);});
 }
 var FS_DIRS={recipes:'الوصفات',stock:'مخزون الانتاج'};
 var FS_RECIPE_FILE='khat-entaj-recipes.json',FS_STOCK_FILE='khat-entaj-stock.json';
