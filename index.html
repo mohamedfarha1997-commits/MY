@@ -800,7 +800,7 @@ function finCard(b){
     '<button class="btn block" data-act="approve" data-id="'+b.id+'"'+(ck.length<items.length?' disabled':'')+'>اعتمد '+f(good)+' '+p.unit+' · '+f(stkQty(b))+' للمخزن</button></article>';
 }
 function finishView(){
-  var list=S.batches.filter(function(b){return b.stage==='finish';});
+  var list=S.batches.filter(function(b){return b.stage==='finish'&&P(b.p);});
   var body=list.length?'<div class="list">'+list.map(finCard).join('')+'</div>':'<div class="empty"><b>مفيش دفعات للفحص</b><span>الدفعات اللي خلصت إنتاج بتوصل هنا للفحص النهائي.</span></div>';
   var good=0,tot=0,rejT=0,byP={};
   S.done.forEach(function(d){
@@ -810,10 +810,10 @@ function finishView(){
   var max=0;Object.keys(byP).forEach(function(k){max=Math.max(max,byP[k].g+byP[k].r);});
   var bars=Object.keys(byP).map(function(k){
     var v=byP[k];
-    return '<div class="hb"><span>'+P(k).name+'</span><div class="track"><i class="g" style="width:'+(v.g/max*100)+'%"></i><i class="r" style="width:'+(v.r/max*100)+'%"></i></div><em>'+v.g+(v.r?' + '+v.r+' مرفوض':'')+'</em></div>';
+    return '<div class="hb"><span>'+(P(k)?P(k).name:'منتج محذوف')+'</span><div class="track"><i class="g" style="width:'+(v.g/max*100)+'%"></i><i class="r" style="width:'+(v.r/max*100)+'%"></i></div><em>'+v.g+(v.r?' + '+v.r+' مرفوض':'')+'</em></div>';
   }).join('');
   var hist=S.done.slice(-4).reverse().map(function(d){
-    return '<div class="hist"><span><span class="ltr">'+d.id+'</span> · '+P(d.p).name+'</span><span class="meta">'+d.good+'/'+d.qty+' · '+ago(d.at)+'</span></div>';
+    return '<div class="hist"><span><span class="ltr">'+d.id+'</span> · '+(P(d.p)?P(d.p).name:'منتج محذوف')+'</span><span class="meta">'+d.good+'/'+d.qty+' · '+ago(d.at)+'</span></div>';
   }).join('');
   var rep='<section class="card"><h3>تقرير اليوم</h3>'+(tot?
     '<div class="kpis"><div class="tile"><b>'+f(good)+'</b><span>إجمالي الجاهز</span></div><div class="tile"><b>'+Math.round(good/tot*100)+'%</b><span>نسبة الجودة</span></div><div class="tile"><b>'+S.done.length+'</b><span>دفعات معتمدة</span></div><div class="tile"><b style="color:'+(rejT?'var(--bad)':'inherit')+'">'+rejT+'</b><span>مرفوض</span></div></div>'+
