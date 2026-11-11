@@ -348,8 +348,8 @@ function isStaff(){try{return sessionStorage.getItem(AUTH_KEY)==='staff';}catch(
 var FS={h:null,ok:false,at:0,err:null,q:Promise.resolve(),wroteAt:0,busy:false};
 function fsSupported(){return typeof window.showDirectoryPicker==='function'&&typeof indexedDB!=='undefined';}
 function devId(){try{var d=localStorage.getItem('khat-dev');if(!d){d=Math.random().toString(36).slice(2,8);localStorage.setItem('khat-dev',d);}return d;}catch(e){return 'dev';}}
-function fsDayPrefix(){var d=new Date(),p=function(n){return String(n).padStart(2,'0');};return 'khat-entaj-'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-function fsDayName(){return fsDayPrefix()+'-'+devId()+'.json';}
+function fsDayPrefix(){var d=new Date(),p=function(n){return String(n).padStart(2,'0');};return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function fsDayName(){return 'khat-'+devId()+'.json';}
 function idbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('khat-entaj-fs',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv');};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
 function idbGet(k){return idbOpen().then(function(db){return new Promise(function(res,rej){var q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){res(q.result);};q.onerror=function(){rej(q.error);};});});}
 function idbSet(k,v){return idbOpen().then(function(db){return new Promise(function(res,rej){var t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});});}
@@ -368,47 +368,77 @@ function fsArm(){
     if(!FS.ok)ACT.fsGrant({});
   },true);
 }
-var RECIPE_FILE='khat-entaj-recipes.json';
+var FS_DIRS={recipes:'الوصفات',stock:'مخزون الانتاج'};
+var FS_RECIPE_FILE='khat-entaj-recipes.json',FS_STOCK_FILE='khat-entaj-stock.json';
+var FS_NOT_DAY={products:1,materials:1,stock:1,ready:1,stockAt:1,recipesAt:1};
+FS.dirs={};FS.cache={};FS.lastOut={};
+function fsDirOf(name){
+  if(FS.dirs[name])return Promise.resolve(FS.dirs[name]);
+  return FS.h.getDirectoryHandle(name,{create:true}).then(function(d){FS.dirs[name]=d;return d;});
+}
+function fsCachedJSON(dir,fname,key){
+  return dir.getFileHandle(fname).then(function(fh){return fh.getFile();}).then(function(f){
+    var c=FS.cache[key];
+    if(c&&c.m===f.lastModified&&c.s===f.size)return c.d;
+    return f.text().then(function(t){var j=JSON.parse(t);FS.cache[key]={m:f.lastModified,s:f.size,d:j};return j;});
+  }).catch(function(){return null;});
+}
+function fsWriteJSON(dirName,fname,obj,onOk){
+  var body=JSON.stringify(obj),key=dirName+'/'+fname;
+  if(FS.lastOut[key]===body)return FS.q;
+  FS.q=FS.q.then(function(){return fsDirOf(dirName);})
+    .then(function(d){return d.getFileHandle(fname,{create:true});})
+    .then(function(fh){
+      return fh.createWritable().then(function(w){return w.write(body).then(function(){return w.close();});}).then(function(){return fh.getFile();});
+    })
+    .then(function(f){FS.lastOut[key]=body;FS.cache[key]={m:f.lastModified,s:f.size,d:obj};FS.err=null;FS.at=Date.now();if(onOk)onOk();})
+    .catch(function(){FS.err='تعذّر الحفظ في الملف، اتأكد إن الملف مش مفتوح في برنامج تاني';});
+  return FS.q;
+}
 function fsWrite(){
   if(!FS.h||!FS.ok)return;
-  var dayData={};for(var k in S)if(k!=='products'&&k!=='materials')dayData[k]=S[k];
+  var dayData={};for(var k in S)if(!FS_NOT_DAY[k])dayData[k]=S[k];
   var stamp=S.savedAt||0;
-  var body=JSON.stringify({app:'khat-entaj',v:1,exported:new Date().toISOString(),data:dayData},null,1);
-  FS.q=FS.q.then(function(){
-    return FS.h.getFileHandle(fsDayName(),{create:true}).then(function(fh){return fh.createWritable();}).then(function(w){return w.write(body).then(function(){return w.close();});});
-  }).then(function(){FS.at=Date.now();FS.err=null;FS.wroteAt=stamp;}).catch(function(){FS.err='تعذّر الحفظ في الملف، اتأكد إن الملف مش مفتوح في برنامج تاني';});
+  fsWriteJSON(fsDayPrefix(),fsDayName(),{app:'khat-entaj',v:2,data:dayData},function(){FS.wroteAt=stamp;});
 }
 function fsWriteRecipes(){
   S.recipesAt=Date.now();
   if(!FS.h||!FS.ok)return;
-  var body=JSON.stringify({app:'khat-entaj',kind:'recipes',v:1,exported:new Date().toISOString(),data:{products:S.products,materials:S.materials,at:S.recipesAt}},null,1);
-  FS.q=FS.q.then(function(){
-    return FS.h.getFileHandle(RECIPE_FILE,{create:true}).then(function(fh){return fh.createWritable();}).then(function(w){return w.write(body).then(function(){return w.close();});});
-  }).catch(function(){FS.err='تعذّر حفظ ملف الوصفات';});
+  fsWriteJSON(FS_DIRS.recipes,FS_RECIPE_FILE,{app:'khat-entaj',kind:'recipes',v:2,data:{products:S.products,materials:S.materials,at:S.recipesAt}});
+}
+function fsWriteStock(){
+  var sig=JSON.stringify([S.stock,S.ready]);
+  if(FS.stockSig===undefined)FS.stockSig=sig;
+  else if(sig!==FS.stockSig){FS.stockSig=sig;S.stockAt=Date.now();}
+  if(!FS.h||!FS.ok)return;
+  fsWriteJSON(FS_DIRS.stock,FS_STOCK_FILE,{app:'khat-entaj',kind:'stock',v:2,data:{stock:S.stock,ready:S.ready,at:S.stockAt||0}});
 }
 function fsReadRecipes(){
   if(!FS.h||!FS.ok)return Promise.resolve(null);
-  return FS.h.getFileHandle(RECIPE_FILE).then(function(fh){return fh.getFile();}).then(function(f){return f.text();})
-    .then(function(t){var j=JSON.parse(t);return j&&j.data&&Array.isArray(j.data.products)?j.data:null;}).catch(function(){return null;});
+  return fsDirOf(FS_DIRS.recipes).then(function(d){return fsCachedJSON(d,FS_RECIPE_FILE,FS_DIRS.recipes+'/'+FS_RECIPE_FILE);})
+    .then(function(j){return j&&j.data&&Array.isArray(j.data.products)?j.data:null;}).catch(function(){return null;});
 }
-var TOMB_KEYS=['orders','batches','done','stock','ready','seq','oseq','locks','tomb','track'];
+function fsReadStock(){
+  if(!FS.h||!FS.ok)return Promise.resolve(null);
+  return fsDirOf(FS_DIRS.stock).then(function(d){return fsCachedJSON(d,FS_STOCK_FILE,FS_DIRS.stock+'/'+FS_STOCK_FILE);})
+    .then(function(j){return j&&j.data?j:null;}).catch(function(){return null;});
+}
+var TOMB_KEYS=['orders','batches','done','seq','oseq','locks','tomb','track'];
 function tombAdd(kind,id){S.tomb=S.tomb||{orders:[],batches:[]};if(S.tomb[kind].indexOf(id)<0)S.tomb[kind].push(id);}
 function fsReadDayFiles(){
-  var out=[],prefix=fsDayPrefix();
-  var it=FS.h.values();
-  function next(){
-    return it.next().then(function(r){
+  var out=[],name=fsDayPrefix();
+  return fsDirOf(name).then(function(dir){
+    var it=dir.values();
+    function next(){return it.next().then(function(r){
       if(r.done)return out;
-      var h=r.value,rest=h.name.slice(prefix.length);
-      if(h.kind==='file'&&h.name.indexOf(prefix)===0&&/^[-.]/.test(rest)&&/\.json$/.test(h.name)){
-        return h.getFile().then(function(f){return f.text();}).then(function(t){var j=JSON.parse(t);if(j&&j.data)out.push(j.data);}).catch(function(){}).then(next);
-      }
-      return next();
-    });
-  }
-  return next().catch(function(){return out;});
+      var h=r.value;
+      if(h.kind!=='file'||!/\.json$/.test(h.name))return next();
+      return fsCachedJSON(dir,h.name,name+'/'+h.name).then(function(j){if(j&&j.data)out.push(j.data);}).then(next);
+    });}
+    return next();
+  }).catch(function(){return out;});
 }
-function localDaySnapshot(){var d={};for(var k in S)if(k!=='products'&&k!=='materials')d[k]=S[k];return d;}
+function localDaySnapshot(){var d={};for(var k in S)if(!FS_NOT_DAY[k])d[k]=S[k];return d;}
 function mergeDays(list){
   var base=list.slice().sort(function(x,y){return (x.savedAt||0)-(y.savedAt||0);});
   var M={},tomb={orders:{},batches:{}};
@@ -439,8 +469,8 @@ function mergeDays(list){
 }
 function syncFromFolder(){
   if(!FS.h||!FS.ok)return Promise.resolve();
-  return Promise.all([fsReadDayFiles(),fsReadRecipes()]).then(function(res){
-    var list=res[0].concat([localDaySnapshot()]),rec=res[1],changed=false;
+  return Promise.all([fsReadDayFiles(),fsReadRecipes(),fsReadStock()]).then(function(res){
+    var list=res[0].concat([localDaySnapshot()]),rec=res[1],st=res[2],changed=false;
     var M=mergeDays(list);
     var pick=function(d){var o={};TOMB_KEYS.forEach(function(k){o[k]=d[k];});return JSON.stringify(o);};
     if(pick(M)!==pick(localDaySnapshot())){
@@ -448,6 +478,11 @@ function syncFromFolder(){
       S.orders=M.orders;S.batches=M.batches;S.done=M.done;S.savedAt=M.savedAt;
       changed=true;
     }
+    var rAt=st?(st.data.at||0):0;
+    if(st&&rAt>(S.stockAt||0)){
+      S.stock=st.data.stock||S.stock;if(st.data.ready)S.ready=st.data.ready;
+      S.stockAt=rAt;FS.stockSig=JSON.stringify([S.stock,S.ready]);changed=true;
+    }else{fsWriteStock();}
     var localN=(S.products||[]).length,fileN=rec?rec.products.length:0;
     FS.recN=fileN;FS.localN=localN;
     if(rec&&fileN&&((rec.at||0)>(S.recipesAt||0)||!localN)){
@@ -493,7 +528,7 @@ function fileSaveHTML(){
     btn='<div class="meta">البيانات محفوظة على الجهاز نفسه. الحفظ في فولدر على الكمبيوتر بيشتغل من Chrome أو Edge على الكمبيوتر بس، وعلى الموبايل استخدم النسخة الاحتياطية اليدوية.</div>';
   }else if(!FS.h){
     st='<span class="pill low">مفيش ملف</span>';
-    btn='<button class="btn sm" data-act="fsPick">اختار الفولدر</button><div class="meta">جوه الفولدر هيتعمل ملف لكل يوم باسم khat-entaj-YYYY-MM-DD.json فيه شغل اليوم ده، وملف ثابت للوصفات والخامات باسم khat-entaj-recipes.json. ملف الوصفات بيتحدّث بس لما تحفظ وصفة أو خامة أو تمسحها، فمفيش تغيير بيحصل عليه بالغلط.</div>';
+    btn='<button class="btn sm" data-act="fsPick">اختار الفولدر</button><div class="meta">هيتعمل جوه الفولدر فولدر بتاريخ كل يوم تلقائي، وجواه ملف الجهاز ده. فولدر "الوصفات" فيه ملف الوصفات والخامات، وفولدر "مخزون الانتاج" فيه ملف المخزون لوحده للأمان. التزامن بيحصل بس لما يتغير حاجة.</div>';
   }else if(!FS.ok){
     st='<span class="pill low">محتاج صلاحية</span>';
     btn='<button class="btn sm" data-act="fsGrant">امنح صلاحية الحفظ</button><div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>. ده بيتعمل بضغطة بعد كل مرة تفتح فيها الصفحة.</div>';
@@ -596,7 +631,7 @@ function load(){
   try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.stock&&o.batches)return fix(o);}}catch(e){}
   return seed();
 }
-function save(){S.savedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}fsWrite();}
+function save(){S.savedAt=Date.now();fsWriteStock();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}fsWrite();}
 
 var tt;
 function toast(m){var el=document.getElementById('toast');el.textContent=unesc(m);el.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},2600);}
@@ -1754,7 +1789,7 @@ var ACT={
     applyWithdraw(S,b);toast(TRACK()?'تم سحب المواد من المخزن':'تم تأكيد الخامات');
   },
   toggleCheck:function(d){var b=batch(d.id);b.checks=toggle(b.checks,Number(d.i));},
-  toProd:function(d){var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');},
+  toProd:function(d){var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
   cancel:function(d){
     var b=batch(d.id);
     if(U.confirm!==d.id){U.confirm=d.id;setTimeout(function(){if(U.confirm===d.id){U.confirm=null;render();}},3000);return;}
