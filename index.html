@@ -273,7 +273,15 @@ function fsLoad(){
   idbGet('dirhandle').then(function(h){
     if(!h)return;FS.h=h;
     return h.queryPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';});
-  }).then(function(){if(FS.h)render();return syncFromFolder();}).catch(function(){});
+  }).then(function(){if(FS.h){render();fsArm();}return syncFromFolder();}).catch(function(){});
+}
+function fsArm(){
+  if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
+  document.addEventListener('pointerdown',function h(){
+    if(!authed())return;
+    document.removeEventListener('pointerdown',h,true);FS.armed=false;
+    if(!FS.ok)ACT.fsGrant({});
+  },true);
 }
 var RECIPE_FILE='khat-entaj-recipes.json';
 function fsWrite(){
@@ -323,7 +331,11 @@ function syncFromFolder(){
   });
 }
 function connOn(){return fsSupported()&&!!FS.h&&FS.ok&&!FS.err;}
-function connBadge(){return connOn()?'<span class="pill ok">تم الاتصال</span>':'<span class="pill">غير متصل</span>';}
+function connBadge(){
+  if(connOn())return '<span class="pill ok">تم الاتصال</span>';
+  if(fsSupported()&&FS.h&&!FS.ok)return '<span class="pill low" data-act="fsGrant" style="cursor:pointer">اضغط لتفعيل الحفظ</span>';
+  return '<span class="pill">غير متصل</span>';
+}
 function updateConn(){var el=document.getElementById('connBadge');if(el)el.innerHTML=connBadge();}
 function fsTick(){
   if(!FS.h||!FS.ok||FS.busy)return;
@@ -1258,10 +1270,12 @@ var ACT={
     return false;
   },
   fsGrant:function(){
-    if(!FS.h)return false;
+    if(!FS.h||FS.ok||FS.granting)return false;
+    FS.granting=true;
     FS.h.requestPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';if(FS.ok){return syncFromFolder();}})
       .then(function(){render();})
-      .catch(function(){toast('ما اتمنحتش صلاحية الحفظ');});
+      .catch(function(){toast('ما اتمنحتش صلاحية الحفظ');render();})
+      .then(function(){FS.granting=false;});
     return false;
   },
   fsSync:function(){
