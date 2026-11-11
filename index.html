@@ -355,11 +355,20 @@ function idbGet(k){return idbOpen().then(function(db){return new Promise(functio
 function idbSet(k,v){return idbOpen().then(function(db){return new Promise(function(res,rej){var t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});});}
 function fsLoad(){
   if(!fsSupported())return;
-  idbGet('dirhandle').then(function(h){
+  idbGet('devid').then(function(v){try{if(v&&!localStorage.getItem('khat-dev'))localStorage.setItem('khat-dev',v);}catch(e){}return idbSet('devid',devId());})
+  .then(function(){return idbGet('dirhandle');}).then(function(h){
     if(!h)return;FS.h=h;
     return h.queryPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';});
   }).then(function(){if(FS.h){render();fsArm();}return syncFromFolder();}).catch(function(){});
 }
+var FS_SYNC_MS=60000;
+function fsAutoSync(){
+  if(!FS.h||!FS.ok||!FS.synced||FS.syncing)return;
+  FS.syncing=true;
+  syncFromFolder().catch(function(){}).then(function(){FS.syncing=false;});
+}
+setInterval(fsAutoSync,FS_SYNC_MS);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)fsAutoSync();});
 function fsArm(){
   if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
   var evs=['pointerdown','touchend','click','keydown'];
@@ -373,6 +382,7 @@ function fsArm(){
 }
 var FS_DIRS={recipes:'الوصفات',stock:'مخزون الانتاج'};
 var FS_RECIPE_FILE='khat-entaj-recipes.json',FS_STOCK_FILE='khat-entaj-stock.json';
+var FS_CONFLICT=/\(\d+\)\.json$/;
 var FS_NOT_DAY={products:1,materials:1,stock:1,ready:1,stockAt:1,recipesAt:1};
 FS.dirs={};FS.cache={};FS.lastOut={};
 function fsDirOf(name){
@@ -449,6 +459,7 @@ function fsReadDayFiles(){
       if(r.done)return out;
       var h=r.value;
       if(h.kind!=='file'||!/\.json$/.test(h.name))return next();
+      if(FS_CONFLICT.test(h.name)){FS.conflicts=(FS.conflicts||0)+1;return next();}
       return fsCachedJSON(dir,h.name,name+'/'+h.name).then(function(j){if(j&&j.data)out.push(j.data);}).then(next);
     });}
     return next();
@@ -484,8 +495,26 @@ function mergeDays(list){
   M.savedAt=Math.max.apply(null,[0].concat(base.map(function(d){return d.savedAt||0;})));
   return M;
 }
+function fsList(dir){
+  var out=[],it=dir.values();
+  function nx(){return it.next().then(function(r){if(r.done)return out;out.push(r.value);return nx();});}
+  return nx();
+}
+function fsCleanupConflicts(){
+  var n=0;
+  return fsList(FS.h).then(function(entries){
+    return Promise.all(entries.filter(function(e){return e.kind==='directory';}).map(function(d){
+      return fsList(d).then(function(files){
+        return Promise.all(files.filter(function(f){return f.kind==='file'&&FS_CONFLICT.test(f.name);}).map(function(f){
+          return d.removeEntry(f.name).then(function(){n++;});
+        }));
+      });
+    }));
+  }).then(function(){return n;});
+}
 function syncFromFolder(){
   if(!FS.h||!FS.ok)return Promise.resolve();
+  FS.conflicts=0;
   return Promise.all([fsReadDayFiles(),fsReadRecipes(),fsReadStock()]).then(function(res){
     FS.synced=true;
     var list=res[0].concat([localDaySnapshot()]),rec=res[1],st=res[2],changed=false;
@@ -555,7 +584,7 @@ function fileSaveHTML(){
     btn='<button class="btn sm" data-act="fsGrant">امنح صلاحية الحفظ</button><div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>. ده بيتعمل بضغطة بعد كل مرة تفتح فيها الصفحة.</div>';
   }else{
     st='<span class="pill ok">بيحفظ ويزامن كل ثانية</span>';
-    btn='<div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>'+(FS.at?' · آخر حفظ '+bkAgo(FS.at):'')+'</div>'+(FS.recN!==undefined?'<div class="meta">الوصفات في الفولدر: '+FS.recN+' · على الجهاز: '+FS.localN+'</div>':'')+'<div class="acts"><button class="btn ghost sm" data-act="fsSync">زامن الآن</button><button class="btn ghost sm" data-act="fsPick">غيّر الفولدر</button></div>';
+    btn='<div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>'+(FS.at?' · آخر حفظ '+bkAgo(FS.at):'')+'</div>'+(FS.recN!==undefined?'<div class="meta">الوصفات في الفولدر: '+FS.recN+' · على الجهاز: '+FS.localN+'</div>':'')+(FS.conflicts?'<div class="meta">فيه '+FS.conflicts+' نسخة متعارضة بيتم تجاهلها</div><button class="btn ghost sm" data-act="fsCleanup">'+(U.confirm==="fsc"?'اضغط تاني للحذف':'احذف النسخ المتعارضة')+'</button>':'')+'<div class="acts"><button class="btn ghost sm" data-act="fsSync">زامن الآن</button><button class="btn ghost sm" data-act="fsPick">غيّر الفولدر</button></div>';
   }
   return '<section class="card dat" style="--c:var(--stock)"><div class="row"><h3>فولدر الحفظ التلقائي</h3>'+st+'</div>'+(FS.err?'<div class="note">'+FS.err+'</div>':'')+btn+'</section>';
 }
@@ -1689,6 +1718,12 @@ var ACT={
     }).catch(function(e){
       toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
     }).then(function(){FS.granting=false;render();});
+    return false;
+  },
+  fsCleanup:function(){
+    if(U.confirm!=='fsc'){U.confirm='fsc';setTimeout(function(){if(U.confirm==='fsc'){U.confirm=null;render();}},3000);return;}
+    U.confirm=null;
+    fsCleanupConflicts().then(function(n){toast(n?'اتحذف '+n+' نسخة متعارضة':'مفيش نسخ متعارضة');return syncFromFolder();}).then(function(){render();}).catch(function(){toast('تعذّر التنظيف');});
     return false;
   },
   fsSync:function(){
