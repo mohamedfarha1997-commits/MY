@@ -493,6 +493,7 @@ var IC={
   settings:'<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
   recipes:'<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M8 8.5h6M8 12h6"/>',
   orders:'<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>',
+  shopProducts:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
   shopOrders:'<path d="M4 9.5h16l-1.5-5h-13z"/><path d="M5.5 9.5V20h13V9.5M9.5 20v-5h5v5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   chev:'<path d="M6 9l6 6 6-6"/>',
@@ -537,7 +538,7 @@ function num(s){
 var S=load();
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
-if(['home','orders','shopOrders','recipes','settings','prep','prod','stock','finish'].indexOf(h)>-1)U.view=h;
+if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish'].indexOf(h)>-1)U.view=h;
 
 function need(b){var o={},r=P(b.p).recipe;for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
 function shortOf(b){var n=need(b),out=[];if(!TRACK())return out;for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:n[k]-have});}return out;}
@@ -582,27 +583,30 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',prep:'التحضير',prod:'الإنتاج',stock:'المخزن',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'أصناف المحل',prep:'التحضير',prod:'الإنتاج',stock:'المخزن',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
   return '<nav class="bbar" aria-label="التنقل"><button class="btn" data-act="tab" data-v="home">'+svg('home')+'الرئيسية</button></nav>';
 }
-function navHTML(){
+function navItems(){
   var by=function(st){return S.batches.filter(function(b){return b.stage===st;});};
   var low=MATERIALS.filter(isLow).length;
   var running=by('prod').some(function(b){return b.startedAt&&!timerDone(b);});
   var st=[
-    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية'},
+    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية'},{k:'shopProducts',l:'أصناف المحل',n:prodsOf('shop').length,u:'صنف'},
     {k:'prep',l:'تحضير',n:by('prep').length,u:'دفعة'},
     {k:'prod',l:'إنتاج',n:by('prod').length,u:'دفعة',live:running},
     {k:'stock',l:'مخزن',n:low,u:'ناقص',warn:low>0},
     {k:'finish',l:'فنش',n:by('finish').length,u:'للفحص'}
   ];
   st.push({k:'recipes',l:'وصفات',n:PRODUCTS.length,u:'وصفة'});
-  st=st.filter(function(x){return !tabHidden(x.k);});
+  return st;
+}
+function navHTML(){
+  var st=navItems().filter(function(x){return !tabHidden(x.k);});
   return '<nav class="nav" aria-label="مراحل الإنتاج">'+st.map(function(s){
-    return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+(s.k==='shopOrders'?'orders':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
+    return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+(s.k==='shopOrders'?'orders':s.k==='shopProducts'?'recipes':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
       (s.live?'<i class="live" title="قيد التشغيل"></i>':'')+svg(s.k)+'<span class="tl">'+s.l+'</span><span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span><small>'+s.u+'</small></button>';
   }).join('')+'</nav>';
 }
@@ -916,9 +920,9 @@ function render(){
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   if(U.view!=='settings'&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView}[U.view]();
+  var v={home:function(){return '';},orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
-  app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
+  app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
   var r=document.getElementById('recvIn');if(r)r.focus();
@@ -1227,7 +1231,6 @@ function shopProductsHTML(){
 }
 function ordersView(kind){
   kind=kind||'cust';
-  if(kind==='shop'&&U.shopTab==='products')return shopSegHTML()+shopProductsHTML();
   var all=ordersOf(kind);
   var open=all.filter(function(o){return !o.deliveredAt&&orderBatches(o).length;}).slice().reverse();
   var ready=all.filter(function(o){return !o.deliveredAt&&!orderBatches(o).length;}).slice().reverse();
@@ -1238,7 +1241,7 @@ function ordersView(kind){
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
   if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر من الزرار اللي فوق. لما تسلّمه يتأرشف.</span></div>';
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
-  return (kind==='shop'?shopSegHTML():'')+head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+body+archiveHTML(arch,kind);
+  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+body+archiveHTML(arch,kind);
 }
 function ordSheetHTML(){
   if(!U.osheet)return '';
@@ -1347,7 +1350,6 @@ function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);
 function blankIng(){return {m:null,n:'',q:'',u:'كجم'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
 
-var TAB_LIST=[['orders','أوردرات'],['shopOrders','أوردرات المحل'],['prep','تحضير'],['prod','إنتاج'],['stock','مخزن'],['finish','فنش'],['recipes','وصفات']];
 function hiddenTabs(){try{return JSON.parse(localStorage.getItem('khat-tabs-hidden')||'[]');}catch(e){return [];}}
 function tabHidden(k){if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
 var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
@@ -1364,24 +1366,24 @@ function saveSettingsPw(p){
   var salt=randHex(),iter=200000;
   return hexPbkdf2(p,salt,iter).then(function(h){localStorage.setItem('khat-set-pw',JSON.stringify({salt:salt,hash:h,iter:iter}));});
 }
-function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" autocomplete="'+ac+'"></div>';}
+function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
 function tabsCardHTML(){
-  var rows=TAB_LIST.map(function(t){
-    var hid=tabHidden(t[0]);
-    return '<tr><td>'+t[1]+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="'+(t[0]==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t[0]+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
+  var rows=navItems().map(function(t){
+    var hid=tabHidden(t.k);
+    return '<tr><td>'+t.l+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="'+(t.k==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
   }).join('');
   return '<section class="card" style="--c:var(--settings)"><h3>التبويبات</h3><p class="meta" style="margin:0">اختار التبويبات اللي تظهر في الشاشة الرئيسية. الإعدادات دايمًا ظاهرة.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
 }
 function securityCardHTML(){
-  return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الباسورد</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
+  return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
 function settingsGate(){
   if(sUnlocked()&&!U.sChange)return settingsView();
   var st=sPwStored(),err=U.sErr?'<div class="note">'+U.sErr+'</div>':'',mode=!st?'setup':(U.sChange?'change':'unlock');
   var title,body,btn,extra='';
-  if(mode==='setup'){title='اختار باسورد للإعدادات';body=pwField('spw1','الباسورد الجديد','new-password')+pwField('spw2','تأكيد الباسورد','new-password');btn='حفظ الباسورد';}
-  else if(mode==='change'){title='تغيير باسورد الإعدادات';body=pwField('spwOld','الباسورد الحالي','current-password')+pwField('spw1','الباسورد الجديد','new-password')+pwField('spw2','تأكيد الباسورد الجديد','new-password');btn='حفظ الباسورد الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
-  else{title='الإعدادات محمية';body=pwField('spw1','الباسورد','current-password');btn='دخول';extra='<p class="meta" style="margin:0">لو نسيت الباسورد مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
+  if(mode==='setup'){title='اختار PIN للإعدادات';body=pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN','new-password');btn='حفظ الـ PIN';}
+  else if(mode==='change'){title='تغيير PIN الإعدادات';body=pwField('spwOld','الـ PIN الحالي','current-password')+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN الجديد','new-password');btn='حفظ الـ PIN الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
+  else{title='الإعدادات محمية';body=pwField('spw1','الـ PIN','current-password');btn='دخول';extra='<p class="meta" style="margin:0">لو نسيت الـ PIN مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
   return '<section class="card" style="--c:var(--settings);max-width:420px;margin:24px auto"><h3>'+title+'</h3>'+err+body+'<button class="btn block" data-act="settingsSubmit">'+btn+'</button>'+extra+'</section>';
 }
 
@@ -1457,17 +1459,19 @@ var ACT={
     var st=sPwStored(),mode=!st?'setup':(U.sChange?'change':'unlock');
     var get=function(id){var e=document.getElementById(id);return e?e.value:'';};
     var pw=get('spw1'),c=get('spw2'),old=get('spwOld');
+    if(!/^[0-9]+$/.test(pw)||(mode==='unlock'&&!pw)){U.sErr='الـ PIN أرقام بس';render();return false;}
     var ok=function(){try{sessionStorage.setItem('khat-set-ok','1');}catch(e){}U.sErr=null;U.sChange=false;render();};
     var fail=function(){U.sErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();};
     if(mode==='unlock'){
-      hexPbkdf2(pw,st.salt,st.iter).then(function(h){if(h===st.hash)ok();else{U.sErr='الباسورد غلط';render();}}).catch(fail);
+      hexPbkdf2(pw,st.salt,st.iter).then(function(h){if(h===st.hash)ok();else{U.sErr='الـ PIN غلط';render();}}).catch(fail);
       return false;
     }
-    if(pw.length<4){U.sErr='الباسورد لازم يكون 4 حروف أو أرقام على الأقل';render();return false;}
+    if(!/^[0-9]{4,6}$/.test(pw)){U.sErr='الـ PIN لازم يكون من 4 لـ 6 أرقام';render();return false;}
     if(pw!==c){U.sErr='التأكيد مش مطابق';render();return false;}
     if(mode==='setup'){saveSettingsPw(pw).then(ok).catch(fail);return false;}
+    if(!/^[0-9]{4,6}$/.test(old)){U.sErr='الـ PIN الحالي أرقام بس';render();return false;}
     hexPbkdf2(old,st.salt,st.iter).then(function(h){
-      if(h!==st.hash){U.sErr='الباسورد الحالي غلط';render();return;}
+      if(h!==st.hash){U.sErr='الـ PIN الحالي غلط';render();return;}
       return saveSettingsPw(pw).then(ok);
     }).catch(fail);
     return false;
@@ -1713,7 +1717,7 @@ document.addEventListener('input',onField);
 document.addEventListener('change',function(e){if(e.target&&e.target.dataset&&e.target.dataset.rs!==undefined)onField(e);});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
-  if(['home','orders','shopOrders','recipes','settings','prep','prod','stock','finish'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
+  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
 });
 
 /* ---------- live timers ---------- */
