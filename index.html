@@ -1426,7 +1426,7 @@ function ordSheetHTML(){
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
     
-    '<div class="fld"><label for="od">معاد التسليم (تاريخ وساعة)</label><input id="od" data-od="1" type="datetime-local" value="'+esc(s.due||'')+'"></div>'+
+    '<div class="fld"><label for="od">معاد التسليم (تاريخ وساعة)</label><input id="od" data-od="1" type="datetime-local" step="3600" value="'+esc(s.due||'')+'"></div>'+
     '<div class="fld"><span class="sec-l">نوع التعبئة للطلبية</span><div style="display:flex;gap:8px;align-items:center"><select data-opk="1" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(s.pack===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select><b style="white-space:nowrap">'+f(totQ)+' قطعة</b></div></div>'+
     '<div class="stack">'+prods+'</div>'+
     '<div><div class="meta" style="margin-bottom:6px">الخامات المطلوبة للطلبية</div>'+(any?matRows(tot,null):'<div class="meta">اختار كميات المنتجات وهتظهر الخامات هنا.</div>')+'</div></div>'+
@@ -1904,7 +1904,7 @@ function onField(e){
   if(d.rej!==undefined){var rb=batch(d.rej),rv=num(t.value);rb.rej=(isFinite(rv)&&rv>=0)?Math.min(pc(rb),r3(rv)):0;if(rb.stk==null){var se=document.querySelector('[data-stk="'+rb.id+'"]');if(se)se.value=pc(rb)-rb.rej;}return;}
   if(d.rs!==undefined){U.rsel=t.value;U.rqty=1;render();return;}
   if(U.osheet&&d.oc!==undefined){U.osheet.cust=t.value;return;}
-  if(U.osheet&&d.od!==undefined){U.osheet.due=t.value;return;}
+  if(U.osheet&&d.od!==undefined){var dv=t.value;if(dv&&/T\d\d:\d\d/.test(dv)&&!/T\d\d:00/.test(dv)){dv=dv.replace(/T(\d\d):\d\d/,'T$1:00');t.value=dv;}U.osheet.due=dv;return;}
   if(!F)return;
   if(d.f!==undefined){F[d.f]=t.value;return;}
   if(d.gi===undefined||!F.stages)return;
