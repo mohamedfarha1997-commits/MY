@@ -362,7 +362,7 @@ function fsLoad(){
 }
 function fsArm(){
   if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
-  var evs=['touchend','click','keydown'];
+  var evs=['pointerdown','touchend','click','keydown'];
   function off(){evs.forEach(function(e){document.removeEventListener(e,h,true);});FS.armed=false;}
   function h(){
     if(!FS.h||FS.ok){off();return;}
@@ -743,7 +743,7 @@ function prepCard(b){
 }
 function prepView(){
   var list=S.batches.filter(function(b){return b.stage==='prep';});
-  var btn='<div class="btns"><button class="btn ghost sm" data-act="exportMatsAll" data-k="all">تصدير الخامات PDF</button><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
+  var btn='<div class="btns"><button class="btn ghost sm" data-act="exportBatchMats">تصدير الخامات PDF</button><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
   var body=list.length?'<div class="list">'+list.map(prepCard).join('')+'</div>':
     '<div class="empty"><b>مفيش دفعات في التحضير</b><span>ابدأ دفعة جديدة والبرنامج يحسب لك المواد المطلوبة.</span><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
   return head('تحضير','حدد الكمية، اسحب المواد، وخلّص خطوات التجهيز',btn)+body;
@@ -1368,6 +1368,15 @@ function prodsOf(kind){return PRODUCTS.filter(function(p){return kind==='shop'?!
 function ordersOf(kind){return S.orders.filter(function(o){return okind(o)===kind&&(o.season||'normal')===ordSeason();});}
 function openCount(kind){return ordersOf(kind).filter(function(o){return !o.deliveredAt;}).length;}
 function grpTitle(t,n){return '<div class="grp">'+t+' ('+n+')</div>';}
+function batchMatsHTML(list){
+  var tot={};
+  list.forEach(function(b){var t=need(b);for(var k in t)tot[k]=r3((tot[k]||0)+t[k]);});
+  var rows=Object.keys(tot).map(function(k){var m=M(k);return m?'<tr><td>☐</td><td>'+m.name+'</td><td class="n">'+f(tot[k])+' '+m.unit+'</td></tr>':'';}).join('');
+  var bs=list.map(function(b){var p=P(b.p);return '<tr><td>'+b.id+'</td><td>'+(p?p.name:'')+'</td><td class="n">'+f(b.qty)+' '+(p?p.unit:'')+'</td></tr>';}).join('');
+  return '<h1>الخامات المطلوبة للدفعات</h1><div class="pm">دفعات بانتظار السحب · '+list.length+' دفعة · طُبع '+tstr(Date.now())+'</div>'+
+    (rows?'<table class="pt"><thead><tr><th></th><th>الخامة</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>':'<h1>مفيش خامات</h1>')+
+    '<h2>الدفعات</h2><table class="pt"><thead><tr><th>الرقم</th><th>المنتج</th><th>الكمية</th></tr></thead><tbody>'+bs+'</tbody></table>';
+}
 function allMatsHTML(list,kind){
   var tot={};
   list.forEach(function(o){var t=orderNeed(ordRemain(o));for(var k in t)tot[k]=r3((tot[k]||0)+t[k]);});
@@ -1678,7 +1687,7 @@ var ACT={
       }
       toast('تم منح الإذن');return syncFromFolder();
     }).catch(function(e){
-      if(e&&e.name==='SecurityError')toast('المتصفح محتاج ضغطة مباشرة، اضغط على الزرار تاني');else toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
+      toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
     }).then(function(){FS.granting=false;render();});
     return false;
   },
@@ -1898,6 +1907,12 @@ var ACT={
     var old=document.title;document.title='الأوردرات '+stamp();
     doPrint(printAllHTML(list));document.title=old;return false;
   },
+  exportBatchMats:function(){
+    var list=S.batches.filter(function(b){return b.stage==='prep'&&!b.withdrawn;});
+    if(!list.length){toast('مفيش دفعات بانتظار السحب');return false;}
+    var old=document.title;document.title='خامات الدفعات '+stamp();
+    doPrint(batchMatsHTML(list));document.title=old;return false;
+  },
   exportMatsAll:function(d){
     var k=d.k||'all',list=(k==='all'?ordersOf('cust').concat(ordersOf('shop')):ordersOf(k)).filter(function(o){return !o.deliveredAt;});
     if(!list.length){toast('مفيش طلبيات مفتوحة');return false;}
@@ -1970,7 +1985,7 @@ var ACT={
 };
 var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
-  printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
+  printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,exportBatchMats:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
