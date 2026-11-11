@@ -557,8 +557,10 @@ var STORES=['مخزن جاف','ثلاجة','فريزر'];
 
 var nf=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
 function f(n){return nf.format(n);}
-function P(id){return PRODUCTS.filter(function(p){return p.id===id;})[0];}
-function M(id){return MATERIALS.filter(function(m){return m.id===id;})[0];}
+function P(id){var p=PRODUCTS.filter(function(p){return p.id===id;})[0];
+  return p||{id:id,name:'منتج محذوف',unit:'',mins:0,yield:1,recipe:{},stages:[],cat:'',seasons:[],missing:true};}
+function M(id){var m=MATERIALS.filter(function(m){return m.id===id;})[0];
+  return m||{id:id,name:'خامة محذوفة',unit:'',min:0,cat:'',missing:true};}
 function r3(x){return Math.round(x*1000)/1000;}
 function num(s){
   var map={'٠':0,'١':1,'٢':2,'٣':3,'٤':4,'٥':5,'٦':6,'٧':7,'٨':8,'٩':9};
