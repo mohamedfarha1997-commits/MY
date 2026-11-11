@@ -375,7 +375,7 @@ function syncFromFolder(){
     if(changed){
       migrateProducts(S.products);bind(S);FS.wroteAt=S.savedAt||0;
       try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
-      if(!(U.sheet||U.form||U.osheet))render();
+      if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
   });
 }
@@ -385,14 +385,20 @@ function connBadge(){
   if(fsSupported()&&FS.h&&!FS.ok)return '<span class="pill low" data-act="fsGrant" style="cursor:pointer">اضغط لتفعيل الحفظ</span>';
   return '<span class="pill">غير متصل</span>';
 }
-function updateConn(){var el=document.getElementById('connBadge');if(el)el.innerHTML=connBadge();}
+function canWrite(){return navigator.onLine!==false&&connOn();}
+function offNote(){return canWrite()?'':'<div class="note" style="margin-bottom:10px">مفيش اتصال بالفولدر أو الإنترنت، المعاملات متوقفة لحد ما يرجع الاتصال. البيانات بتتعرض وبتتحدّث تلقائي.</div>';}
+function updateConn(){
+  var el=document.getElementById('connBadge');if(el)el.innerHTML=connBadge();
+  var ob=document.getElementById('offBanner');if(ob)ob.innerHTML=offNote();
+}
+function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
+window.addEventListener('online',function(){updateConn();});
+window.addEventListener('offline',function(){updateConn();});
 function fsTick(){
   if(!FS.h||!FS.ok||FS.busy)return;
   FS.busy=true;
-  var ae=document.activeElement,typing=!!(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName));
-  var editing=typing||!!(U.sheet||U.form||U.osheet);
-  var p=editing?Promise.resolve():syncFromFolder();
-  p.catch(function(){}).then(function(){
+  if(FS.err){FS.err=null;FS.wroteAt=-1;}
+  syncFromFolder().catch(function(){}).then(function(){
     if((S.savedAt||0)>FS.wroteAt)fsWrite();
     return FS.q;
   }).catch(function(){}).then(function(){FS.busy=false;updateConn();});
@@ -832,7 +838,7 @@ function render(){
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   if(U.view==='stock'&&!TRACK())U.view='orders';
   var v={orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},recipes:recipesView,settings:settingsView,prep:prepView,prod:prodView,stock:stockView,finish:finishView}[U.view]();
-  app.innerHTML=alarmHTML()+topHTML()+navHTML()+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view)+')">'+v+'</main>'+sheetHTML()+ordSheetHTML()+formHTML();
+  app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+navHTML()+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view)+')">'+v+'</main>'+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
   var r=document.getElementById('recvIn');if(r)r.focus();
@@ -1132,13 +1138,11 @@ function ordersView(kind){
   var open=all.filter(function(o){return !o.deliveredAt&&orderBatches(o).length;}).slice().reverse();
   var ready=all.filter(function(o){return !o.deliveredAt&&!orderBatches(o).length;}).slice().reverse();
   var arch=all.filter(function(o){return !!o.deliveredAt;});
-  var btn='<div class="btns"><button class="btn ghost sm" data-act="printAllOrders" data-k="'+kind+'">طباعة كل الأوردرات</button></div>';
+  var btn='<div class="btns"><button class="btn ghost sm" data-act="printAllOrders" data-k="'+kind+'">طباعة كل الأوردرات</button><button class="btn" data-act="newOrder">'+svg('plus')+'أوردر جديد</button></div>';
   var body='';
   if(open.length)body+=grpTitle('في التحضير والإنتاج',open.length)+'<div class="list">'+open.map(orderCard).join('')+'</div>';
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
-  var addBtn='<button class="btn block" data-act="newOrder" style="margin-top:12px">'+svg('plus')+'أوردر جديد</button>';
-  if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر وهيطلعلك التحضير والخامات والفنش. لما تسلّمه يتأرشف.</span>'+addBtn+'</div>';
-  else body+=addBtn;
+  if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر من الزرار اللي فوق. لما تسلّمه يتأرشف.</span></div>';
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
   return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+body+archiveHTML(arch,kind);
 }
@@ -1475,16 +1479,22 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
+var READ_ACTS={tab:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oQty:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
+  formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
+  printOrder:1,printMats:1,printAllOrders:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
   var fn=ACT[t.dataset.act];if(!fn)return;
+  if(!READ_ACTS[t.dataset.act]&&!canWrite()){toast('مفيش اتصال، المعاملة اتمنعت');return;}
   if(fn(t.dataset)===false)return;
   save();render();
 });
 document.addEventListener('keydown',function(e){
   if(e.key==='Enter'&&e.target&&e.target.id==='lpin'){ACT.login();return;}
   if(e.key==='Enter'&&e.target&&e.target.id==='recvIn'){
+    if(!canWrite()){toast('مفيش اتصال، المعاملة اتمنعت');return;}
     if(ACT.recvOk()!==false){save();render();}
   }
   if(e.key==='Escape'&&(U.sheet||U.form||U.osheet)){U.sheet=null;U.form=null;U.osheet=null;render();}
@@ -1525,6 +1535,7 @@ window.addEventListener('hashchange',function(){
 
 /* ---------- live timers ---------- */
 function tick(){
+  updateConn();
   var changed=false;
   S.batches.forEach(function(b){
     if(b.stage==='prod'&&b.startedAt&&!b.notified&&timerDone(b)){b.notified=true;b.ringing=true;changed=true;}
