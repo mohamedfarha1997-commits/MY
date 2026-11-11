@@ -1829,12 +1829,7 @@ var ACT={
     if(!row||row.short<=0){toast('الصنف ده مش ناقص');return false;}
     S.seq++;var nb={id:'B-'+S.seq+'-'+devId(),p:d.p,qty:Math.ceil(row.short/yieldOf(d.p)),stage:'prep',withdrawn:false,checks:[],created:Date.now(),o:o.id};
     S.batches.push(nb);
-    if(shortOf(nb).length===0){
-      applyWithdraw(S,nb);nb.stage='prod';nb.startedAt=null;nb.notified=false;nb.ringing=false;
-      toast('اتعملت دفعة '+f(row.short)+' '+((P(d.p)||{}).unit||'')+' ودخلت الإنتاج على طول');
-    }else{
-      toast('اتعملت دفعة '+f(row.short)+' للطلبية '+o.id+'، الخامات ناقصة فهتفضل في التحضير');
-    }
+    toast('اتعملت دفعة '+f(row.short)+' '+((P(d.p)||{}).unit||'')+' للطلبية '+o.id);
   },
   dispatch:function(d){if((S.ready[d.p]||0)>0)S.ready[d.p]--;},
   cleanStart:function(){
