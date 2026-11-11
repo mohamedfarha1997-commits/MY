@@ -784,14 +784,15 @@ function stockView(){
     '<div class="card">'+(rows||(MATERIALS.length?'<div class="meta">مفيش أصناف في الفلتر ده.</div>':'<div class="empty"><b>المخزن فاضي</b><span>ضيف أول صنف بكل تفاصيله: الحد الأدنى، مكان التخزين، المورد، والصلاحية.</span><button class="btn" data-act="newMat">'+svg('plus')+'صنف جديد</button></div>'))+'</div>';
 }
 
-function stkQty(b){var good=b.qty-(b.rej||0);return b.stk==null?good:Math.max(0,Math.min(good,b.stk));}
+function stkQty(b){var good=b.qty-(b.rej||0);return b.stk==null?good:b.stk;}
 function finCard(b){
   var p=P(b.p),ck=b.fchecks||[],rej=b.rej||0,good=b.qty-rej,items=finItems(p,b.qty);
   return '<article class="card"><div class="bh"><div><span class="bid ltr">'+b.id+'</span><h3 class="bn">'+p.name+' · '+f(b.qty)+' '+p.unit+'</h3>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div><span class="pill c">فحص الجودة</span></div>'+
     '<div class="prog"><span>الفحص '+ck.length+'/'+items.length+'</span><div class="bar"><i style="width:'+(ck.length/items.length*100)+'%"></i></div></div>'+
     chipGroups(items,ck,'fcheck',b.id)+
     '<div class="foot"><div><b style="font-size:14px">مرفوض</b><div class="meta">اللي ما عدّاش الفحص</div></div><div class="step"><button data-act="rej" data-id="'+b.id+'" data-d="-1"'+(rej<=0?' disabled':'')+' aria-label="أنقص">−</button><b>'+rej+'</b><button data-act="rej" data-id="'+b.id+'" data-d="1"'+(rej>=b.qty?' disabled':'')+' aria-label="زوّد">+</button></div></div>'+
-    '<div class="foot"><div><b style="font-size:14px">يدخل مخزن الإنتاج</b><div class="meta">من '+f(good)+' '+p.unit+' سليمة · الباقي '+f(good-stkQty(b))+' بيطلع للتقديم</div></div><div class="step"><button data-act="stk" data-id="'+b.id+'" data-d="-1"'+(stkQty(b)<=0?' disabled':'')+' aria-label="أنقص">−</button><b>'+f(stkQty(b))+'</b><button data-act="stk" data-id="'+b.id+'" data-d="1"'+(stkQty(b)>=good?' disabled':'')+' aria-label="زوّد">+</button></div></div>'+
+    '<div class="foot"><div><b style="font-size:14px">يدخل مخزن الإنتاج</b><div class="meta">اكتب أي رقم · الدفعة فيها '+f(good)+' '+p.unit+' سليمة</div></div>'+
+    '<input type="text" inputmode="numeric" data-stk="'+b.id+'" value="'+stkQty(b)+'" aria-label="الكمية اللي تدخل مخزن الإنتاج" style="width:110px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
     '<button class="btn block" data-act="approve" data-id="'+b.id+'"'+(ck.length<items.length?' disabled':'')+'>اعتمد '+f(good)+' '+p.unit+' · '+f(stkQty(b))+' للمخزن</button></article>';
 }
 function finishView(){
@@ -1749,7 +1750,6 @@ var ACT={
     S.stock[m.id]=r3(U.recv.mode==='add'?(S.stock[m.id]||0)+v:v);
     toast((U.recv.mode==='add'?'تم استلام ':'تم تسجيل ')+f(v)+' '+m.unit+' '+m.name);U.recv=null;
   },
-  stk:function(d){var b=batch(d.id),good=b.qty-(b.rej||0);b.stk=Math.max(0,Math.min(good,stkQty(b)+Number(d.d)));},
   fcheck:function(d){var b=batch(d.id);b.fchecks=toggle(b.fchecks,Number(d.i));},
   rej:function(d){var b=batch(d.id);b.rej=Math.max(0,Math.min(b.qty,(b.rej||0)+Number(d.d)));},
   approve:function(d){
@@ -1893,6 +1893,7 @@ document.addEventListener('keydown',function(e){
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
+  if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
   if(d.rs!==undefined){U.rsel=t.value;U.rqty=1;render();return;}
   if(U.osheet&&d.oc!==undefined){U.osheet.cust=t.value;return;}
   if(U.osheet&&d.od!==undefined){U.osheet.due=t.value;return;}
