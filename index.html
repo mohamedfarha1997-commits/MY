@@ -1821,7 +1821,15 @@ var ACT={
     var stk=stkQty(b);
     S.done.push({id:b.id,p:b.p,qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o});
     var ordA=b.o?S.orders.filter(function(x){return x.id===b.o;})[0]:null,itA=ordA?ordA.items.filter(function(x){return x.p===b.p;})[0]:null;
-    if(itA)itA.got=r3((itA.got||0)+stk);else S.ready[b.p]=(S.ready[b.p]||0)+stk;
+    if(itA){
+      var toOrd=Math.min(stk,Math.max(0,r3(itA.qty-(itA.fs||0)-(itA.got||0))));
+      itA.got=r3((itA.got||0)+toOrd);
+      var still=Math.max(0,r3(itA.qty-(itA.fs||0)-(itA.got||0)));
+      var fromRdy=Math.min(still,S.ready[b.p]||0);
+      if(fromRdy>0){itA.got=r3(itA.got+fromRdy);S.ready[b.p]=r3(S.ready[b.p]-fromRdy);}
+      var over=r3(stk-toOrd);
+      if(over>0)S.ready[b.p]=r3((S.ready[b.p]||0)+over);
+    }else S.ready[b.p]=(S.ready[b.p]||0)+stk;
     tombAdd('batches',d.id);S.batches=S.batches.filter(function(x){return x.id!==d.id;});
     toast('اتعتمد '+f(good)+' '+p.unit+' من '+b.id+' · دخل المخزن '+f(stk));
   },
@@ -1860,7 +1868,7 @@ var ACT={
     if(!os.due){toast('اكتب معاد التسليم');return false;}
     S.oseq++;var id='O-'+S.oseq+'-'+devId(),now=Date.now(),lacks=0;
     var items=list.map(function(p){
-      var qty=os.items[p.id],avail=S.ready[p.id]||0,fs=Math.min(qty,avail);
+      var qty=os.items[p.id],avail=S.ready[p.id]||0,fs=qty<=avail?qty:0;
       if(fs>0)S.ready[p.id]=r3(avail-fs);
       if(qty-fs>0)lacks++;
       return {p:p.id,qty:qty,fs:fs,got:0,pack:os.pack||''};
