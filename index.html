@@ -1418,8 +1418,8 @@ function ordSheetHTML(){
   var prods=prodsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');}).map(function(p){
     var q=s.items[p.id]||0;
     return '<div class="card" style="padding:10px 12px;gap:8px"><div class="mtop"><div><b>'+p.name+'</b><small>'+p.unit+' · '+p.mins+' دقيقة · في المخزن: '+(S.ready[p.id]||0)+'</small></div>'+
-      '<div class="step"><button data-act="oQty" data-p="'+p.id+'" data-d="-1"'+(q<=0?' disabled':'')+' aria-label="أنقص">−</button><b>'+q+'</b><button data-act="oQty" data-p="'+p.id+'" data-d="1" aria-label="زوّد">+</button></div></div>'+
-      '<div class="qrow">'+[5,10,20].map(function(n){return '<button class="chip" data-act="oQty" data-p="'+p.id+'" data-d="'+n+'">+'+n+'</button>';}).join('')+(q?'<button class="chip" data-act="oQty" data-p="'+p.id+'" data-d="-999">صفر</button>':'')+'</div></div>';
+      '<input type="text" inputmode="numeric" data-oq="'+p.id+'" value="'+q+'" aria-label="عدد القطع" style="width:110px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
+      '</div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
@@ -1789,7 +1789,7 @@ var ACT={
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
     U.sheet=null;U.form=null;U.osheet={cust:'',items:{},due:'',season:ordSeason(),kind:U.view==='shopOrders'?'shop':'cust'};
   },
-  oQty:function(d){var it=U.osheet.items;it[d.p]=Math.max(0,Math.min(999,(it[d.p]||0)+Number(d.d)));},
+
   oClose:function(){U.osheet=null;},
   oCreate:function(){
     var os=U.osheet,list=PRODUCTS.filter(function(p){return (os.items[p.id]||0)>0;});
@@ -1871,7 +1871,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oQty:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
+var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
   printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
@@ -1895,6 +1895,7 @@ document.addEventListener('keydown',function(e){
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
+  if(d.oq!==undefined&&U.osheet){var ov=num(t.value);U.osheet.items[d.oq]=(isFinite(ov)&&ov>=0)?Math.min(99999,Math.floor(ov)):0;return;}
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
   if(d.rej!==undefined){var rb=batch(d.rej),rv=num(t.value);rb.rej=(isFinite(rv)&&rv>=0)?Math.min(pc(rb),r3(rv)):0;if(rb.stk==null){var se=document.querySelector('[data-stk="'+rb.id+'"]');if(se)se.value=pc(rb)-rb.rej;}return;}
   if(d.rs!==undefined){U.rsel=t.value;U.rqty=1;render();return;}
@@ -1922,7 +1923,7 @@ function onField(e){
   else if(d.ti!==undefined){g.steps[Number(d.ti)]=t.value;}
 }
 document.addEventListener('input',onField);
-document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
+document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;if(ds&&ds.oq!==undefined){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
