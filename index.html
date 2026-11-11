@@ -318,9 +318,11 @@ function syncFromFolder(){
     }else if(!day||(S.savedAt||0)>(day.savedAt||0)){
       fsWrite();
     }
-    if(rec&&(rec.at||0)>(S.recipesAt||0)){
+    var localN=(S.products||[]).length,fileN=rec?rec.products.length:0;
+    FS.recN=fileN;FS.localN=localN;
+    if(rec&&fileN&&((rec.at||0)>(S.recipesAt||0)||!localN)){
       S.products=rec.products;S.materials=rec.materials;S.recipesAt=rec.at;changed=true;
-    }else if(!rec||(S.recipesAt||0)>(rec.at||0)){
+    }else if(localN&&(!rec||(S.recipesAt||0)>(rec.at||0))){
       fsWriteRecipes();
     }
     if(changed){
@@ -361,7 +363,7 @@ function fileSaveHTML(){
     btn='<button class="btn sm" data-act="fsGrant">امنح صلاحية الحفظ</button><div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>. ده بيتعمل بضغطة بعد كل مرة تفتح فيها الصفحة.</div>';
   }else{
     st='<span class="pill ok">بيحفظ ويزامن كل ثانية</span>';
-    btn='<div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>'+(FS.at?' · آخر حفظ '+bkAgo(FS.at):'')+'</div><div class="acts"><button class="btn ghost sm" data-act="fsSync">زامن الآن</button><button class="btn ghost sm" data-act="fsPick">غيّر الفولدر</button></div>';
+    btn='<div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>'+(FS.at?' · آخر حفظ '+bkAgo(FS.at):'')+'</div>'+(FS.recN!==undefined?'<div class="meta">الوصفات في الفولدر: '+FS.recN+' · على الجهاز: '+FS.localN+'</div>':'')+'<div class="acts"><button class="btn ghost sm" data-act="fsSync">زامن الآن</button><button class="btn ghost sm" data-act="fsPick">غيّر الفولدر</button></div>';
   }
   return '<section class="card dat" style="--c:var(--stock)"><div class="row"><h3>فولدر الحفظ التلقائي</h3>'+st+'</div>'+(FS.err?'<div class="note">'+FS.err+'</div>':'')+btn+'</section>';
 }
@@ -379,50 +381,15 @@ var IC={
 };
 function svg(k,cls){return '<svg viewBox="0 0 24 24" aria-hidden="true"'+(cls?' class="'+cls+'"':'')+'>'+IC[k]+'</svg>';}
 
-var DEF_M=[
-  {id:'meat',name:'لحم مفروم',unit:'كجم',cost:320,min:5,cat:'لحوم'},
-  {id:'bun',name:'خبز برجر',unit:'قطعة',cost:4,min:30,cat:'مخبوزات'},
-  {id:'cheese',name:'جبنة موتزاريلا',unit:'كجم',cost:210,min:3,cat:'ألبان'},
-  {id:'lettuce',name:'خس',unit:'كجم',cost:40,min:2,cat:'خضار'},
-  {id:'flour',name:'دقيق',unit:'كجم',cost:22,min:10,cat:'جاف'},
-  {id:'sauce',name:'صلصة طماطم',unit:'كجم',cost:55,min:3,cat:'صلصات'},
-  {id:'sugar',name:'سكر',unit:'كجم',cost:30,min:5,cat:'جاف'},
-  {id:'choc',name:'شوكولاتة',unit:'كجم',cost:260,min:2,cat:'حلويات'},
-  {id:'egg',name:'بيض',unit:'بيضة',cost:4.5,min:30,cat:'ألبان'},
-  {id:'butter',name:'زبدة',unit:'كجم',cost:280,min:2,cat:'ألبان'},
-  {id:'mango',name:'مانجو',unit:'كجم',cost:70,min:4,cat:'فواكه'}
-];
-var DEF_P=[
-  {id:'burger',name:'برجر لحم',unit:'وجبة',mins:12,recipe:{meat:.15,bun:1,cheese:.03,lettuce:.02},prep:['غسل وتجفيف الخس','تشكيل أقراص اللحم','تقطيع شرائح الجبنة','تحميص الخبز']},
-  {id:'pizza',name:'بيتزا مارجريتا',unit:'قطعة',mins:15,recipe:{flour:.25,sauce:.08,cheese:.15},prep:['عجن وتخمير العجينة','فرد الأقراص','تجهيز الصلصة','تقطيع الموتزاريلا']},
-  {id:'cake',name:'كيكة شوكولاتة',unit:'قطعة',mins:35,recipe:{flour:.1,sugar:.08,choc:.1,egg:2,butter:.06},prep:['إذابة الشوكولاتة والزبدة','وزن الدقيق والسكر','فصل البيض','تجهيز القوالب']},
-  {id:'juice',name:'عصير مانجو',unit:'كوب',mins:5,recipe:{mango:.3,sugar:.03},prep:['غسل وتقشير المانجو','تقطيع المانجو','وزن السكر','تجهيز الأكواب']}
-];
 var QC=['الطعم','درجة الحرارة','شكل التقديم','التغليف'];
 var MATERIALS=[],PRODUCTS=[];
-var DEF_MX={meat:'فريزر',bun:'مخزن جاف',cheese:'ثلاجة',lettuce:'ثلاجة',flour:'مخزن جاف',sauce:'ثلاجة',sugar:'مخزن جاف',choc:'مخزن جاف',egg:'ثلاجة',butter:'ثلاجة',mango:'فريزر'};
-var DEF_PX={burger:{cat:'وجبات رئيسية'},pizza:{cat:'وجبات رئيسية'},cake:{cat:'حلويات'},juice:{cat:'مشروبات'}};
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
 function dstr(days){return new Date(Date.now()+days*86400000).toISOString().slice(0,10);}
-function defaults(){
-  var m=JSON.parse(JSON.stringify(DEF_M)),p=JSON.parse(JSON.stringify(DEF_P));
-  m.forEach(function(x){x.storage=DEF_MX[x.id]||'مخزن جاف';x.supplier='';x.exp='';x.notes='';});
-  p.forEach(function(x){var e=DEF_PX[x.id]||{};x.cat=e.cat||'عام';x.notes='';});
-  p.filter(function(x){return x.id==='cake';}).forEach(function(c){
-    c.stages=[
-      {kind:'prep',name:'وزن الصنف',ings:[{m:'flour',q:.1},{m:'sugar',q:.08},{m:'choc',q:.1},{m:'egg',q:2},{m:'butter',q:.06}],steps:['وزن الدقيق والسكر','فصل البيض','وزن الشوكولاتة والزبدة']},
-      {kind:'prep',name:'حمام بخار',ings:[],steps:['إذابة الشوكولاتة والزبدة على حمام بخار']},
-      {kind:'prep',name:'ضرب في المكنة',ings:[],steps:['ضرب البيض والسكر في المكنة','إضافة الدقيق والشوكولاتة']},
-      {kind:'finish',name:'فنش',ings:[],steps:['تجهيز القوالب وتزيين الوجه']}
-    ];
-  });
-  migrateProducts(p);
-  return {m:m,p:p};
-}
 function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;}
 function fix(o){
-  if(!o.materials||!o.products){var df=defaults();o.materials=df.m;o.products=df.p;}
+  if(!o.materials)o.materials=[];
+  if(!o.products)o.products=[];
   migrateProducts(o.products);
   if(!o.ready)o.ready={};
   if(!o.orders)o.orders=[];
@@ -466,32 +433,8 @@ function ago(ts){var m=Math.round((Date.now()-ts)/60000);if(m<1)return 'الآن
 function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
 
 function seed(){
-  var now=Date.now();
-  var s={
-    stock:{meat:12,bun:90,cheese:7,lettuce:3.4,flour:30,sauce:7,sugar:12,choc:2.2,egg:60,butter:3.2,mango:3.5},
-    batches:[
-      {id:'B-101',p:'burger',qty:20,stage:'prep',withdrawn:false,checks:[],created:now-25*60000,o:'O-1'},
-      {id:'B-102',p:'pizza',qty:12,stage:'prep',withdrawn:true,checks:[0,1],created:now-50*60000},
-      {id:'B-103',p:'cake',qty:4,stage:'prod',withdrawn:true,startedAt:now-14*60000,created:now-80*60000},
-      {id:'B-104',p:'pizza',qty:8,stage:'finish',withdrawn:true,fchecks:[0,1],rej:0,created:now-95*60000},
-      {id:'B-105',p:'juice',qty:15,stage:'prep',withdrawn:false,checks:[],created:now-25*60000,o:'O-1'}
-    ],
-    done:[],
-    ready:{burger:12,pizza:9,cake:0,juice:0},
-    orders:[{id:'O-1',cust:'مطعم النور',items:[{p:'burger',qty:20},{p:'juice',qty:15}],created:now-25*60000}],oseq:1,
-    seq:105,demo:true
-  };
-  var df=defaults();
-  df.m.forEach(function(x){if(x.id==='cheese')x.exp=dstr(5);if(x.id==='lettuce')x.exp=dstr(2);});
-  s.materials=df.m;s.products=df.p;bind(s);
-  ['B-102','B-103','B-104'].forEach(function(id){
-    var b=s.batches.filter(function(x){return x.id===id;})[0];applyWithdraw(s,b);
-  });
-  s.done=[
-    {id:'B-099',p:'burger',qty:30,good:29,rej:1,at:now-3.2*3600000},
-    {id:'B-100',p:'pizza',qty:16,good:16,rej:0,at:now-1.6*3600000}
-  ];
-  return s;
+  var s={stock:{},batches:[],done:[],ready:{},orders:[],oseq:0,seq:100,demo:false,materials:[],products:[],locks:{}};
+  bind(s);return s;
 }
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.stock&&o.batches)return fix(o);}}catch(e){}
@@ -824,7 +767,7 @@ function footHTML(){
   return '<section class="card dat" style="--c:var(--stock)"><div class="row"><h3>البيانات والنسخ الاحتياطي</h3>'+(stale?'<span class="pill low">'+(lb?'النسخة قديمة':'مفيش نسخة احتياطية')+'</span>':'<span class="pill ok">محفوظة</span>')+'</div>'+
     '<p class="meta" style="margin:0">'+(lb?'آخر نسخة احتياطية: '+bkAgo(lb)+'. ':'')+'البيانات متخزنة على الجهاز ده بس، فاحتفظ بنسخة احتياطية.</p>'+
     '<div class="dbtns"><button class="btn sm" data-act="backup">نسخة احتياطية</button><button class="btn ghost sm" data-act="exportXls">تصدير Excel</button><button class="btn ghost sm" data-act="importPick">استرجاع من ملف</button><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>'+pend+'</section>'+
-    ''+fileSaveHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز ده.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'استرجاع البيانات التجريبية')+'</button></div>';
+    ''+fileSaveHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز ده.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>';
 }
 
 function loginHTML(){
@@ -1276,7 +1219,14 @@ var ACT={
     FS.granting=true;toast('بطلب إذن الفولدر...');
     FS.h.requestPermission({mode:'readwrite'}).then(function(p){
       FS.ok=p==='granted';
-      if(!FS.ok){toast('الإذن ما اتوافقش عليه (الحالة: '+p+')');return;}
+      if(!FS.ok){
+        if(p==='denied'){
+          FS.h=null;FS.err=null;
+          idbSet('dirhandle',null).catch(function(){});
+          toast('المتصفح رفض الوصول للفولدر. اختار الفولدر من جديد');
+        }else toast('الإذن ما اتوافقش عليه (الحالة: '+p+')');
+        return;
+      }
       toast('تم منح الإذن');return syncFromFolder();
     }).catch(function(e){
       toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
@@ -1469,7 +1419,7 @@ var ACT={
   importCancel:function(){U.pending=null;},
   resetAll:function(){
     if(U.confirm!=='reset'){U.confirm='reset';setTimeout(function(){if(U.confirm==='reset'){U.confirm=null;render();}},3000);return;}
-    S=seed();U.confirm=null;U.recv=null;toast('رجعت البيانات التجريبية');
+    S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
 document.addEventListener('click',function(e){
