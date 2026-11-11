@@ -1415,19 +1415,19 @@ function ordSheetHTML(){
   if(!U.osheet)return '';
   var s=U.osheet;
   var items=PRODUCTS.map(function(p){return {p:p.id,qty:s.items[p.id]||0};}).filter(function(x){return x.qty>0;});
+  var totQ=items.reduce(function(a,x){return a+x.qty;},0);
   var tot=orderNeed(items.map(function(x){return {p:x.p,qty:Math.max(0,x.qty-(S.ready[x.p]||0))};}).filter(function(x){return x.qty>0;})),any=items.length>0;
   var prods=prodsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');}).map(function(p){
     var q=s.items[p.id]||0;
-    var pk=(s.packs||{})[p.id]||'';
-    var sel='<select data-op="'+p.id+'" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(pk===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
     return '<div class="card" style="padding:10px 12px;gap:8px"><div class="mtop"><div><b>'+p.name+'</b><small>'+p.unit+' · '+p.mins+' دقيقة · في المخزن: '+(S.ready[p.id]||0)+'</small></div></div>'+
-      '<div style="display:flex;gap:8px;align-items:center">'+sel+'<input type="text" inputmode="numeric" data-oq="'+p.id+'" value="'+q+'" aria-label="عدد القطع" style="width:100px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
-      (q?'<div class="meta" style="margin-top:-4px">'+(pk?pk+' · ':'')+'المجموع '+q+' '+p.unit+'</div>':'')+'</div>';
+      '<div style="display:flex;gap:8px;align-items:center"><input type="text" inputmode="numeric" data-oq="'+p.id+'" value="'+q+'" aria-label="عدد القطع" style="width:100px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
+      '</div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
     
     '<div class="fld"><label for="od">معاد التسليم (تاريخ وساعة)</label><input id="od" data-od="1" type="datetime-local" value="'+esc(s.due||'')+'"></div>'+
+    '<div class="fld"><span class="sec-l">نوع التعبئة للطلبية</span><div style="display:flex;gap:8px;align-items:center"><select data-opk="1" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(s.pack===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select><b style="white-space:nowrap">المجموع '+f(totQ)+' قطعة</b></div></div>'+
     '<div class="stack">'+prods+'</div>'+
     '<div><div class="meta" style="margin-bottom:6px">الخامات المطلوبة للطلبية</div>'+(any?matRows(tot,null):'<div class="meta">اختار كميات المنتجات وهتظهر الخامات هنا.</div>')+'</div></div>'+
     '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></section>';
@@ -1803,7 +1803,7 @@ var ACT={
       var qty=os.items[p.id],avail=S.ready[p.id]||0,fs=Math.min(qty,avail);
       if(fs>0)S.ready[p.id]=r3(avail-fs);
       if(qty-fs>0)lacks++;
-      return {p:p.id,qty:qty,fs:fs,got:0,pack:(os.packs||{})[p.id]||''};
+      return {p:p.id,qty:qty,fs:fs,got:0,pack:os.pack||''};
     });
     S.orders.push({id:id,kind:os.kind||'cust',cust:esc((os.cust||'').trim()),items:items,created:now,due:os.due,season:os.season||'normal'});
     U.osheet=null;U.oexp=null;
@@ -1898,7 +1898,7 @@ document.addEventListener('keydown',function(e){
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
-  if(d.op!==undefined&&U.osheet){U.osheet.packs=U.osheet.packs||{};U.osheet.packs[d.op]=t.value;return;}
+  if(d.opk!==undefined&&U.osheet){U.osheet.pack=t.value;return;}
   if(d.oq!==undefined&&U.osheet){var ov=num(t.value);U.osheet.items[d.oq]=(isFinite(ov)&&ov>=0)?Math.min(99999,Math.floor(ov)):0;return;}
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
   if(d.rej!==undefined){var rb=batch(d.rej),rv=num(t.value);rb.rej=(isFinite(rv)&&rv>=0)?Math.min(pc(rb),r3(rv)):0;if(rb.stk==null){var se=document.querySelector('[data-stk="'+rb.id+'"]');if(se)se.value=pc(rb)-rb.rej;}return;}
@@ -1927,7 +1927,7 @@ function onField(e){
   else if(d.ti!==undefined){g.steps[Number(d.ti)]=t.value;}
 }
 document.addEventListener('input',onField);
-document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;if(ds&&(ds.oq!==undefined||ds.op!==undefined)){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
+document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
