@@ -685,7 +685,7 @@ function prepCard(b){
 }
 function prepView(){
   var list=S.batches.filter(function(b){return b.stage==='prep';});
-  var btn='<button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button>';
+  var btn='<div class="btns"><button class="btn ghost sm" data-act="exportMatsAll" data-k="all">تصدير الخامات PDF</button><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
   var body=list.length?'<div class="list">'+list.map(prepCard).join('')+'</div>':
     '<div class="empty"><b>مفيش دفعات في التحضير</b><span>ابدأ دفعة جديدة والبرنامج يحسب لك المواد المطلوبة.</span><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
   return head('تحضير','حدد الكمية، اسحب المواد، وخلّص خطوات التجهيز',btn)+body;
@@ -960,7 +960,6 @@ function prodFormHTML(){
   return '<h3>'+(edit?'تعديل وصفة':'وصفة جديدة')+'</h3>'+
     seasonSeg(F.season||'normal','prodSeason')+'<div class="seg" style="align-self:flex-start"><button class="'+(F.shop?'':'on')+'" data-act="prodKind" data-v="reg">وصفة عادية</button><button class="'+(F.shop?'on':'')+'" data-act="prodKind" data-v="shop">وصفة المحل</button></div>'+
     fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
-    '<div class="frow">'+fld('cat','التصنيف',{list:'catl',ph:'كيك، بسكويت، معجنات...'})+fld('unit','وحدة البيع',{list:'unitl',ph:'مثال: صاج، سندويش كبير...'})+'<datalist id="unitl">'+UNITS_P.map(function(x){return '<option value="'+x+'">';}).join('')+'</datalist>'+'</div>'+catList(PRODUCTS)+
     fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+
     fld('yield','عدد القطع اللي الوصفة بتطلعها (لكل وحدة)',{im:'numeric'})+
     '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
@@ -1026,7 +1025,7 @@ function saveProd(F){
       return {m:m.id,q:i.q};
     });
   });
-  var o={name:esc(name),cat:esc((F.cat||'').trim()||'عام'),unit:(F.unit||'').trim()||'قطعة',mins:mins,yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal'};
+  var o={name:esc(name),cat:'عام',unit:'قطعة',mins:mins,yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal'};
   if(F.edit){var cur=P(F.edit);Object.assign(cur,o);syncProd(cur);toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name);}
   U.form=null;
@@ -1143,12 +1142,12 @@ function stagesPrint(p,kind,qty){
 }
 function printOrderHTML(o){
   var h='<h1>طلبية '+o.id+'</h1><div class="pm">'+(o.cust?o.cust+' · ':'')+tstr(o.created)+(o.due?' · معاد التسليم: '+dueStr(o.due):'')+'</div>';
-  h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td class="n">'+f(it.qty)+' '+p.unit+'</td></tr>':'';}).join('')+'</tbody></table>';
+  h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td class="n">'+f(it.qty)+' قطعة</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
 function printOrderStagesHTML(o){
   var h='<h1>طلبية '+o.id+'</h1><div class="pm">'+(o.cust?o.cust+' · ':'')+tstr(o.created)+'</div>';
-  h+='<table class="pt"><thead><tr><th>#</th><th>المنتج</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td>'+f(it.qty)+' '+p.unit+'</td></tr>':'';}).join('')+'</tbody></table>';
+  h+='<table class="pt"><thead><tr><th>#</th><th>المنتج</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td>'+f(it.qty)+' قطعة</td></tr>':'';}).join('')+'</tbody></table>';
   h+='<h2>التحضير</h2>'+o.items.map(function(it){var p=P(it.p);return p?'<h3>'+p.name+' — '+f(it.qty)+' '+p.unit+'</h3>'+stagesPrint(p,'prep',it.qty):'';}).join('');
   h+='<h2>الفنش</h2>'+o.items.map(function(it){var p=P(it.p);return p?'<h3>'+p.name+' — '+f(it.qty)+' '+p.unit+'</h3>'+stagesPrint(p,'finish',it.qty)+'<div class="pg"><div class="pgh">فحص الجودة</div><ul class="ck">'+QC.map(function(t){return '<li>'+t+'</li>';}).join('')+'</ul></div>':'';}).join('');
   var tot=orderNeed(o.items);
@@ -1275,7 +1274,7 @@ function orderCard(o){
     '<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">تحضير '+cnt.prep+'</span><span class="pill">إنتاج '+cnt.prod+'</span><span class="pill">فنش '+cnt.finish+'</span>'+
     (nShort?'<span class="pill bad">ناقص '+nShort+(nShort>1?' أصناف':' صنف')+'</span>':'')+
     (lack?'<span class="pill bad">خامات ناقصة '+lack+'</span>':'')+'</div>'+
-    '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button><button class="btn ghost sm" data-act="printMats" data-id="'+o.id+'">طباعة الخامات المطلوبة</button></div>';
+    '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
   var body='';
   if(open){
     var prep=rows.map(function(x){
@@ -1362,7 +1361,7 @@ function readyCard(o){
   var open=U.oexp===o.id;
   var head='<div class="bh"><div><span class="bid ltr">'+o.id+'</span><h3 class="bn">'+custName(o)+'</h3></div><span class="pill ok">جاهزة</span></div>';
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
-    '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button><button class="btn ghost sm" data-act="printMats" data-id="'+o.id+'">طباعة الخامات المطلوبة</button></div>';
+    '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
   return '<article class="card" style="--c:var(--orders)">'+head+(open?detail:'')+
     '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn" data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div></article>';
 }
@@ -1402,7 +1401,7 @@ function ordersView(kind){
   var open=all.filter(function(o){return !o.deliveredAt&&!ordComplete(o);}).slice().reverse();
   var ready=all.filter(function(o){return !o.deliveredAt&&ordComplete(o);}).slice().reverse();
   var arch=all.filter(function(o){return !!o.deliveredAt;});
-  var btn='<div class="btns"><button class="btn ghost sm" data-act="printAllOrders" data-k="'+kind+'">تصدير الأوردرات PDF</button><button class="btn ghost sm" data-act="exportMatsAll" data-k="'+kind+'">تصدير الخامات PDF</button><button class="btn" data-act="newOrder">'+svg('plus')+'أوردر جديد</button></div>';
+  var btn='<div class="btns"><button class="btn ghost sm" data-act="printAllOrders" data-k="'+kind+'">تصدير الأوردرات PDF</button><button class="btn" data-act="newOrder">'+svg('plus')+'أوردر جديد</button></div>';
   var body='';
   if(open.length)body+=grpTitle('في التحضير والإنتاج',open.length)+'<div class="list">'+open.map(orderCard).join('')+'</div>';
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
@@ -1817,7 +1816,7 @@ var ACT={
     doPrint(printAllHTML(list));document.title=old;return false;
   },
   exportMatsAll:function(d){
-    var k=d.k||'cust',list=ordersOf(k).filter(function(o){return !o.deliveredAt;});
+    var k=d.k||'all',list=(k==='all'?ordersOf('cust').concat(ordersOf('shop')):ordersOf(k)).filter(function(o){return !o.deliveredAt;});
     if(!list.length){toast('مفيش طلبيات مفتوحة');return false;}
     var old=document.title;document.title='الخامات المطلوبة '+stamp();
     doPrint(allMatsHTML(list,k));document.title=old;return false;
