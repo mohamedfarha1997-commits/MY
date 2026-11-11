@@ -677,8 +677,12 @@ var SEASONS=[['normal','عادي'],['ramadan','رمضان'],['mawlid','مولد 
 function seasonOf(p){return p.season||'normal';}
 function curSeason(){return U.season||'normal';}
 function inSeason(p){return seasonOf(p)===curSeason();}
-function seasonSeg(current,act){
-  return '<div class="seg wrap" style="margin:0 0 12px">'+SEASONS.map(function(x){
+function hiddenSeasons(){try{return JSON.parse(localStorage.getItem('khat-seasons-hidden')||'[]');}catch(e){return [];}}
+function seasonHidden(k){return k!=='normal'&&hiddenSeasons().indexOf(k)>-1;}
+function visibleSeasons(){return SEASONS.filter(function(x){return !seasonHidden(x[0]);});}
+function ordSeason(){return seasonHidden(curSeason())?'normal':curSeason();}
+function seasonSeg(current,act,list){
+  return '<div class="seg wrap" style="margin:0 0 12px">'+(list||SEASONS).map(function(x){
     return '<button class="'+(current===x[0]?'on':'')+'" data-act="'+act+'" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>';
 }
@@ -926,7 +930,7 @@ function bkAgo(ts){
   var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';
   return 'منذ '+Math.floor(h/24)+' يوم';
 }
-function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
+function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
   var lb=S.lastBackup,stale=!lb||Date.now()-lb>7*86400000;
   var pend='';
@@ -1188,7 +1192,7 @@ function monthKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+String(d.get
 function lockKey(kind,k){return kind+'|'+k;}
 function isLocked(o){return !!(S.locks&&S.locks[lockKey(okind(o),monthKey(o.created))]);}
 function prodsOf(kind){return PRODUCTS.filter(function(p){return kind==='shop'?!!p.shop:!p.shop;});}
-function ordersOf(kind){return S.orders.filter(function(o){return okind(o)===kind&&(o.season||'normal')===curSeason();});}
+function ordersOf(kind){return S.orders.filter(function(o){return okind(o)===kind&&(o.season||'normal')===ordSeason();});}
 function openCount(kind){return ordersOf(kind).filter(function(o){return !o.deliveredAt&&orderBatches(o).length;}).length;}
 function grpTitle(t,n){return '<div class="grp">'+t+' ('+n+')</div>';}
 function allMatsHTML(list,kind){
@@ -1285,7 +1289,7 @@ function ordersView(kind){
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
   if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر من الزرار اللي فوق. لما تسلّمه يتأرشف.</span></div>';
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
-  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSegHTML()+body+archiveHTML(arch,kind);
+  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSeg(ordSeason(),'setSeason',visibleSeasons())+body+archiveHTML(arch,kind);
 }
 function ordSheetHTML(){
   if(!U.osheet)return '';
@@ -1418,6 +1422,14 @@ function tabsCardHTML(){
   }).join('');
   return '<section class="card" style="--c:var(--settings)"><h3>التبويبات</h3><p class="meta" style="margin:0">اختار التبويبات اللي تظهر في الشاشة الرئيسية. الإعدادات دايمًا ظاهرة.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
 }
+function seasonsCardHTML(){
+  var rows=SEASONS.map(function(x){
+    if(x[0]==='normal')return '<tr><td>'+x[1]+'</td><td><span class="meta">دايمًا ظاهر</span></td></tr>';
+    var hid=seasonHidden(x[0]);
+    return '<tr><td>'+x[1]+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="toggleSeason" data-k="'+x[0]+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
+  }).join('');
+  return '<section class="card" style="--c:var(--settings)"><h3>المواسم في الأوردرات</h3><p class="meta" style="margin:0">التبويبات دي بتظهر في الأوردرات وأوردرات المحل بس. لو خفيت موسم، أوردراته مش هتظهر لحد ما ترجعه.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
+}
 function securityCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
@@ -1523,6 +1535,12 @@ var ACT={
   sChangeStart:function(){U.sChange=true;U.sErr=null;render();return false;},
   sCancel:function(){U.sChange=false;U.sErr=null;render();return false;},
   sLock:function(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}U.view='home';U.sErr=null;render();return false;},
+  toggleSeason:function(d){
+    var a=hiddenSeasons(),i=a.indexOf(d.k);
+    if(i>-1)a.splice(i,1);else a.push(d.k);
+    try{localStorage.setItem('khat-seasons-hidden',JSON.stringify(a));}catch(e){}
+    render();return false;
+  },
   setSeason:function(d){U.season=d.v;U.rsel=null;render();return false;},
   prodSeason:function(d){U.form.season=d.v;render();return false;},
   prodKind:function(d){U.form.shop=d.v==='shop';render();return false;},
@@ -1641,7 +1659,7 @@ var ACT={
   },
   newOrder:function(){
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
-    U.sheet=null;U.form=null;U.osheet={cust:'',items:{},due:'',season:curSeason(),kind:U.view==='shopOrders'?'shop':'cust'};
+    U.sheet=null;U.form=null;U.osheet={cust:'',items:{},due:'',season:ordSeason(),kind:U.view==='shopOrders'?'shop':'cust'};
   },
   oQty:function(d){var it=U.osheet.items;it[d.p]=Math.max(0,Math.min(999,(it[d.p]||0)+Number(d.d)));},
   oClose:function(){U.osheet=null;},
@@ -1721,7 +1739,7 @@ var ACT={
 var READ_ACTS={tab:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oQty:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
   printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
