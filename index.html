@@ -361,7 +361,7 @@ function fsLoad(){
     return h.queryPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';});
   }).then(function(){if(FS.h){render();fsArm();}return syncFromFolder();}).catch(function(){});
 }
-var FS_SYNC_MS=60000;
+var FS_SYNC_MS=1000;
 function fsAutoSync(){
   if(!FS.h||!FS.ok||!FS.synced||FS.syncing)return;
   FS.syncing=true;
@@ -382,6 +382,7 @@ function fsArm(){
 }
 var FS_DIRS={recipes:'الوصفات',stock:'مخزون الانتاج'};
 var FS_RECIPE_FILE='khat-entaj-recipes.json',FS_STOCK_FILE='khat-entaj-stock.json';
+var FS_MAIN='khat-entaj-data.json';
 var FS_CONFLICT=/\(\d+\)\.json$/;
 var FS_NOT_DAY={products:1,materials:1,stock:1,ready:1,stockAt:1,recipesAt:1};
 FS.dirs={};FS.cache={};FS.lastOut={};
@@ -417,23 +418,40 @@ function fsWriteJSON(dirName,fname,obj,onOk){
     .catch(function(){FS.err='تعذّر الحفظ في الملف، اتأكد إن الملف مش مفتوح في برنامج تاني';});
   return FS.q;
 }
-function fsWrite(){
-  if(!FS.h||!FS.ok||!FS.synced)return;
-  var dayData={};for(var k in S)if(!FS_NOT_DAY[k])dayData[k]=S[k];
-  var stamp=S.savedAt||0;
-  fsWriteJSON(fsDayPrefix(),fsDayName(),{app:'khat-entaj',v:2,data:dayData},function(){FS.wroteAt=stamp;});
-}
+function fsWrite(){fsWriteMain();}
 function fsWriteRecipes(){
   S.recipesAt=Date.now();
-  if(!FS.h||!FS.ok)return;
-  fsWriteJSON(FS_DIRS.recipes,FS_RECIPE_FILE,{app:'khat-entaj',kind:'recipes',v:2,data:{products:S.products,materials:S.materials,at:S.recipesAt}});
+  fsWriteMain();
 }
 function fsWriteStock(){
   var sig=JSON.stringify([S.stock,S.ready]);
   if(FS.stockSig===undefined)FS.stockSig=sig;
   else if(sig!==FS.stockSig){FS.stockSig=sig;S.stockAt=Date.now();}
+  fsWriteMain();
+}
+function canon(x){return JSON.stringify(x,function(k,v){
+  return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
+function fsWriteMain(){
   if(!FS.h||!FS.ok||!FS.synced)return;
-  fsWriteJSON(FS_DIRS.stock,FS_STOCK_FILE,{app:'khat-entaj',kind:'stock',v:2,data:{stock:S.stock,ready:S.ready,at:S.stockAt||0}});
+  clearTimeout(FS.wt);
+  FS.wt=setTimeout(doWriteMain,300);
+}
+function doWriteMain(){
+  if(!FS.h||!FS.ok)return;
+  var body=JSON.stringify({app:'khat-entaj',v:3,savedAt:S.savedAt||0,data:S});
+  if(FS.lastOut[FS_MAIN]===body)return;
+  FS.q=FS.q.then(function(){return FS.h.getFileHandle(FS_MAIN,{create:true});})
+    .then(function(fh){return fh.createWritable().then(function(w){return w.write(body).then(function(){return w.close();});}).then(function(){return fh.getFile();});})
+    .then(function(f){FS.lastOut[FS_MAIN]=body;FS.cache[FS_MAIN]={m:f.lastModified,s:f.size,d:JSON.parse(body)};FS.err=null;FS.at=Date.now();})
+    .catch(function(){FS.err='تعذّر الحفظ في الملف، اتأكد إن الملف مش مفتوح في برنامج تاني';});
+  return FS.q;
+}
+function fsReadMain(){
+  if(!FS.h||!FS.ok)return Promise.resolve(null);
+  return FS.h.getFileHandle(FS_MAIN).then(function(fh){return fh.getFile();}).then(function(f){
+    var c=FS.cache[FS_MAIN];if(c&&c.m===f.lastModified&&c.s===f.size)return c.d;
+    return f.text().then(function(t){var j=JSON.parse(t);FS.cache[FS_MAIN]={m:f.lastModified,s:f.size,d:j};return j;});
+  }).then(function(j){return j&&j.data?j.data:null;}).catch(function(){return null;});
 }
 function fsReadRecipes(){
   if(!FS.h||!FS.ok)return Promise.resolve(null);
@@ -503,48 +521,63 @@ function fsList(dir){
 function fsCleanupConflicts(){
   var n=0;
   return fsList(FS.h).then(function(entries){
-    return Promise.all(entries.filter(function(e){return e.kind==='directory';}).map(function(d){
+    var direct=entries.filter(function(e){return e.kind==='file'&&FS_CONFLICT.test(e.name);}).map(function(e){return FS.h.removeEntry(e.name).then(function(){n++;});});
+    var subs=entries.filter(function(e){return e.kind==='directory';}).map(function(d){
       return fsList(d).then(function(files){
         return Promise.all(files.filter(function(f){return f.kind==='file'&&FS_CONFLICT.test(f.name);}).map(function(f){
           return d.removeEntry(f.name).then(function(){n++;});
         }));
       });
-    }));
+    });
+    return Promise.all(direct.concat(subs));
   }).then(function(){return n;});
 }
+function mergeState(a,b){
+  var list=[a,b].filter(Boolean);
+  var M=mergeDays(list);
+  var byRec=list.slice().sort(function(x,y){return (y.recipesAt||0)-(x.recipesAt||0);})[0];
+  M.products=byRec.products||[];M.materials=byRec.materials||[];M.recipesAt=byRec.recipesAt||0;
+  var byStock=list.slice().sort(function(x,y){return (y.stockAt||0)-(x.stockAt||0);})[0];
+  M.stock=byStock.stock||{};M.ready=byStock.ready||{};M.stockAt=byStock.stockAt||0;
+  return M;
+}
+function fsReadLegacy(){
+  return Promise.all([fsReadDayFiles(),fsReadRecipes(),fsReadStock()]).then(function(res){
+    var days=res[0],rec=res[1],st=res[2];
+    if(!days.length&&!rec&&!st)return null;
+    var M=days.length?mergeDays(days):{};
+    M.products=rec?rec.products:[];M.materials=rec?rec.materials:[];M.recipesAt=rec?(rec.at||0):0;
+    if(st){M.stock=st.data.stock||{};M.ready=st.data.ready||{};M.stockAt=st.data.at||0;}
+    return M;
+  });
+}
+var FS_CHECKED=false;
 function syncFromFolder(){
   if(!FS.h||!FS.ok)return Promise.resolve();
-  FS.conflicts=0;
-  return Promise.all([fsReadDayFiles(),fsReadRecipes(),fsReadStock()]).then(function(res){
-    FS.synced=true;
-    var list=res[0].concat([localDaySnapshot()]),rec=res[1],st=res[2],changed=false;
-    var M=mergeDays(list);
-    var pick=function(d){var o={};TOMB_KEYS.forEach(function(k){o[k]=d[k];});return JSON.stringify(o);};
-    if(pick(M)!==pick(localDaySnapshot())){
-      TOMB_KEYS.forEach(function(k){if(M[k]!==undefined)S[k]=M[k];});
-      S.orders=M.orders;S.batches=M.batches;S.done=M.done;S.savedAt=M.savedAt;
-      changed=true;
-    }
-    var rAt=st?(st.data.at||0):0;
-    var lsig=JSON.stringify([S.stock,S.ready]),fsig=st?JSON.stringify([st.data.stock||{},st.data.ready||{}]):null;
-    var localChanged=FS.stockSig!==undefined&&lsig!==FS.stockSig;
-    if(st&&(!localChanged||rAt>(S.stockAt||0))){
-      if(fsig!==lsig){S.stock=st.data.stock||{};S.ready=st.data.ready||{};S.stockAt=rAt;changed=true;}
-      FS.stockSig=JSON.stringify([S.stock,S.ready]);
-    }else{fsWriteStock();}
-    var localN=(S.products||[]).length,fileN=rec?rec.products.length:0;
-    FS.recN=fileN;FS.localN=localN;
-    if(rec&&fileN&&((rec.at||0)>(S.recipesAt||0)||!localN)){
-      S.products=rec.products;S.materials=rec.materials;S.recipesAt=rec.at;changed=true;
-    }else if(localN&&(!rec||(S.recipesAt||0)>(rec.at||0))){
-      fsWriteRecipes();
-    }
-    if(changed){
-      migrateProducts(S.products);bind(S);FS.wroteAt=S.savedAt||0;
+  return fsReadMain().then(function(remote){
+    if(remote)return remote;
+    return fsReadLegacy();
+  }).then(function(remote){
+    var local=JSON.parse(JSON.stringify(S));
+    var M=remote?mergeState(remote,local):local;
+    if(canon(M)!==canon(local)){
+      Object.keys(M).forEach(function(k){S[k]=M[k];});
       try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+      migrateProducts(S.products);bind(S);
       if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
-    fsWrite();
+    FS.stockSig=JSON.stringify([S.stock,S.ready]);
+    FS.synced=true;
+    if(!remote||canon(M)!==canon(remote))fsWriteMain();
+    if(!FS_CHECKED){FS_CHECKED=true;FS.conflicts=0;fsCleanupCount().then(function(n){FS.conflicts=n;render();}).catch(function(){});}
+  });
+}
+function fsCleanupCount(){
+  return fsList(FS.h).then(function(entries){
+    var n=entries.filter(function(e){return e.kind==='file'&&FS_CONFLICT.test(e.name);}).length;
+    return Promise.all(entries.filter(function(e){return e.kind==='directory';}).map(function(d){
+      return fsList(d).then(function(files){n+=files.filter(function(f){return f.kind==='file'&&FS_CONFLICT.test(f.name);}).length;});
+    })).then(function(){return n;});
   });
 }
 function connOn(){return fsSupported()&&!!FS.h&&FS.ok&&!FS.err;}
@@ -1723,7 +1756,7 @@ var ACT={
   fsCleanup:function(){
     if(U.confirm!=='fsc'){U.confirm='fsc';setTimeout(function(){if(U.confirm==='fsc'){U.confirm=null;render();}},3000);return;}
     U.confirm=null;
-    fsCleanupConflicts().then(function(n){toast(n?'اتحذف '+n+' نسخة متعارضة':'مفيش نسخ متعارضة');return syncFromFolder();}).then(function(){render();}).catch(function(){toast('تعذّر التنظيف');});
+    fsCleanupConflicts().then(function(n){toast(n?'اتحذف '+n+' نسخة متعارضة':'مفيش نسخ متعارضة');FS.conflicts=0;return syncFromFolder();}).then(function(){render();}).catch(function(){toast('تعذّر التنظيف');});
     return false;
   },
   fsSync:function(){
