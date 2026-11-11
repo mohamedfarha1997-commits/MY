@@ -213,14 +213,6 @@ button,input{font-family:inherit}
 .sgb{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;background:var(--surface-2)}
 .sgh{font-weight:700;font-size:15px;color:var(--c);display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:4px}
 .sgb .sgh{margin-top:0}
-details.sgf-fold{display:block;gap:0}
-details.sgf-fold>summary{list-style:none;cursor:pointer;margin-top:0;padding:2px 0}
-details.sgf-fold>summary::-webkit-details-marker{display:none}
-details.sgf-fold>summary::after{content:'';margin-inline-start:auto;width:8px;height:8px;border-inline-end:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(45deg);transition:transform .2s;flex:none;margin-top:-4px}
-details.sgf-fold[open]>summary{margin-bottom:6px}
-details.sgf-fold[open]>summary::after{transform:rotate(225deg);margin-top:4px}
-details.sgf-fold>.sgl{margin-top:6px}
-details.sgf-fold>summary:focus-visible{outline:2px solid var(--c);outline-offset:4px;border-radius:6px}
 .phase{font-size:12px;font-weight:700;color:var(--ink-2);margin:10px 2px -2px;letter-spacing:.2px}
 .sgl{font-size:12px;font-weight:600;color:var(--muted);margin-top:4px}
 .stg-sum{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -370,7 +362,7 @@ function fsLoad(){
 }
 function fsArm(){
   if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
-  var evs=['pointerdown','touchend','click','keydown'];
+  var evs=['touchend','click','keydown'];
   function off(){evs.forEach(function(e){document.removeEventListener(e,h,true);});FS.armed=false;}
   function h(){
     if(!FS.h||FS.ok){off();return;}
@@ -783,7 +775,7 @@ function recipesView(){
     var ph=(i===0||gs[i-1].kind!==g.kind)?'<div class="phase">'+(g.kind==='finish'?'مرحلة الفنش':'مراحل التحضير')+'</div>':'';
     var ing=(g.ings||[]).map(function(x){var m=M(x.m);return m?'<div class="rq" style="grid-template-columns:minmax(0,1fr) auto"><b>'+m.name+'</b><span class="qv">'+f(r3(x.q*q))+' '+m.unit+'</span></div>':'';}).join('');
     var st=(g.steps||[]).filter(function(t){return String(t).trim();}).map(function(t,j){return '<div class="stp"><b>'+(j+1)+'</b><span>'+t+'</span></div>';}).join('');
-    return ph+'<details class="sgb sgf-fold" open><summary class="sgh"><span>'+(i+1)+'. '+g.name+'</span><span class="pill'+(g.kind==='finish'?'':' c')+'">'+(g.kind==='finish'?'فنش':'تحضير')+'</span></summary>'+(ing?'<div class="sgl">المكوّنات</div>'+ing:'')+(st?'<div class="sgl">الخطوات</div>'+st:'')+'</details>';
+    return ph+'<div class="sgb"><div class="sgh"><span>'+(i+1)+'. '+g.name+'</span><span class="pill'+(g.kind==='finish'?'':' c')+'">'+(g.kind==='finish'?'فنش':'تحضير')+'</span></div>'+(ing?'<div class="sgl">المكوّنات</div>'+ing:'')+(st?'<div class="sgl">الخطوات</div>'+st:'')+'</div>';
   }).join('');
   var mats=MATERIALS.map(function(m){return '<div class="hist"><span>'+m.name+' <span class="meta">· '+m.unit+'</span></span><button class="btn ghost sm" data-act="editMat" data-id="'+m.id+'">تعديل</button></div>';}).join('');
   return head('وصفات','اختار وصفة وهتظهر لك بس',btn)+seasonSegHTML()+
@@ -1686,7 +1678,7 @@ var ACT={
       }
       toast('تم منح الإذن');return syncFromFolder();
     }).catch(function(e){
-      toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
+      if(e&&e.name==='SecurityError')toast('المتصفح محتاج ضغطة مباشرة، اضغط على الزرار تاني');else toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
     }).then(function(){FS.granting=false;render();});
     return false;
   },
