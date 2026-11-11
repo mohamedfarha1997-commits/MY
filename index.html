@@ -1827,8 +1827,14 @@ var ACT={
     var o=S.orders.filter(function(x){return x.id===d.o;})[0];if(!o)return false;
     var row=ordShort(o).filter(function(x){return x.p===d.p;})[0];
     if(!row||row.short<=0){toast('الصنف ده مش ناقص');return false;}
-    S.seq++;S.batches.push({id:'B-'+S.seq+'-'+devId(),p:d.p,qty:Math.ceil(row.short/yieldOf(d.p)),stage:'prep',withdrawn:false,checks:[],created:Date.now(),o:o.id});
-    toast('اتعملت دفعة '+f(row.short)+' '+((P(d.p)||{}).unit||'')+' للطلبية '+o.id);
+    S.seq++;var nb={id:'B-'+S.seq+'-'+devId(),p:d.p,qty:Math.ceil(row.short/yieldOf(d.p)),stage:'prep',withdrawn:false,checks:[],created:Date.now(),o:o.id};
+    S.batches.push(nb);
+    if(shortOf(nb).length===0){
+      applyWithdraw(S,nb);nb.stage='prod';nb.startedAt=null;nb.notified=false;nb.ringing=false;
+      toast('اتعملت دفعة '+f(row.short)+' '+((P(d.p)||{}).unit||'')+' ودخلت الإنتاج على طول');
+    }else{
+      toast('اتعملت دفعة '+f(row.short)+' للطلبية '+o.id+'، الخامات ناقصة فهتفضل في التحضير');
+    }
   },
   dispatch:function(d){if((S.ready[d.p]||0)>0)S.ready[d.p]--;},
   cleanStart:function(){
