@@ -436,7 +436,11 @@ function fsReadStock(){
     .then(function(j){return j&&j.data?j:null;}).catch(function(){return null;});
 }
 var TOMB_KEYS=['orders','batches','done','seq','oseq','locks','tomb','track'];
-function tombAdd(kind,id){S.tomb=S.tomb||{orders:[],batches:[]};if(S.tomb[kind].indexOf(id)<0)S.tomb[kind].push(id);}
+function tombAdd(kind,id){
+  S.tomb=S.tomb||{orders:[],batches:[],done:[]};
+  S.tomb[kind]=S.tomb[kind]||[];
+  if(S.tomb[kind].indexOf(id)<0)S.tomb[kind].push(id);
+}
 function fsReadDayFiles(){
   var out=[],name=fsDayPrefix();
   return fsDirOf(name).then(function(dir){
@@ -453,13 +457,14 @@ function fsReadDayFiles(){
 function localDaySnapshot(){var d={};for(var k in S)if(!FS_NOT_DAY[k])d[k]=S[k];return d;}
 function mergeDays(list){
   var base=list.slice().sort(function(x,y){return (x.savedAt||0)-(y.savedAt||0);});
-  var M={},tomb={orders:{},batches:{}};
+  var M={},tomb={orders:{},batches:{},done:{}};
   base.forEach(function(d){
     for(var k in d){if(k!=='orders'&&k!=='batches'&&k!=='done'&&k!=='products'&&k!=='materials'&&k!=='tomb')M[k]=d[k];}
     ((d.tomb&&d.tomb.orders)||[]).forEach(function(i){tomb.orders[i]=1;});
     ((d.tomb&&d.tomb.batches)||[]).forEach(function(i){tomb.batches[i]=1;});
+    ((d.tomb&&d.tomb.done)||[]).forEach(function(i){tomb.done[i]=1;});
   });
-  M.tomb={orders:Object.keys(tomb.orders),batches:Object.keys(tomb.batches)};
+  M.tomb={orders:Object.keys(tomb.orders),batches:Object.keys(tomb.batches),done:Object.keys(tomb.done)};
   function union(key,dead){
     var map={},order=[];
     base.forEach(function(d){(d[key]||[]).forEach(function(r){
@@ -475,7 +480,7 @@ function mergeDays(list){
     return o;
   });
   M.batches=union('batches',tomb.batches);
-  M.done=union('done',{});
+  M.done=union('done',tomb.done);
   M.savedAt=Math.max.apply(null,[0].concat(base.map(function(d){return d.savedAt||0;})));
   return M;
 }
@@ -1402,7 +1407,7 @@ function monthsHTML(){
     var keys=Object.keys(months).sort().reverse();
     if(!keys.length)return '';
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل شهور '+(kind==='shop'?'أوردرات المحل':'الأوردرات')+'</h3></div>'+
-      '<p class="meta" style="margin:0">حسابات النوعين منفصلة. بعد القفل الأوردرات مش هتتلغي، وتقدر تطلع تقرير PDF للشهر.</p>'+
+      '<p class="meta" style="margin:0">حسابات النوعين منفصلة. بعد القفل يتم مسح بيانات التشغيل والأوردرات وحركات الخامات، مع الاحتفاظ بالوصفات ومخزون الإنتاج الجاهز. صدّر تقرير PDF قبل القفل لو محتاج تحتفظ به.</p>'+
       keys.map(function(k){
         var m=months[k],locked=!!(S.locks&&S.locks[lockKey(kind,k)]),conf=U.confirm==='lock:'+lockKey(kind,k);
         var act=locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':
@@ -1912,7 +1917,19 @@ var ACT={
   lockMonth:function(d){
     var key=lockKey(d.kind,d.k);
     if(U.confirm!=='lock:'+key){U.confirm='lock:'+key;setTimeout(function(){if(U.confirm==='lock:'+key){U.confirm=null;render();}},3000);return;}
-    U.confirm=null;S.locks=S.locks||{};S.locks[key]=true;toast('اتقفل شهر '+d.k);
+    U.confirm=null;
+    /* إقفال الشهر: احتفظ بتعريفات الوصفات ومخزون الإنتاج الجاهز فقط */
+    S.orders.forEach(function(o){tombAdd('orders',o.id);});
+    S.batches.forEach(function(b){tombAdd('batches',b.id);});
+    S.done.forEach(function(x){tombAdd('done',x.id);});
+    S.orders=[];S.batches=[];S.done=[];
+    S.stock={};                 // كميات مخزن الخامات تبدأ من صفر
+    S.locks=S.locks||{};S.locks[key]=true;
+    S.seq=100;S.oseq=0;
+    U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
+    bind(S);
+    fsWriteStock();fsWriteRecipes();
+    toast('اتقفل شهر '+d.k+' واتمسحت بيانات التشغيل؛ الوصفات ومخزون الإنتاج محفوظين');
   },
   oCancel:function(d){
     var lo=S.orders.filter(function(x){return x.id===d.id;})[0];
