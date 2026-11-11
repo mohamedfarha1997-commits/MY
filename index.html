@@ -341,7 +341,8 @@ async function checkPin(p){
   return hex===AUTH_HASH;
 }
 function authed(){try{var a=sessionStorage.getItem(AUTH_KEY);return a==='1'||a==='staff';}catch(e){return false;}}
-var STAFF_PIN='0000',STAFF_TABS=['prep','prod','finish'];
+var STAFF_PIN='0000',STAFF_DEFAULT=['prep','prod','finish'];
+function staffTabs(){try{var v=localStorage.getItem('khat-staff-tabs');return v?JSON.parse(v):STAFF_DEFAULT;}catch(e){return STAFF_DEFAULT;}}
 function isStaff(){try{return sessionStorage.getItem(AUTH_KEY)==='staff';}catch(e){return false;}}
 var FS={h:null,ok:false,at:0,err:null,q:Promise.resolve(),wroteAt:0,busy:false};
 function fsSupported(){return typeof window.showDirectoryPicker==='function'&&typeof indexedDB!=='undefined';}
@@ -1522,7 +1523,7 @@ function blankIng(){return {m:null,n:'',q:'',u:'كجم'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
 
 function hiddenTabs(){try{return JSON.parse(localStorage.getItem('khat-tabs-hidden')||'[]');}catch(e){return [];}}
-function tabHidden(k){if(isStaff())return STAFF_TABS.indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
+function tabHidden(k){if(isStaff())return staffTabs().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
 var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
 function sPwStored(){try{var v=localStorage.getItem('khat-set-pw');return v?JSON.parse(v):SET_DEFAULT;}catch(e){return SET_DEFAULT;}}
 function sUnlocked(){try{return sessionStorage.getItem('khat-set-ok')==='1';}catch(e){return false;}}
@@ -1540,10 +1541,12 @@ function saveSettingsPw(p){
 function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
 function tabsCardHTML(){
   var rows=navItems().map(function(t){
-    var hid=tabHidden(t.k);
-    return '<tr><td>'+t.l+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="'+(t.k==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
+    var hid=tabHidden(t.k),sh=staffTabs().indexOf(t.k)<0;
+    var ownerCell='<button class="tg'+(hid?'':' on')+'" data-act="'+(t.k==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
+    var staffCell='<button class="tg'+(sh?'':' on')+'" data-act="toggleStaffTab" data-k="'+t.k+'">'+(sh?'مخفي':'ظاهر')+'</button>';
+    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td><td>'+staffCell+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات</h3><p class="meta" style="margin:0">اختار التبويبات اللي تظهر في الشاشة الرئيسية. الإعدادات دايمًا ظاهرة.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
+  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المالك بيشوف الكل حسب العمود ده، والموظف (الدخول بـ 0000) بيشوف اللي ظاهر في عمود الموظف بس. الإعدادات للمالك دايمًا.</p><table class="ttab"><thead><tr><th>التبويب</th><th>المالك</th><th>الموظف</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
 }
 function seasonsCardHTML(){
   var rows=SEASONS.map(function(x){
@@ -1629,6 +1632,12 @@ var ACT={
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
+  toggleStaffTab:function(d){
+    var a=staffTabs().slice(),k=d.k,ix=a.indexOf(k);
+    if(ix>-1)a.splice(ix,1);else a.push(k);
+    try{localStorage.setItem('khat-staff-tabs',JSON.stringify(a));}catch(e){}
+    render();return false;
+  },
   toggleTab:function(d){
     var a=hiddenTabs(),i=a.indexOf(d.k);
     if(i>-1)a.splice(i,1);else a.push(d.k);
@@ -1879,7 +1888,7 @@ var ACT={
 var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
   printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
