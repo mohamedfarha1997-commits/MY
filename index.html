@@ -1270,12 +1270,17 @@ var ACT={
     return false;
   },
   fsGrant:function(){
-    if(!FS.h||FS.ok||FS.granting)return false;
-    FS.granting=true;
-    FS.h.requestPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';if(FS.ok){return syncFromFolder();}})
-      .then(function(){render();})
-      .catch(function(){toast('ما اتمنحتش صلاحية الحفظ');render();})
-      .then(function(){FS.granting=false;});
+    if(!FS.h){toast('اختار الفولدر الأول');return false;}
+    if(FS.ok||FS.granting)return false;
+    if(typeof FS.h.requestPermission!=='function'){toast('المتصفح ده مش بيدعم إذن الفولدر');return false;}
+    FS.granting=true;toast('بطلب إذن الفولدر...');
+    FS.h.requestPermission({mode:'readwrite'}).then(function(p){
+      FS.ok=p==='granted';
+      if(!FS.ok){toast('الإذن ما اتوافقش عليه (الحالة: '+p+')');return;}
+      toast('تم منح الإذن');return syncFromFolder();
+    }).catch(function(e){
+      toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
+    }).then(function(){FS.granting=false;render();});
     return false;
   },
   fsSync:function(){
