@@ -376,8 +376,17 @@ var FS_RECIPE_FILE='khat-entaj-recipes.json',FS_STOCK_FILE='khat-entaj-stock.jso
 var FS_NOT_DAY={products:1,materials:1,stock:1,ready:1,stockAt:1,recipesAt:1};
 FS.dirs={};FS.cache={};FS.lastOut={};
 function fsDirOf(name){
-  if(FS.dirs[name])return Promise.resolve(FS.dirs[name]);
-  return FS.h.getDirectoryHandle(name,{create:true}).then(function(d){FS.dirs[name]=d;return d;});
+  if(!FS.dirP)FS.dirP={};
+  if(!FS.dirP[name]){
+    FS.dirP[name]=(async function(){
+      var it=FS.h.values(),r;
+      while(!(r=await it.next()).done){
+        if(r.value.kind==='directory'&&r.value.name===name)return r.value;
+      }
+      return FS.h.getDirectoryHandle(name,{create:true});
+    })().catch(function(e){delete FS.dirP[name];throw e;});
+  }
+  return FS.dirP[name];
 }
 function fsCachedJSON(dir,fname,key){
   return dir.getFileHandle(fname).then(function(fh){return fh.getFile();}).then(function(f){
@@ -1641,7 +1650,7 @@ var ACT={
   fsPick:function(){
     if(!fsSupported()){toast('المتصفح ده مش بيدعم الحفظ في ملف، استخدم Chrome أو Edge على الكمبيوتر');return false;}
     window.showDirectoryPicker({mode:'readwrite'})
-      .then(function(h){FS.h=h;FS.ok=true;return idbSet('dirhandle',h);})
+      .then(function(h){FS.h=h;FS.ok=true;FS.dirP={};FS.cache={};FS.lastOut={};return idbSet('dirhandle',h);})
       .then(function(){return syncFromFolder();})
       .then(function(){toast('تم ربط ملف الحفظ، كل التغييرات هتتحفظ فيه');render();})
       .catch(function(e){if(!e||e.name!=='AbortError')toast('تعذّر فتح الملف');});
