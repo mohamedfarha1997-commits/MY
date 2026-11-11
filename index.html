@@ -408,7 +408,7 @@ function fsWriteJSON(dirName,fname,obj,onOk){
   return FS.q;
 }
 function fsWrite(){
-  if(!FS.h||!FS.ok)return;
+  if(!FS.h||!FS.ok||!FS.synced)return;
   var dayData={};for(var k in S)if(!FS_NOT_DAY[k])dayData[k]=S[k];
   var stamp=S.savedAt||0;
   fsWriteJSON(fsDayPrefix(),fsDayName(),{app:'khat-entaj',v:2,data:dayData},function(){FS.wroteAt=stamp;});
@@ -422,7 +422,7 @@ function fsWriteStock(){
   var sig=JSON.stringify([S.stock,S.ready]);
   if(FS.stockSig===undefined)FS.stockSig=sig;
   else if(sig!==FS.stockSig){FS.stockSig=sig;S.stockAt=Date.now();}
-  if(!FS.h||!FS.ok)return;
+  if(!FS.h||!FS.ok||!FS.synced)return;
   fsWriteJSON(FS_DIRS.stock,FS_STOCK_FILE,{app:'khat-entaj',kind:'stock',v:2,data:{stock:S.stock,ready:S.ready,at:S.stockAt||0}});
 }
 function fsReadRecipes(){
@@ -487,6 +487,7 @@ function mergeDays(list){
 function syncFromFolder(){
   if(!FS.h||!FS.ok)return Promise.resolve();
   return Promise.all([fsReadDayFiles(),fsReadRecipes(),fsReadStock()]).then(function(res){
+    FS.synced=true;
     var list=res[0].concat([localDaySnapshot()]),rec=res[1],st=res[2],changed=false;
     var M=mergeDays(list);
     var pick=function(d){var o={};TOMB_KEYS.forEach(function(k){o[k]=d[k];});return JSON.stringify(o);};
@@ -496,9 +497,11 @@ function syncFromFolder(){
       changed=true;
     }
     var rAt=st?(st.data.at||0):0;
-    if(st&&rAt>(S.stockAt||0)){
-      S.stock=st.data.stock||S.stock;if(st.data.ready)S.ready=st.data.ready;
-      S.stockAt=rAt;FS.stockSig=JSON.stringify([S.stock,S.ready]);changed=true;
+    var lsig=JSON.stringify([S.stock,S.ready]),fsig=st?JSON.stringify([st.data.stock||{},st.data.ready||{}]):null;
+    var localChanged=FS.stockSig!==undefined&&lsig!==FS.stockSig;
+    if(st&&(!localChanged||rAt>(S.stockAt||0))){
+      if(fsig!==lsig){S.stock=st.data.stock||{};S.ready=st.data.ready||{};S.stockAt=rAt;changed=true;}
+      FS.stockSig=JSON.stringify([S.stock,S.ready]);
     }else{fsWriteStock();}
     var localN=(S.products||[]).length,fileN=rec?rec.products.length:0;
     FS.recN=fileN;FS.localN=localN;
@@ -512,6 +515,7 @@ function syncFromFolder(){
       try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
       if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
+    fsWrite();
   });
 }
 function connOn(){return fsSupported()&&!!FS.h&&FS.ok&&!FS.err;}
