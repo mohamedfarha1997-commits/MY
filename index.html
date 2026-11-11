@@ -10,13 +10,14 @@ try{var __t=localStorage.getItem('khat-theme');if(__t)document.documentElement.s
   l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
   document.head.appendChild(l);
 })();
+window.addEventListener('error',function(e){try{var a=document.getElementById('app');var m='خطأ: '+(e&&e.message?e.message:'غير معروف');if(a&&!a.textContent.trim()){a.innerHTML='<div dir="rtl" style="padding:16px;font:14px sans-serif;color:#b91c1c"><b>حصلت مشكلة في تحميل الصفحة</b><div style="margin-top:8px;word-break:break-all">'+m+'</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px">إعادة التحميل</button></div>';}}catch(x){}});
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
 window.addEventListener('appinstalled',function(){window.KH_INSTALL=null;});
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
 </script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap"></noscript>
 <style>
 /* Layout: sticky four-stage pipeline (تحضير ← إنتاج ← مخزن ← فنش) over one working view. Each stage owns one hue; --c carries it into the view. */
 :root{
