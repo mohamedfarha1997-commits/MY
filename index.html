@@ -1517,7 +1517,8 @@ impEl.addEventListener('change',function(){
 });
 
 /* ---------- actions ---------- */
-function go(v){U.view=v;try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
+function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}}
+function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
 function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);return a;}
 function blankIng(){return {m:null,n:'',q:'',u:'كجم'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
@@ -1588,9 +1589,9 @@ var ACT={
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
-    if(p===STAFF_PIN){try{sessionStorage.setItem(AUTH_KEY,'staff');}catch(e){}U.loginErr=null;U.view='home';render();return false;}
+    if(p===STAFF_PIN){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'staff');}catch(e){}U.loginErr=null;U.view='home';render();return false;}
     checkPin(p).then(function(ok){
-      if(ok){try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;}
+      if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;}
       else{U.loginErr='الرقم السري غلط';}
       render();
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
@@ -1630,7 +1631,7 @@ var ACT={
     syncFromFolder().then(function(){toast('تمت المزامنة مع الفولدر');render();}).catch(function(){toast('تعذّرت المزامنة');});
     return false;
   },
-  logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}U.view='home';U.loginErr=null;render();return false;},
+  logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
