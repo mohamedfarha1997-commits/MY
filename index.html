@@ -791,6 +791,7 @@ function stockView(){
 function yieldOf(pid){var p=P(pid);return p&&p.yield>0?p.yield:1;}
 function pc(b){return b.qty*yieldOf(b.p);}
 function stkQty(b){return b.stk==null?pc(b)-(b.rej||0):b.stk;}
+var IN='';
 function finCard(b){
   var p=P(b.p),ck=b.fchecks||[],total=pc(b),rej=b.rej||0,good=total-rej,items=finItems(p,b.qty);
   return '<article class="card"><div class="bh"><div><span class="bid ltr">'+b.id+'</span><h3 class="bn">'+p.name+' · '+f(total)+' '+p.unit+'</h3>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div><span class="pill c">فحص الجودة</span></div>'+
