@@ -551,13 +551,13 @@ async function checkPin(p){
   var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
   return hex===AUTH_HASH;
 }
-function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a==='staff'||a.indexOf('u:')===0;}catch(e){return false;}}
+function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
 function usersList(){S.users=S.users||[];return S.users;}
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
 function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
-function limited(){return isStaff()||!!sessionCode();}
-function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return staffTabs();}
-function actorCode(){var c=sessionCode();if(c)return c;if(isStaff())return 'موظف';return 'المالك';}
+function limited(){return !!sessionCode();}
+function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return STAFF_DEFAULT;}
+function actorCode(){var c=sessionCode();if(c)return c;return 'المالك';}
 function findUserByPw(p){
   var list=usersList().slice();
   function next(i){
@@ -577,9 +577,7 @@ function markBy(b){
   if(e.by.indexOf(c)<0)e.by.push(c);
   S.plog[b.id]=e;
 }
-var STAFF_PIN='0000',STAFF_DEFAULT=['prep','prod','finish'];
-function staffTabs(){return pref('staffTabs',STAFF_DEFAULT);}
-function isStaff(){try{return sessionStorage.getItem(AUTH_KEY)==='staff';}catch(e){return false;}}
+var STAFF_DEFAULT=['prep','prod','finish'];
 var DEV=Math.random().toString(36).slice(2,8);
 function devId(){return DEV;}
 function tombAdd(kind,id){S.tomb=S.tomb||{};S.tomb[kind]=S.tomb[kind]||{};S.tomb[kind][id]=Date.now();}
@@ -1720,7 +1718,7 @@ function render(){
   if(!authed()){document.getElementById('app').innerHTML=loginHTML();FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
-  if((U.view!=='settings'||isStaff())&&tabHidden(U.view))U.view='home';
+  if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
@@ -2163,16 +2161,14 @@ function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+lab
 function tabsCardHTML(){
   var users=usersList();
   var rows=navItems().map(function(t){
-    var hid=tabHidden(t.k),sh=staffTabs().indexOf(t.k)<0;
+    var hid=tabHidden(t.k);
     var ownerCell='<button class="tg'+(hid?'':' on')+'" data-act="'+(t.k==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
-    var staffCell='<button class="tg'+(sh?'':' on')+'" data-act="toggleStaffTab" data-k="'+t.k+'">'+(sh?'مخفي':'ظاهر')+'</button>';
     var userCells=users.map(function(u){var on=userTabs(u.code).indexOf(t.k)>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+u.code+'" data-k="'+t.k+'">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('');
-    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td><td>'+staffCell+'</td>'+userCells+'</tr>';
+    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td>'+userCells+'</tr>';
   }).join('');
-  var shS=staffTabs().indexOf('settings')<0;
-  rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td><td><button class="tg'+(shS?'':' on')+'" data-act="toggleStaffTab" data-k="settings">'+(shS?'مخفي':'ظاهر')+'</button></td>'+
+  rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+u.code+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
-  var hd='<tr><th>التبويب</th><th>المالك</th><th>الموظف (0000)</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
+  var hd='<tr><th>التبويب</th><th>المالك</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
   return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المستخدم اللي بيتضاف بيتسجل هنا تلقائي بالتبويبات الافتراضية.</p><div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+rows+'</tbody></table></div></section>';
 }
 function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
@@ -2238,7 +2234,6 @@ var ACT={
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
-    if(p===STAFF_PIN){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'staff');}catch(e){}U.loginErr=null;U.view='home';render();return false;}
     checkPin(p).then(function(ok){
       if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
       return findUserByPw(p).then(function(u){
@@ -2269,12 +2264,6 @@ var ACT={
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
-  toggleStaffTab:function(d){
-    var a=staffTabs().slice(),k=d.k,ix=a.indexOf(k);
-    if(ix>-1)a.splice(ix,1);else a.push(k);
-    setPref('staffTabs',a);
-    render();return false;
-  },
   toggleTab:function(d){
     var a=hiddenTabs(),i=a.indexOf(d.k);
     if(i>-1)a.splice(i,1);else a.push(d.k);
@@ -2495,7 +2484,6 @@ var ACT={
     var pw=(document.getElementById('uPw')||{}).value||'';
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
-    if(pw===STAFF_PIN){toast('الباسورد ده محجوز، اختار غيره');return false;}
     checkPin(pw).then(function(isOwner){
       if(isOwner){toast('الباسورد ده بتاع المالك، اختار غيره');return null;}
       return findUserByPw(pw).then(function(x){
@@ -2604,7 +2592,7 @@ var ACT={
 var READ_ACTS={tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
