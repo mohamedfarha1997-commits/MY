@@ -2060,15 +2060,16 @@ function ordSheetHTML(){
   var seasonP=prodsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');});
   var addedIds=(s.added||[]).filter(function(id){return seasonP.some(function(p){return p.id===id;});});
   var tiles=seasonP.filter(function(p){return !p.noOrder||addedIds.indexOf(p.id)>=0;});
+  var addedP=addedIds.map(function(id){return seasonP.filter(function(p){return p.id===id;})[0];});
   var grid=tiles.map(function(p){
-    var on=addedIds.indexOf(p.id)>=0,q=s.items[p.id]||0,st=isPiece(p)?1:0.5;
-    if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+p.name+'<small>'+p.mins+' دقيقة تشغيل</small></button>';
-    return '<div class="pk on opk" style="--c:var(--orders)">'+
-      '<div class="opk-h"><b>'+p.name+'</b><button class="ox" data-act="oRemove" data-id="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
-      '<small>'+p.unit+' · في المخزن: '+(S.ready[p.id]||0)+'</small>'+
-      '<div class="step opk-s"><button data-act="oStep" data-p="'+p.id+'" data-d="-1" aria-label="أنقص"'+(q<=st?' disabled':'')+'>−</button>'+
-      '<input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية">'+
-      '<button data-act="oStep" data-p="'+p.id+'" data-d="1" aria-label="زوّد">+</button></div></div>';
+    var on=addedIds.indexOf(p.id)>=0;
+    return '<button class="pk'+(on?' on':'')+'" data-act="oPick" data-p="'+p.id+'">'+p.name+'<small>'+p.mins+' دقيقة تشغيل</small></button>';
+  }).join('');
+  var qtyRows=addedP.map(function(p){
+    var q=s.items[p.id]||0;
+    return '<div class="qrow" style="justify-content:space-between"><b>'+p.name+'</b>'+
+      '<span style="display:flex;align-items:center;gap:6px"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية" style="width:80px;height:40px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:16px;font-weight:600">'+
+      '<span class="meta">'+p.unit+'</span></span></div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
@@ -2076,6 +2077,7 @@ function ordSheetHTML(){
     '<div class="fld"><span class="sec-l">نوع التعبئة للطلبية</span><div style="display:flex;gap:8px;align-items:center"><select data-opk="1" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(s.pack===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select><b style="white-space:nowrap">'+(totUnitsTxt(items)||'0')+'</b></div></div>'+
     '<div class="fld"><span class="sec-l">اختار الأصناف للطلبية'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
     (tiles.length?'<div class="pgrid">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+    (qtyRows?'<div class="fld"><span class="sec-l">الكميات</span><div class="stack">'+qtyRows+'</div></div>':'')+
     '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
 }
 
@@ -2397,7 +2399,10 @@ var ACT={
   oClose:function(){U.osheet=null;},
   oPick:function(d){
     var os=U.osheet;if(!os)return false;
-    os.added=os.added||[];if(os.added.indexOf(d.p)<0)os.added.push(d.p);
+    os.added=os.added||[];
+    var k=os.added.indexOf(d.p);
+    if(k>-1){os.added.splice(k,1);delete os.items[d.p];return;}
+    os.added.push(d.p);
     if(!(os.items[d.p]>0))os.items[d.p]=1;
   },
   oStep:function(d){
