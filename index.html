@@ -1182,7 +1182,7 @@ function stageForm(g,gi,n,cnt){
   var steps=g.steps.map(function(t,ti){
     return '<div class="sline"><input data-gi="'+gi+'" data-ti="'+ti+'" value="'+esc(t)+'" placeholder="خطوة '+(ti+1)+'" aria-label="خطوة '+(ti+1)+'"><button class="xbtn" data-act="stepDel" data-gi="'+gi+'" data-ti="'+ti+'" aria-label="احذف الخطوة">×</button></div>';
   }).join('');
-  return '<div class="sgf"><span class="sec-l">'+(g.kind==='finish'?'مرحلة فنش':'مرحلة تحضير')+' '+(n+1)+'</span><div class="sgt"><input data-gi="'+gi+'" data-gf="name" list="stagel" placeholder="'+(g.kind==='finish'?'اسم المرحلة، مثال: فنش':'اسم المرحلة، مثال: وزن الصنف')+'" value="'+esc(g.name)+'" aria-label="اسم المرحلة">'+
+  return '<div class="sgf"><span class="sec-l">'+(g.kind==='finish'?'مرحلة فنش':'مرحلة تحضير')+' '+(n+1)+'</span><div class="sgt">'+(g.kind==='finish'?'<input data-gi="'+gi+'" data-gf="name" list="stagel" placeholder="اسم المرحلة، مثال: فنش" value="'+esc(g.name)+'" aria-label="اسم المرحلة">':'<span class="meta">بتتسمّى تلقائي: مرحلة '+(n+1)+'</span>')+
     '<button class="xbtn" style="color:var(--ink)" data-act="stMove" data-gi="'+gi+'" data-d="-1"'+(n<=0?' disabled':'')+' aria-label="للأعلى">↑</button><button class="xbtn" style="color:var(--ink)" data-act="stMove" data-gi="'+gi+'" data-d="1"'+(n>=cnt-1?' disabled':'')+' aria-label="للأسفل">↓</button><button class="xbtn" data-act="stDel" data-gi="'+gi+'" aria-label="احذف المرحلة">×</button></div>'+
     '<span class="sec-l">المكوّنات</span><div class="stack">'+ings+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="ingAdd" data-gi="'+gi+'">'+svg('plus')+'مكوّن</button>'+
     '<span class="sec-l">الخطوات</span><div class="stack">'+steps+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="stepAdd" data-gi="'+gi+'">'+svg('plus')+'خطوة</button></div>';
@@ -1229,7 +1229,7 @@ function saveProd(F){
   var mins=num(F.mins);if(!isFinite(mins)||mins<=0){toast('اكتب وقت التشغيل بالدقائق');return false;}
   var tp='';if(String(F.temp==null?'':F.temp).trim()!==''){tp=num(F.temp);if(!isFinite(tp)||tp<0||tp>1000){toast('درجة الحرارة غير صحيحة');return false;}}
   var yl=num(F.yield||'1');if(!isFinite(yl)||yl<=0){toast('اكتب عدد القطع اللي الوصفة بتطلعها');return false;}
-  var stages=[],bad=null;
+  var stages=[],bad=null,pn=0;
   F.stages.forEach(function(g){
     var gname=g.name.trim(),ings=[],seen={};
     g.ings.forEach(function(r){
@@ -1243,7 +1243,8 @@ function saveProd(F){
       seen[key]=1;ings.push({key:key,n:n,u:r.u,q:q});
     });
     var steps=g.steps.map(function(t){return t.trim();}).filter(Boolean);
-    if(!gname&&!ings.length&&!steps.length)return;
+    if(g.kind==='prep'){if(!ings.length&&!steps.length)return;gname='مرحلة '+(++pn);}
+    else if(!gname&&!ings.length&&!steps.length)return;
     if(!gname){bad=bad||'اكتب اسم المرحلة';return;}
     stages.push({kind:g.kind,name:gname,ings:ings,steps:steps});
   });
@@ -1351,7 +1352,7 @@ function prepGroupsHTML(b){return chipGroups(prepItems(P(b.p),b.qty),b.checks||[
 function stagesText(p,kind,qty){
   return (p.stages||[]).filter(function(g){return g.kind===kind;}).map(function(g,i){
     var ing=stageIngText(g,qty),st=(g.steps||[]).map(function(t,j){return (j+1)+'. '+t;}).join('<br>');
-    return '<div class="sgb" style="margin-top:6px"><div class="sgh">'+(i+1)+') '+g.name+'</div>'+(ing?'<div class="meta">'+ing+'</div>':'')+(st?'<div class="meta">'+st+'</div>':'')+'</div>';
+    return '<div class="sgb" style="margin-top:6px"><div class="sgh">'+(/^مرحلة \d+$/.test(unesc(g.name))?g.name:(i+1)+') '+g.name)+'</div>'+(ing?'<div class="meta">'+ing+'</div>':'')+(st?'<div class="meta">'+st+'</div>':'')+'</div>';
   }).join('');
 }
 
@@ -1872,7 +1873,7 @@ var ACT={
           steps:g.steps.length?g.steps.map(unesc):['']};
       })};
   },
-  stAdd:function(d){var F=U.form;F.stages.push(mkStage(d.k,''));U.focus='[data-gi="'+(F.stages.length-1)+'"][data-gf="name"]';},
+  stAdd:function(d){var F=U.form;F.stages.push(mkStage(d.k,''));U.focus='[data-gi="'+(F.stages.length-1)+'"]'+(d.k==='prep'?'[data-ii="0"][data-fd="n"]':'[data-gf="name"]');},
   stDel:function(d){U.form.stages.splice(Number(d.gi),1);},
   stMove:function(d){
     var a=U.form.stages,i=Number(d.gi),dir=Number(d.d),j=i+dir;
