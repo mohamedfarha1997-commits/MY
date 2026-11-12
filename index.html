@@ -558,6 +558,15 @@ function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.i
 function limited(){return isStaff()||!!sessionCode();}
 function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return staffTabs();}
 function actorCode(){var c=sessionCode();if(c)return c;if(isStaff())return 'موظف';return 'المالك';}
+function findUserByPw(p){
+  var list=usersList().slice();
+  function next(i){
+    if(i>=list.length)return Promise.resolve(null);
+    var u=list[i];
+    return hexPbkdf2(p,u.salt,u.iter||200000).then(function(h){return h===u.h?u:next(i+1);});
+  }
+  return next(0);
+}
 function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
 function markBy(b){
   if(!b)return;
@@ -1644,7 +1653,6 @@ function footHTML(){
 function loginHTML(){
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard"><picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture><p class="meta">سجّل دخولك عشان تكمل</p>'+err+
-    '<div class="fld"><label for="lcode">الكود (للمستخدمين بس)</label><input id="lcode" inputmode="numeric" autocomplete="username" placeholder="سيبه فاضي لو انت المالك"></div>'+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     '<button class="btn block" data-act="login">دخول</button></div></main>';
 }
@@ -2164,7 +2172,7 @@ function tabsCardHTML(){
   var shS=staffTabs().indexOf('settings')<0;
   rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td><td><button class="tg'+(shS?'':' on')+'" data-act="toggleStaffTab" data-k="settings">'+(shS?'مخفي':'ظاهر')+'</button></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+u.code+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
-  var hd='<tr><th>التبويب</th><th>المالك</th><th>الموظف (0000)</th>'+users.map(function(u){return '<th><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
+  var hd='<tr><th>التبويب</th><th>المالك</th><th>الموظف (0000)</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
   return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المستخدم اللي بيتضاف بيتسجل هنا تلقائي بالتبويبات الافتراضية.</p><div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+rows+'</tbody></table></div></section>';
 }
 function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
@@ -2178,7 +2186,7 @@ function usersCardHTML(){
     '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
-  return '<section class="card" style="--c:var(--settings)"><h3>المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بياخد كود مختصر تلقائي (3 أرقام). بيدخل بالكود وبعده الباسورد، والكود بيتكتب قدام الباسورد.</p>'+
+  return '<section class="card" style="--c:var(--settings)"><h3>المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس. الباسورد لازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود المختصر (3 أرقام) بيظهر للمراجعة في جدول الصلاحيات وجدول الإنتاج.</p>'+
     (list.length?'<table class="ttab"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta">مفيش مستخدمين لسه.</div>')+form+'</section>';
 }
 function prodLogCardHTML(){
@@ -2230,22 +2238,14 @@ var ACT={
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
-    var c=((document.getElementById('lcode')||{}).value||'').trim();
-    if(c){
-      var u=userByCode(c);
-      if(!u){U.loginErr='الكود ده مش موجود';render();return false;}
-      hexPbkdf2(p,u.salt,u.iter||200000).then(function(h){
-        if(h===u.h){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'u:'+c);}catch(e){}U.loginErr=null;U.view='home';}
-        else{U.loginErr='الرقم السري غلط';}
-        render();
-      }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
-      return false;
-    }
     if(p===STAFF_PIN){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'staff');}catch(e){}U.loginErr=null;U.view='home';render();return false;}
     checkPin(p).then(function(ok){
-      if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;}
-      else{U.loginErr='الرقم السري غلط';}
-      render();
+      if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
+      return findUserByPw(p).then(function(u){
+        if(u){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';}
+        else{U.loginErr='الباسورد غلط';}
+        render();
+      });
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
     return false;
   },
@@ -2495,12 +2495,19 @@ var ACT={
     var pw=(document.getElementById('uPw')||{}).value||'';
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
-    var code=nextUserCode(),salt=randHex();
-    hexPbkdf2(pw,salt,200000).then(function(h){
-      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:h,iter:200000});
-      var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
-      toast('اتضاف المستخدم · الكود '+code);render();
-    });
+    if(pw===STAFF_PIN){toast('الباسورد ده محجوز، اختار غيره');return false;}
+    checkPin(pw).then(function(isOwner){
+      if(isOwner){toast('الباسورد ده بتاع المالك، اختار غيره');return null;}
+      return findUserByPw(pw).then(function(x){
+        if(x){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return null;}
+        var code=nextUserCode(),salt=randHex();
+        return hexPbkdf2(pw,salt,200000).then(function(h){
+          usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:h,iter:200000});
+          var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
+          toast('اتضاف المستخدم · الكود '+code);render();
+        });
+      });
+    }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
   },
   userDel:function(d){
