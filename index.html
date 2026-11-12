@@ -1489,6 +1489,14 @@ function allocReady(pid){
   });
   S.ready[pid]=avail;
 }
+function fillSuggest(F){
+  var q=String((F&&F.name)||'').trim();
+  if(!q)return '';
+  var m=PRODUCTS.filter(function(p){return isFill(p)&&p.name.indexOf(q)>-1;}).slice(0,5);
+  if(!m.length)return '';
+  return '<div class="meta" style="margin:-4px 0 8px">أصناف محشوة موجودة بنفس الاسم أو قريبة منه، لو اخترت واحد الكمية بتتزود عليه:</div><div class="btns">'+
+    m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(p.fill==='shop'?'أوردرات المحل':'أوردرات')+'</button>';}).join('')+'</div>';
+}
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{}});
   var src=PRODUCTS.filter(function(p){return !isFill(p)&&(S.ready[p.id]||0)>0;});
@@ -1503,7 +1511,7 @@ function fillingView(){
     return '<div class="hist" style="align-items:center"><span><b>'+p.name+'</b> <span class="meta">· '+(p.fill==='shop'?'سحب أوردرات المحل':'سحب أوردرات')+' · '+f(S.ready[p.id]||0)+' '+p.unit+(p.by?' · بكود: '+esc(p.by):'')+'</span></span><span class="acts"><button class="btn ghost sm" data-act="fillDel" data-p="'+p.id+'">حذف</button></span></div>';
   }).join(''):'<div class="empty"><b>مفيش أصناف محشوة لسه</b></div>';
   var form=src.length?'<section class="card" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
-    '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+
+    '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+'<div id="fillSug">'+fillSuggest(F)+'</div>'+
     '<div class="meta">اكتب الكميات اللي هتتسحب من مخزن الإنتاج، وهتتجمع في صنف واحد</div>'+rows+
     '<div class="meta" style="margin-top:8px">اختار التبويب اللي هيروح له الصنف</div>'+kindBtns+
     '<div class="btns"><button class="btn" data-act="fillMake">حشو وفنش</button></div></section>'
@@ -2703,6 +2711,11 @@ var ACT={
     bind(S);
     toast('اتقفل شهر '+d.k+' واتأرشفت وتمسحت كل البيانات؛ مخزون الإنتاج والوصفات محفوظين');
   },
+  fillPick:function(d){
+    var p=PRODUCTS.filter(function(x){return x.id===d.id;})[0];
+    if(!p||!isFill(p))return false;
+    U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;
+  },
   fillKind:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.kind=d.v;},
   fillMake:function(){
     var F=U.fill||{name:'',kind:'cust',q:{}};
@@ -2713,12 +2726,14 @@ var ACT={
     var unit=src[0].unit;
     if(src.some(function(p){return p.unit!==unit;})){toast('الأصناف دي وحداتها مختلفة، اختار أصناف بنفس الوحدة');return false;}
     for(var i=0;i<src.length;i++){if(F.q[src[i].id]>(S.ready[src[i].id]||0)+1e-9){toast('الكمية أكبر من المتاح في '+src[i].name);return false;}}
+    var ex=PRODUCTS.filter(function(x){return isFill(x)&&x.fill===F.kind&&x.name===name;})[0];
+    if(ex&&ex.unit!==unit){toast('وحدة الصنف ده '+ex.unit+'، اختار أصناف بنفس الوحدة');return false;}
     var total=r3(src.reduce(function(a,p){return a+F.q[p.id];},0));
     src.forEach(function(p){S.ready[p.id]=r3((S.ready[p.id]||0)-F.q[p.id]);});
     var np={id:'p'+Date.now().toString(36),name:name,unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})};
-    S.products.push(np);S.ready[np.id]=total;allocReady(np.id);
+    if(ex){S.ready[ex.id]=r3((S.ready[ex.id]||0)+total);allocReady(ex.id);}else{S.products.push(np);S.ready[np.id]=total;allocReady(np.id);}
     bind(S);U.fill=null;
-    toast('اتعمل '+name+' بكمية '+f(total)+' '+unit+' واتحط في '+(F.kind==='shop'?'سحب أوردرات المحل':'سحب أوردرات'));
+    toast((ex?'زودت ':'اتعمل ')+name+' بكمية '+f(total)+' '+unit+' واتحط في '+(F.kind==='shop'?'سحب أوردرات المحل':'سحب أوردرات'));
   },
   fillDel:function(d){
     var p=PRODUCTS.filter(function(x){return x.id===d.p;})[0];
@@ -2770,7 +2785,7 @@ document.addEventListener('keydown',function(e){
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
-  if(d.fn!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;return;}
+  if(d.fn!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);return;}
   if(d.fq!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};var fv=num(t.value);U.fill.q[d.fq]=(isFinite(fv)&&fv>0)?r3(fv):0;return;}
   if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>=1)?Math.min(500,Math.floor(sv)):1;return;}
   if(d.opk!==undefined&&U.osheet){U.osheet.pack=t.value;return;}
