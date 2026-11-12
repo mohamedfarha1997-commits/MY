@@ -418,8 +418,7 @@ function isPiece(p){return !p||!p.unit||p.unit==='قطعة';}
 function isPieceU(u){return !u||u==='قطعة';}
 function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
 /* k = الكمية الجديدة لكل وحدة قديمة */
-function convK(ou,nu,gPer){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;if(!ao&&an)return gPer/an;if(ao&&!an)return ao/gPer;return 1;}
-function prodConvNeedG(F){if(!F.edit)return false;var ou=P(F.edit).unit||'قطعة';return ou!==F.unit&&isPieceU(ou)!==isPieceU(F.unit);}
+function convK(ou,nu){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;return 1;}
 /* بتحوّل كل الكميات المرتبطة بالصنف لما وحدته تتغير */
 function convertUnitData(pid,k,nu){
   var isP=isPieceU(nu);
@@ -1299,7 +1298,7 @@ function prodFormHTML(){
     '<div class="fld"><span class="sec-l">ظهور الصنف في الأوردرات</span><div class="seg" style="align-self:flex-start"><button class="'+(F.noOrder?'':'on')+'" data-act="prodOrd" data-v="show">يظهر</button><button class="'+(F.noOrder?'on':'')+'" data-act="prodOrd" data-v="hide">مش يظهر</button></div><div class="meta">لو مش يظهر، الصنف مش هيتضاف في الطلبيات الجديدة، والطلبيات اللي فيها بالفعل مش هتتأثر.</div></div>'+
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
-    '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+(prodConvNeedG(F)?fld('convG','وزن القطعة الواحدة (جرام)',{im:'decimal',hint:'هنستخدمه عشان نحوّل الدفعات والمخزون والأوردرات تلقائي'}):'')+
+    '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
     '<datalist id="stagel">'+Object.keys(sn).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>'+
     '<div class="meta">كل مرحلة ليها مكوّناتها وخطواتها، والترتيب اللي تحدده هو اللي يظهر. اكتب أي مكوّن جديد وهيتضاف تلقائي.</div>'+
@@ -1380,7 +1379,7 @@ function saveProd(F){
   });
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
   var conv=null;
-  if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var gp=1;if(isPieceU(ou)!==isPieceU(nu)){gp=num(F.convG);if(!isFinite(gp)||gp<=0){toast('اكتب وزن القطعة الواحدة بالجرام عشان نحوّل الكميات');return false;}}var kk=convK(ou,nu,gp);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
+  if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var kk=convK(ou,nu);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
   var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',comps:comps,noOrder:!!F.noOrder};
   if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name);}
