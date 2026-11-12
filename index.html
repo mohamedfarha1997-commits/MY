@@ -1454,7 +1454,7 @@ function lotsHTML(p){
   var L=fgLots(p.id);
   if(!L.length)return '';
   return '<div class="sgl">الدفعات في المخزن</div>'+L.map(function(l){
-    return '<div class="meta" style="display:flex;justify-content:space-between;gap:6px"><span class="ltr">'+(l.id?sid(l.id):'رصيد سابق')+'</span><span>'+f(l.q)+' '+p.unit+'</span></div>';
+    return '<div class="meta" style="display:flex;justify-content:space-between;gap:6px"><span class="ltr">'+(l.id?sid(l.id):(isFill(p)?'المتاح':'رصيد سابق'))+'</span><span>'+f(l.q)+' '+p.unit+'</span></div>';
   }).join('');
 }
 function fgCardHTML(p,q,res){
