@@ -1021,8 +1021,8 @@ function finCard(b){
   return '<article class="card"><div class="bh"><div><span class="bid ltr">'+b.id+'</span><h3 class="bn">'+p.name+' · '+f(total)+' '+p.unit+'</h3>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div><span class="pill c">فحص الجودة</span></div>'+
     '<div class="prog"><span>الفحص '+ck.length+'/'+items.length+'</span><div class="bar"><i style="width:'+(ck.length/items.length*100)+'%"></i></div></div>'+
     chipGroups(items,ck,'fcheck',b.id)+
-    '<div class="foot"><div><b style="font-size:14px">مرفوض (هالك)</b><div class="meta">من '+f(total)+' قطعة</div></div><input type="text" inputmode="numeric" data-rej="'+b.id+'" value="'+rej+'" aria-label="المرفوض" '+IN+'></div>'+
-    '<div class="foot"><div><b style="font-size:14px">يدخل مخزن الإنتاج</b><div class="meta">من الوصفة '+f(good)+' قطعة · تقدر تعدّله</div></div><input type="text" inputmode="numeric" data-stk="'+b.id+'" value="'+stkQty(b)+'" aria-label="الكمية اللي تدخل مخزن الإنتاج" '+IN+'></div>'+
+    '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">مرفوض (هالك)</b></div><input type="text" inputmode="numeric" data-rej="'+b.id+'" value="'+rej+'" aria-label="المرفوض" style="width:110px;flex:none" '+IN+'></div>'+
+    '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">يدخل مخزن الإنتاج</b></div><input type="text" inputmode="numeric" data-stk="'+b.id+'" value="'+stkQty(b)+'" aria-label="الكمية اللي تدخل مخزن الإنتاج" style="width:110px;flex:none" '+IN+'></div>'+
     '<button class="btn block" data-act="approve" data-id="'+b.id+'"'+(ck.length<items.length?' disabled':'')+'>اعتمد '+f(good)+' '+p.unit+' · '+f(stkQty(b))+' للمخزن</button></article>';
 }
 function finishView(){
