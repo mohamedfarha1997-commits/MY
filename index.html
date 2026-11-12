@@ -13,7 +13,17 @@ window.addEventListener('error',function(e){try{var a=document.getElementById('a
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
 window.addEventListener('appinstalled',function(){window.KH_INSTALL=null;});
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
-</script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+</script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.fgcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fgc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.fgc .mtop{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.fgn{font-size:26px;font-weight:700;line-height:1.1}
+.fgn .meta{font-size:13px;font-weight:400}
+.fgbar{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:flex}
+.fgbar i{display:block;height:100%;transition:width .3s}
+.fgbar .f{background:#16a34a}
+.fgbar .r{background:var(--warn)}
+@media (max-width:360px){.fgcards{grid-template-columns:1fr}}
+</style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap"></noscript>
@@ -907,6 +917,14 @@ function fgShortHTML(rows,raw){
   }
   return h||'<div class="empty"><b>مفيش نواقص</b><span>كل الأوردرات متغطية من المخزن أو من الإنتاج الجاري.</span></div>';
 }
+function fgCardHTML(p,q,res){
+  var tot=q+res,pct=tot>0?Math.round(q/tot*100):0;
+  var st=q>0?'<span class="pill ok">متاح</span>':(res>0?'<span class="pill low">محجوز كله</span>':'<span class="pill bad">نافد</span>');
+  return '<div class="fgc"><div class="mtop"><b>'+p.name+'</b>'+st+'</div>'+
+    '<div class="fgn">'+f(q)+' <span class="meta">'+p.unit+'</span></div>'+
+    '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
+    '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div></div>';
+}
 function fgStockView(){
   var rows=fgShortRows(),raw=rawShortList(),nS=rows.length+raw.length,F=U.fgf||'all';
   var inStock=0,resAll=0;
@@ -921,13 +939,7 @@ function fgStockView(){
   var body;
   if(F==='short') body=fgShortHTML(rows,raw);
   else if(!PRODUCTS.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
-  else body='<div class="card">'+PRODUCTS.map(function(p){
-    var q=S.ready[p.id]||0,res=fgReserved(p.id);
-    return '<div class="mrow"><div class="mtop"><div><b>'+p.name+'</b><small>'+p.unit+(res>0?' · محجوز للأوردرات '+f(res):'')+'</small></div>'+
-      '<div class="mq"><b>'+f(q)+'</b> <span>'+p.unit+'</span></div></div>'+
-      '<div class="mfoot"><span style="display:flex;gap:6px;flex-wrap:wrap">'+(q<=0?'<span class="pill bad">نافد</span>':'<span class="pill ok">متاح</span>')+'</span>'+
-      '</div></div>';
-  }).join('')+'</div>';
+  else body='<div class="fgcards">'+PRODUCTS.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
   return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+body;
 }
 
