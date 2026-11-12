@@ -532,6 +532,16 @@ button,input{font-family:inherit}
 .hgrid .tab{background:var(--card)!important;box-shadow:0 14px 26px -22px rgb(16 28 40 / .2)!important}
 .hgrid .tab::after,.hgrid .tab::before{display:none!important}
 .hgrid .tab:hover{box-shadow:0 20px 34px -24px rgb(16 28 40 / .25)!important}
+
+/* ---- كروت الإعدادات القابلة للفتح والقفل ---- */
+.card.fold{gap:0}
+.fold-h{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:0;margin:0;border:0;background:none;color:var(--ink);font:inherit;text-align:start;cursor:pointer}
+.fold-h h3{margin:0;font-size:15px;font-weight:700}
+.chev{flex:0 0 auto;width:9px;height:9px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px);transition:transform .25s var(--ease)}
+.fold.open .chev{transform:rotate(-135deg) translate(-2px,-2px)}
+.fold-b{display:none;padding-top:12px}
+.fold.open .fold-b{display:flex;flex-direction:column;gap:12px}
+.fold.open>.fold-h{margin-bottom:0}
 </style>
 
 <div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1642,7 +1652,24 @@ function saveProd(F){
   U.form=null;
 
 }
-function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+usersCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML();}
+function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+usersCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
+/* كل كارت في الإعدادات بيتقفل ويتفتح بالضغط على عنوانه */
+function foldSections(html){
+  return String(html).split(/(?=<section )/).map(function(part){return foldable(part);}).join('');
+}
+function foldable(part){
+  var open=part.match(/^<section[^>]*>/);if(!open)return part;
+  var h=part.match(/<h3>([\s\S]*?)<\/h3>/);if(!h)return part;
+  var end=part.lastIndexOf('</section>');if(end<0)return part;
+  var inner=part.slice(open[0].length,end);
+  var at=inner.indexOf(h[0]);
+  var before=inner.slice(0,at),after=inner.slice(at+h[0].length);
+  if(/<div class="row">\s*$/.test(before))before=before.replace(/<div class="row">\s*$/,'');
+  if(/^\s*<\/div>/.test(after))after=after.replace(/^\s*<\/div>/,'');
+  var isOpen=!!(U.folds&&U.folds[h[1]]);
+  var head=open[0].replace('class="','class="fold'+(isOpen?' open ':' '));
+  return head+'<button class="fold-h" data-act="foldToggle" data-k="'+esc(h[1])+'" aria-expanded="'+(isOpen?'true':'false')+'"><h3>'+h[1]+'</h3><span class="chev" aria-hidden="true"></span></button><div class="fold-b">'+before+after+'</div></section>'+part.slice(end+'</section>'.length);
+}
 function footHTML(){
   return backupCardHTML()+gdCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
@@ -1998,7 +2025,8 @@ function printAllHTML(list){
 }
 function monthReportHTML(k,kind){
   var title=kind==='shop'?'أوردرات المحل':'الأوردرات';
-  var list=ordersOf(kind).filter(function(o){return monthKey(o.created)===k;}).sort(function(a,b){return a.created-b.created;});
+  var arc=S.archive&&S.archive[lockKey(kind,k)];
+  var list=(arc?arc.orders.slice():ordersOf(kind).filter(function(o){return monthKey(o.created)===k;})).sort(function(a,b){return a.created-b.created;});
   var h='<h1>تقرير '+title+' — شهر '+k+'</h1><div class="pm">عدد الأوردرات: '+list.length+' · طُبع '+tstr(Date.now())+'</div>';
   h+='<table class="pt"><thead><tr><th>#</th><th>الرقم</th><th>'+(kind==='shop'?'المحل':'العميل')+'</th><th>الأصناف</th><th>التسجيل</th><th>معاد التسليم</th><th>اتسلّم</th></tr></thead><tbody>'+
     list.map(function(o,i){return '<tr><td>'+(i+1)+'</td><td class="ltr">'+sid(o.id)+'</td><td>'+custName(o)+'</td><td>'+itemsText(o)+'</td><td>'+tstr(o.created)+'</td><td>'+(o.due?dueStr(o.due):'')+'</td><td>'+(o.deliveredAt?tstr(o.deliveredAt):'')+'</td></tr>';}).join('')+'</tbody></table>';
@@ -2011,6 +2039,10 @@ function monthsHTML(){
   return ['cust','shop'].map(function(kind){
     var months={};
     ordersOf(kind).forEach(function(o){var k=monthKey(o.created);months[k]=months[k]||{n:0,und:0};months[k].n++;if(!o.deliveredAt)months[k].und++;});
+    Object.keys(S.archive||{}).forEach(function(key){
+      var a=S.archive[key];if(!a||a.kind!==kind)return;
+      months[a.month]={n:a.orders.length,und:a.orders.filter(function(o){return !o.deliveredAt;}).length};
+    });
     var keys=Object.keys(months).sort().reverse();
     if(!keys.length)return '';
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل شهور '+(kind==='shop'?'أوردرات المحل':'الأوردرات')+'</h3></div>'+
@@ -2187,14 +2219,28 @@ function usersCardHTML(){
 }
 function prodLogCardHTML(){
   var log=S.plog||{};
-  var ids=Object.keys(log).sort(function(a,b){return (log[b].at||0)-(log[a].at||0);}).slice(0,60);
+  var ids=Object.keys(log).sort(function(a,b){return (log[b].at||0)-(log[a].at||0);}).slice(0,300);
   if(!ids.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، هتظهر هنا مع كود كل اللي شاركوا فيها.</p></section>';
   var rows=ids.map(function(id){
     var e=log[id],p=P(e.p);
-    return '<tr><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'</td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
+    var names=e.by.map(function(c){var u=userByCode(c);return c+' '+(u?u.name:'');}).join(' ');
+    var q=[id,sid(id),p?p.name:'',String(e.qty||''),tstr(e.at),names,e.by.join(' ')].join(' ').toLowerCase();
+    return '<tr class="plrow" data-q="'+esc(q)+'"><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(mealQ(e.qty||0,p))+' · '+esc(tstr(e.at))+'</small></td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها.</p><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>الدفعة</th><th>الصنف</th><th>الكود</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها.</p>'+
+    '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+
+    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>الدفعة</th><th>الصنف والتفاصيل</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
+    '<div class="meta" id="plEmpty" hidden style="text-align:center;padding:8px 0">مفيش نتايج للبحث ده.</div></section>';
 }
+document.addEventListener('input',function(e){
+  var t=e.target;if(!t||t.id!=='plq')return;
+  var q=(t.value||'').trim().toLowerCase(),shown=0;
+  document.querySelectorAll('#plBody tr.plrow').forEach(function(r){
+    var hit=!q||(r.getAttribute('data-q')||'').indexOf(q)>-1;
+    r.hidden=!hit;if(hit)shown++;
+  });
+  var em=document.getElementById('plEmpty');if(em)em.hidden=shown>0;
+});
 
 function seasonsCardHTML(){
   var rows=SEASONS.map(function(x){
@@ -2510,6 +2556,7 @@ var ACT={
     if(ix>-1)a.splice(ix,1);else a.push(d.k);
     m[d.u]=a;setPref('userTabs',m);render();return false;
   },
+  foldToggle:function(d){U.folds=U.folds||{};U.folds[d.k]=!U.folds[d.k];render();return false;},
   oRemove:function(d){
     var os=U.osheet;if(!os)return false;
     os.added=(os.added||[]).filter(function(id){return id!==d.id;});
@@ -2556,6 +2603,9 @@ var ACT={
     var key=lockKey(d.kind,d.k);
     if(U.confirm!=='lock:'+key){U.confirm='lock:'+key;setTimeout(function(){if(U.confirm==='lock:'+key){U.confirm=null;render();}},3000);return;}
     U.confirm=null;
+    /* أرشفة الشهر: نسخة من أوردرات الشهر قبل ما تتمسح، عشان تفضل ظاهرة وتتطبع */
+    S.archive=S.archive||{};
+    S.archive[key]={kind:d.kind,month:d.k,at:Date.now(),orders:JSON.parse(JSON.stringify(S.orders.filter(function(o){return okind(o)===d.kind&&monthKey(o.created)===d.k;})))};
     /* إقفال الشهر: احتفظ بتعريفات الوصفات ومخزون الإنتاج الجاهز فقط */
     S.orders.forEach(function(o){tombAdd('orders',o.id);});
     S.batches.forEach(function(b){tombAdd('batches',b.id);});
