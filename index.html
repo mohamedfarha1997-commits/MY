@@ -453,7 +453,7 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    The file is read and merged every 5 seconds, so changes from other devices show up here.
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
-var SYNC_MS=1000,SYNC_WAIT=150;
+var SYNC_MS=1000,SYNC_WAIT=0;
 var STAMPED=['orders','batches','done','products','materials'];
 var LAST={},LASTN={stock:{},ready:{}};
 function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
@@ -535,6 +535,7 @@ function withTimeout(p,ms){
     p.then(function(v){if(!done){done=true;clearTimeout(tm);res(v);}},function(e){if(!done){done=true;clearTimeout(tm);rej(e);}});
   });
 }
+/* every edit starts a sync right away (no delay), and the 1s loop catches anything that came in while busy */
 function saveSoon(){if(!GD.on)return;clearTimeout(GD.wt);GD.wt=setTimeout(gdSync,SYNC_WAIT);}
 function fsStart(){baseline();gdStart();}
 
@@ -677,6 +678,7 @@ function gdFail(e){
 function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
   if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
+  GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
