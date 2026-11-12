@@ -512,6 +512,15 @@ button,input{font-family:inherit}
   .hgrid .tab .live::after{animation:x-wave 2.6s ease-out 1.3s infinite}
 }
 @keyframes x-wave{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.1);opacity:0}}
+
+/* ---- تجهيز الخامات: الخامة بتنور أخضر لما تتعلّم ---- */
+.rq.mrow{cursor:pointer;border-radius:12px;padding:10px 10px;margin:0 -10px;transition:background .25s,box-shadow .25s,transform .18s var(--ease);border-top-color:transparent}
+.rq.mrow:active{transform:scale(.98)}
+.rq.mrow.on{background:color-mix(in srgb,var(--good) 14%,var(--surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--good) 55%,transparent)}
+.rq.mrow.on b{color:var(--good)}
+.rq.mrow.on .qv{color:var(--good)}
+.rq.mrow:not(.on) .qv{color:var(--ink)}
+.mhint{text-align:center;margin:6px 0 2px}
 </style>
 
 <div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1089,6 +1098,12 @@ function perMealHTML(p){
   Object.keys(oth).forEach(function(u){parts.push(f(oth[u])+' '+u);});
   return '<div class="livec" style="--c:var(--prep)">إجمالي الوزنة للوجبة الواحدة: '+parts.join(' + ')+'</div>';
 }
+function rowOpen(b,key){
+  if(b.withdrawn)return '<div class="rq">';
+  var on=(b.mchecks||[]).indexOf(key)>-1;
+  return '<div class="rq mrow'+(on?' on':'')+'" data-act="toggleMat" data-id="'+b.id+'" data-k="'+key+'" role="checkbox" aria-checked="'+(on?'true':'false')+'">';
+}
+function matKeys(n,cn){return Object.keys(n).map(function(k){return 'm:'+k;}).concat(Object.keys(cn).map(function(k){return 'c:'+k;}));}
 function prepCard(b){
   var p=P(b.p),n=need(b),sh=shortOf(b),shk={},cn=compNeed(b),cs=compShort(b),csk={};
   sh.forEach(function(s){shk[s.k]=s.lack;});
@@ -1098,14 +1113,14 @@ function prepCard(b){
     if(b.withdrawn)st='<span class="pill ok">'+svg('check','mi')+' مسحوب</span>';
     else if(csk[k])st='<span class="pill bad">ينقص '+f(csk[k])+'</span>';
     else st='<span class="pill ok">متوفر</span>';
-    return '<div class="rq"><div><b>'+cp.name+'</b><small>وصفة جاهزة من مخزن الإنتاج'+(b.withdrawn?'':' · المتاح '+f(have)+' '+cp.unit)+'</small></div><span class="qv">'+f(cn[k])+' '+cp.unit+'</span>'+st+'</div>';
+    return rowOpen(b,'c:'+k)+'<div><b>'+cp.name+'</b><small>وصفة جاهزة من مخزن الإنتاج'+(b.withdrawn?'':' · المتاح '+f(have)+' '+cp.unit)+'</small></div><span class="qv">'+f(cn[k])+' '+cp.unit+'</span>'+st+'</div>';
   }).join('');
   var rows=Object.keys(n).map(function(k){
     var m=M(k),have=S.stock[k]||0,st;
     if(b.withdrawn)st='<span class="pill ok">'+svg('check','mi')+' مسحوب</span>';
     else if(shk[k])st='<span class="pill bad">ينقص '+f(shk[k])+'</span>';
     else st=TRACK()?'<span class="pill ok">متوفر</span>':'';
-    return '<div class="rq"><div><b>'+m.name+'</b>'+(b.withdrawn||!TRACK()?'':'<small>المتاح '+f(have)+' '+m.unit+'</small>')+'</div><span class="qv">'+f(n[k])+' '+m.unit+'</span>'+st+'</div>';
+    return rowOpen(b,'m:'+k)+'<div><b>'+m.name+'</b>'+(b.withdrawn||!TRACK()?'':'<small>المتاح '+f(have)+' '+m.unit+'</small>')+'</div><span class="qv">'+f(n[k])+' '+m.unit+'</span>'+st+'</div>';
   }).join('');
   var act='';
   if(!b.withdrawn){
@@ -1114,7 +1129,9 @@ function prepCard(b){
         (cs.length?'ينقص في مخزن الإنتاج: '+cs.map(function(x){var cp=P(x.k);return cp.name+' '+f(x.lack)+' '+cp.unit;}).join('، ')+'. اعمل دفعة منه الأول. ':'')+'</div>'+
         (sh.length?'<button class="btn block" data-act="goStock">افتح المخزن</button>':'')+(cs.length?'<button class="btn block" data-act="tab" data-v="fgstock">افتح مخزن الإنتاج</button>':'');
     }else{
-      act='<button class="btn block" data-act="withdraw" data-id="'+b.id+'">'+(TRACK()?'اسحب المواد من المخزن':'تأكيد تجهيز الخامات')+'</button>';
+      var mk=matKeys(n,cn),mdone=(b.mchecks||[]).filter(function(x){return mk.indexOf(x)>-1;}).length,allMat=mk.length>0&&mdone===mk.length;
+      act=(allMat?'':'<div class="meta mhint">اتعلّم على كل خامة عشان الزرار يفتح ('+mdone+'/'+mk.length+')</div>')+
+        '<button class="btn block" data-act="withdraw" data-id="'+b.id+'"'+(allMat?'':' disabled')+'>'+(TRACK()?'اسحب المواد من المخزن':'تأكيد تجهيز الخامات')+'</button>';
     }
   }else{
     var ck=b.checks||[],tot=prepItems(p,b.qty).length;
@@ -2300,6 +2317,7 @@ var ACT={
     applyWithdraw(S,b);toast(TRACK()?'تم سحب المواد من المخزن':'تم تأكيد الخامات');
   },
   toggleCheck:function(d){var b=batch(d.id);b.checks=toggle(b.checks,Number(d.i));},
+  toggleMat:function(d){var b=batch(d.id);b.mchecks=toggle(b.mchecks,d.k);},
   toProd:function(d){var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
   cancel:function(d){
     var b=batch(d.id);
