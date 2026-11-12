@@ -11,7 +11,10 @@
   "orientation": "portrait",
   "background_color": "#EDF0F3",
   "theme_color": "#2B3594",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "https://mohamedfarha1997-commits.github.io/MY/icons/icon-192.png",
@@ -30,6 +33,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://mohamedfarha1997-commits.github.io/MY/screenshots/phone-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "شاشة الدفعات"
+    },
+    {
+      "src": "https://mohamedfarha1997-commits.github.io/MY/screenshots/desktop-1.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "لوحة التحكم"
     }
   ]
 }
