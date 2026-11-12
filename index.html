@@ -412,8 +412,8 @@ function fix(o){
   if(!o.oseq)o.oseq=o.orders.length;
   bind(o);return o;
 }
-var UNITS_M=['كجم','جرام','لتر','قطعة','علبة','كيس','بيضة'];
-var PROD_UNITS=['قطعة','جرام','كجم']; /* وحدة إنتاج الصنف: قطع أو وزن */
+var UNITS_M=['جرام','علبة','كيس','بيضة','غطا','حبة'];
+var PROD_UNITS=['قطعة','جرام']; /* وحدة إنتاج الصنف: قطع أو وزن */
 function isPiece(p){return !p||!p.unit||p.unit==='قطعة';}
 function qIM(p){return isPiece(p)?'numeric':'decimal';}
 function qFloor(p,v){return isPiece(p)?Math.floor(v):r3(v);}
@@ -877,7 +877,7 @@ function perMealHTML(p){
   var g=0,oth={},any=false;
   Object.keys(p.recipe||{}).forEach(function(k){
     var m=M(k),q=p.recipe[k];any=true;
-    if(m.unit==='جرام')g+=q;else if(m.unit==='كجم')g+=q*1000;else if(m.unit==='بيضة')g+=q*50; /* البيضة = 50 جرام */
+    if(m.unit==='جرام'||m.unit==='غطا')g+=q;else if(m.unit==='كجم')g+=q*1000;else if(m.unit==='بيضة')g+=q*50; /* البيضة = 50 جرام */
     else oth[m.unit]=r3((oth[m.unit]||0)+q);
   });
   if(!any)return '';
@@ -1803,7 +1803,7 @@ function tstr(ts){
 function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}}
 function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;U.rsearch='';try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
 function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);return a;}
-function blankIng(){return {m:null,n:'',q:'',u:'كجم'};}
+function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
@@ -1952,7 +1952,7 @@ var ACT={
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
     U.form=null;U.sheet={sel:[],q:{}};
   },
-  newMat:function(){U.sheet=null;U.confirm=null;U.form={kind:'mat',edit:null,name:'',cat:'',unit:'كجم',min:'',qty:'',storage:'مخزن جاف',exp:'',supplier:'',notes:''};},
+  newMat:function(){U.sheet=null;U.confirm=null;U.form={kind:'mat',edit:null,name:'',cat:'',unit:'جرام',min:'',qty:'',storage:'مخزن جاف',exp:'',supplier:'',notes:''};},
   editMat:function(d){
     var m=M(d.id);U.sheet=null;U.confirm=null;
     U.form={kind:'mat',edit:m.id,name:unesc(m.name),cat:unesc(m.cat),unit:m.unit,min:String(m.min),qty:'',storage:m.storage||'مخزن جاف',exp:m.exp||'',supplier:unesc(m.supplier),notes:unesc(m.notes)};
@@ -1966,7 +1966,7 @@ var ACT={
     U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:p.unit,mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
-          ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.q),u:m?m.unit:'كجم'};}),
+          ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.q),u:m?m.unit:'جرام'};}),
           steps:g.steps.length?g.steps.map(unesc):['']};
       })};
   },
