@@ -504,14 +504,7 @@ button,input{font-family:inherit}
 }
 @keyframes x-tick{from{transform:scale(.92);opacity:.4}to{transform:none;opacity:1}}
 
-/* ---- بلاطة الإنتاج: ترددات من الأيقونة وقت ما فيه تايمر شغال ---- */
-.hgrid .tab .live{top:18px;inset-inline-start:10px;width:52px;height:52px;border-radius:16px;background:transparent;box-shadow:none;animation:none;z-index:0;pointer-events:none}
-.hgrid .tab .live::before,.hgrid .tab .live::after{content:"";position:absolute;inset:0;border-radius:inherit;border:1.5px solid color-mix(in srgb,var(--prod) 75%,transparent);opacity:0}
-@media (prefers-reduced-motion:no-preference){
-  .hgrid .tab .live::before{animation:x-wave 2.6s ease-out infinite}
-  .hgrid .tab .live::after{animation:x-wave 2.6s ease-out 1.3s infinite}
-}
-@keyframes x-wave{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.1);opacity:0}}
+
 
 /* ---- تجهيز الخامات: الخامة بتنور أخضر لما تتعلّم ---- */
 .rq.matrow{cursor:pointer;border-radius:12px;padding:10px 10px;margin:0 -10px;transition:background .25s,box-shadow .25s,transform .18s var(--ease);border-top-color:transparent}
@@ -526,6 +519,17 @@ button,input{font-family:inherit}
 .pk.on .opk-q{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:6px}
 .pk.on .opk-q input{flex:1;min-width:0;height:38px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 .pk.on .opk-q span{color:var(--muted);font-size:12px;white-space:nowrap}
+
+/* ---- عداد بلاطة الإنتاج: حلقة بتلف حوالين الأيقونة + الوقت الباقي ---- */
+.hgrid .tab .hcd{position:absolute;top:10px;inset-inline-start:2px;width:68px;height:68px;pointer-events:none;z-index:0;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--prod) 55%,transparent))}
+.hgrid .tab .hcd svg{width:100%;height:100%;padding:0;border-radius:0;background:none;box-shadow:none;overflow:visible}
+.hgrid .tab .hcd-fg{transition:stroke-dashoffset 1s linear}
+.hgrid .tab .hcdt{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em;background:linear-gradient(100deg,var(--prod),#F59E0B);-webkit-background-clip:text;background-clip:text;color:transparent;direction:ltr}
+
+/* ---- البلاطات الرئيسية: خلفية محايدة من غير ألوان ---- */
+.hgrid .tab{background:var(--card)!important;box-shadow:0 14px 26px -22px rgb(16 28 40 / .2)!important}
+.hgrid .tab::after,.hgrid .tab::before{display:none!important}
+.hgrid .tab:hover{box-shadow:0 20px 34px -24px rgb(16 28 40 / .25)!important}
 </style>
 
 <div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1065,9 +1069,20 @@ function navItems(){
   return st;
 }
 var GROUP_LABEL={orders:'الأوردرات',recipes:'الوصفات'};
+function prodCountdown(){
+  var r=S.batches.filter(function(b){return b.stage==='prod'&&b.startedAt&&!timerDone(b);});
+  r.sort(function(a,b){return (dur(a)-elapsed(a))-(dur(b)-elapsed(b));});
+  return r[0]||null;
+}
+function cdRingHTML(b){
+  var pct=b?elapsed(b)/dur(b):0;
+  return '<span class="hcd" aria-hidden="true"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="5"/><circle class="hcd-fg" cx="38" cy="38" r="30" fill="none" stroke="var(--prod)" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'" transform="rotate(-90 38 38)"/></svg></span>';
+}
+function cdText(){var b=prodCountdown();return b?mmss(dur(b)-elapsed(b)):'0:00';}
 function navTab(s){
   return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+((s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
-    (s.live?'<i class="live" title="قيد التشغيل"></i>':'')+svg(s.k)+'<span class="tl">'+s.l+'</span><span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span><small>'+s.u+'</small></button>';
+    (s.live&&U.view==='home'&&s.k==='prod'?cdRingHTML(prodCountdown()):(s.live?'<i class="live" title="قيد التشغيل"></i>':''))+svg(s.k)+'<span class="tl">'+s.l+'</span>'+
+    (s.live&&U.view==='home'&&s.k==='prod'?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'<small>'+s.u+'</small></button>';
 }
 function navHTML(){
   var st=navItems().filter(function(x){return !tabHidden(x.k);});
@@ -1239,7 +1254,7 @@ function prodCard(b){
   else act='<button class="btn block" data-act="startRun" data-id="'+b.id+'">ابدأ التشغيل · '+p.mins+' دقيقة</button>';
   return '<article class="card"><div class="prow"><div class="ring" data-ring="'+b.id+'" data-fin="'+(fin?1:0)+'">'+
     '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle class="rp" cx="38" cy="38" r="30" fill="none" stroke="'+(fin?'var(--good)':'var(--c)')+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'"/></svg><b class="rt">'+label+'</b></div>'+
-    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+'</h3><div class="meta">'+mealQ(b.qty,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+prodDetails(b,p)+act+'</article>';
+    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+'</h3><div class="meta">'+mealQ(b.qty,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
 }
 function prodView(){
   var all=S.batches.filter(function(b){return b.stage==='prod';});
@@ -2407,7 +2422,6 @@ var ACT={
     var k=os.added.indexOf(d.p);
     if(k>-1){os.added.splice(k,1);delete os.items[d.p];return;}
     os.added.push(d.p);
-    if(!(os.items[d.p]>0))os.items[d.p]=1;
   },
   oStep:function(d){
     var os=U.osheet;if(!os)return false;
@@ -2566,6 +2580,8 @@ function tick(){
   if(changed){save();render();}
   wakeSync();
   if(document.hidden||changed)return;
+  var hc=document.querySelector('.hcd');
+  if(hc){var cb=prodCountdown();if(cb){var fg=hc.querySelector('.hcd-fg');if(fg)fg.style.strokeDashoffset=RING*(1-elapsed(cb)/dur(cb));var tt=document.querySelector('.hcdt');if(tt)tt.textContent=mmss(dur(cb)-elapsed(cb));}}
   var rings=document.querySelectorAll('[data-ring]');
   for(var i=0;i<rings.length;i++){
     var el=rings[i],b=batch(el.dataset.ring);
