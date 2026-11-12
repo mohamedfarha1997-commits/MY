@@ -1635,7 +1635,7 @@ function ordSheetHTML(){
   var prods=prodsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');}).map(function(p){
     var q=s.items[p.id]||0;
     return '<div class="card" style="padding:10px 12px;gap:8px"><div class="mtop"><div><b>'+p.name+'</b><small>'+p.unit+' · '+p.mins+' دقيقة · في المخزن: '+(S.ready[p.id]||0)+'</small></div></div>'+
-      '<div style="display:flex;gap:8px;align-items:center"><input type="text" inputmode="numeric" data-oq="'+p.id+'" value="'+q+'" aria-label="عدد القطع" style="width:100px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
+      '<div style="display:flex;gap:8px;align-items:center"><input type="text" inputmode="numeric" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="عدد القطع" style="width:100px;height:44px;text-align:center;font-size:18px;font-weight:700;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink)"></div>'+
       '</div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
