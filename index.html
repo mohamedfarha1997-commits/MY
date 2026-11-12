@@ -695,6 +695,8 @@ function gdSync(){
           GD.ver=String(m.version);
           if(!need)GD.upAt=S.savedAt||0;
         }else need=(S.savedAt||0)!==GD.upAt;
+        /* fix() inside gdDownload points MATERIALS/PRODUCTS at the downloaded copy; re-point them at the live state, or edits go to a copy that never gets saved */
+        bind(S);
         return need?gdUpload():undefined;
       });
     });
