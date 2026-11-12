@@ -1303,7 +1303,7 @@ fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
     '<datalist id="stagel">'+Object.keys(sn).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>'+
     '<div class="meta">كل مرحلة ليها مكوّناتها وخطواتها، والترتيب اللي تحدده هو اللي يظهر. اكتب أي مكوّن جديد وهيتضاف تلقائي.</div>'+
-    sect('prep','مراحل التحضير','مرحلة تحضير')+compsFormHTML(F)+area();
+    sect('prep','مراحل التحضير','مرحلة تحضير')+sect('finish','مراحل الفنش','مرحلة فنش')+compsFormHTML(F)+area();
 }
 function formHTML(){
   if(!U.form)return '';
