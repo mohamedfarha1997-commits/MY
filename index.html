@@ -514,13 +514,18 @@ button,input{font-family:inherit}
 @keyframes x-wave{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.1);opacity:0}}
 
 /* ---- تجهيز الخامات: الخامة بتنور أخضر لما تتعلّم ---- */
-.rq.mrow{cursor:pointer;border-radius:12px;padding:10px 10px;margin:0 -10px;transition:background .25s,box-shadow .25s,transform .18s var(--ease);border-top-color:transparent}
-.rq.mrow:active{transform:scale(.98)}
-.rq.mrow.on{background:color-mix(in srgb,var(--good) 14%,var(--surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--good) 55%,transparent)}
-.rq.mrow.on b{color:var(--good)}
-.rq.mrow.on .qv{color:var(--good)}
-.rq.mrow:not(.on) .qv{color:var(--ink)}
+.rq.matrow{cursor:pointer;border-radius:12px;padding:10px 10px;margin:0 -10px;transition:background .25s,box-shadow .25s,transform .18s var(--ease);border-top-color:transparent}
+.rq.matrow:active{transform:scale(.98)}
+.rq.matrow.on{background:color-mix(in srgb,var(--good) 14%,var(--surface));box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--good) 55%,transparent)}
+.rq.matrow.on b{color:var(--good)}
+.rq.matrow.on .qv{color:var(--good)}
+.rq.matrow:not(.on) .qv{color:var(--ink)}
 .mhint{text-align:center;margin:6px 0 2px}
+
+/* ---- طلبية: العدد جوه نفس الصنف المختار ---- */
+.pk.on .opk-q{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:6px}
+.pk.on .opk-q input{flex:1;min-width:0;height:38px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.pk.on .opk-q span{color:var(--muted);font-size:12px;white-space:nowrap}
 </style>
 
 <div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1101,7 +1106,7 @@ function perMealHTML(p){
 function rowOpen(b,key){
   if(b.withdrawn)return '<div class="rq">';
   var on=(b.mchecks||[]).indexOf(key)>-1;
-  return '<div class="rq mrow'+(on?' on':'')+'" data-act="toggleMat" data-id="'+b.id+'" data-k="'+key+'" role="checkbox" aria-checked="'+(on?'true':'false')+'">';
+  return '<div class="rq matrow'+(on?' on':'')+'" data-act="toggleMat" data-id="'+b.id+'" data-k="'+key+'" role="checkbox" aria-checked="'+(on?'true':'false')+'">';
 }
 function matKeys(n,cn){return Object.keys(n).map(function(k){return 'm:'+k;}).concat(Object.keys(cn).map(function(k){return 'c:'+k;}));}
 function prepCard(b){
@@ -2063,13 +2068,12 @@ function ordSheetHTML(){
   var addedP=addedIds.map(function(id){return seasonP.filter(function(p){return p.id===id;})[0];});
   var grid=tiles.map(function(p){
     var on=addedIds.indexOf(p.id)>=0;
-    return '<button class="pk'+(on?' on':'')+'" data-act="oPick" data-p="'+p.id+'">'+p.name+'<small>'+p.mins+' دقيقة تشغيل</small></button>';
-  }).join('');
-  var qtyRows=addedP.map(function(p){
+    if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+p.name+'<small>'+p.mins+' دقيقة تشغيل</small></button>';
     var q=s.items[p.id]||0;
-    return '<div class="qrow" style="justify-content:space-between"><b>'+p.name+'</b>'+
-      '<span style="display:flex;align-items:center;gap:6px"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية" style="width:80px;height:40px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:16px;font-weight:600">'+
-      '<span class="meta">'+p.unit+'</span></span></div>';
+    return '<div class="pk on" style="--c:var(--orders);cursor:default">'+
+      '<div class="opk-h"><b>'+p.name+'</b><button class="ox" data-act="oPick" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
+      '<small>'+p.mins+' دقيقة تشغيل</small>'+
+      '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div></div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
@@ -2077,7 +2081,7 @@ function ordSheetHTML(){
     '<div class="fld"><span class="sec-l">نوع التعبئة للطلبية</span><div style="display:flex;gap:8px;align-items:center"><select data-opk="1" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(s.pack===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select><b style="white-space:nowrap">'+(totUnitsTxt(items)||'0')+'</b></div></div>'+
     '<div class="fld"><span class="sec-l">اختار الأصناف للطلبية'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
     (tiles.length?'<div class="pgrid">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
-    (qtyRows?'<div class="fld"><span class="sec-l">الكميات</span><div class="stack">'+qtyRows+'</div></div>':'')+
+
     '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
 }
 
