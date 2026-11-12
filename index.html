@@ -2062,6 +2062,16 @@ function readyCard(o){
   return '<article class="card" style="--c:var(--orders)">'+head+(open?detail:'')+
     '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn" data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div></article>';
 }
+function lockedMonthsHTML(kind){
+  var keys=Object.keys(S.archive||{}).filter(function(k){var a=S.archive[k];return a&&a.kind===kind;}).sort().reverse();
+  if(!keys.length)return '';
+  return '<div class="grp" style="margin-top:18px">شهور متقفلة ومتأرشفة</div>'+keys.map(function(k){
+    var a=S.archive[k];
+    return '<section class="card" style="margin-top:10px;--c:var(--orders)"><div class="bh"><div><h3 class="bn">'+a.month+'</h3><span class="meta">'+a.orders.length+' أوردر</span></div><span class="pill ok">مقفول</span></div>'+
+      a.orders.map(function(o){return '<div class="hist"><span><span class="ltr">'+sid(o.id)+'</span> · '+custName(o)+'<br><span class="meta">'+itemsText(o)+'</span></span><span class="meta" style="text-align:end">'+tstr(o.created)+'</span></div>';}).join('')+
+      '<div class="btns"><button class="btn ghost sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+a.month+'">تصدير PDF</button></div></section>';
+  }).join('');
+}
 function archiveHTML(arch,kind){
   if(!arch.length)return '';
   var months={};
@@ -2128,7 +2138,7 @@ function ordersView(kind){
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
   if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر من الزرار اللي فوق. لما تسلّمه يتأرشف.</span></div>';
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
-  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSeg(ordSeason(),'setSeason',visibleSeasons())+body+archiveHTML(arch,kind);
+  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSeg(ordSeason(),'setSeason',visibleSeasons())+body+archiveHTML(arch,kind)+lockedMonthsHTML(kind);
 }
 var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة'];
 function ordSheetHTML(){
@@ -2605,14 +2615,18 @@ var ACT={
     /* أرشفة الشهر: نسخة من أوردرات الشهر قبل ما تتمسح، عشان تفضل ظاهرة وتتطبع */
     S.archive=S.archive||{};
     S.archive[key]={kind:d.kind,month:d.k,at:Date.now(),orders:JSON.parse(JSON.stringify(S.orders.filter(function(o){return okind(o)===d.kind&&monthKey(o.created)===d.k;})))};
-    /* إقفال الشهر: احتفظ بتعريفات الوصفات ومخزون الإنتاج الجاهز فقط */
-    S.orders.forEach(function(o){tombAdd('orders',o.id);});
-    S.batches.forEach(function(b){tombAdd('batches',b.id);});
-    S.done.forEach(function(x){tombAdd('done',x.id);});
-    S.orders=[];S.batches=[];S.done=[];
+    /* إقفال الشهر: امسح أوردرات الشهر ده بس (نفس النوع)، وسيب باقي الشهور والنوع التاني */
+    var ids={};
+    S.orders.forEach(function(o){if(okind(o)===d.kind&&monthKey(o.created)===d.k)ids[o.id]=1;});
+    S.orders.forEach(function(o){if(ids[o.id])tombAdd('orders',o.id);});
+    S.batches.forEach(function(b){if(ids[b.o])tombAdd('batches',b.id);});
+    S.done.forEach(function(x){if(ids[x.o])tombAdd('done',x.id);});
+    S.orders=S.orders.filter(function(o){return !ids[o.id];});
+    S.batches=S.batches.filter(function(b){return !ids[b.o];});
+    S.done=S.done.filter(function(x){return !ids[x.o];});
     S.stock={};                 // كميات مخزن الخامات تبدأ من صفر
     S.locks=S.locks||{};S.locks[key]=true;
-    S.seq=100;S.oseq=0;
+    if(!S.orders.length&&!S.batches.length){S.seq=100;S.oseq=0;}
     U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
     bind(S);
     
