@@ -329,8 +329,8 @@ button,input{font-family:inherit}
    كل الحركات الدخولية مربوطة بـ #app.enter فقط (تُضاف عند تغيّر الشاشة)،
    عشان إعادة الرسم الدورية (المؤقتات) ما تعيدش تشغيلها. */
 :root{--ease:cubic-bezier(.2,.8,.2,1);--b1:#293394;--b2:#4F5DFF;--b3:#8D97FF;
-  --glass:rgba(255,255,255,.74);--card:rgba(255,255,255,.9);--glow:rgb(41 51 148 / .38);--gridc:rgb(41 51 148 / .05)}
-:root[data-theme="dark"]{--glass:rgba(15,24,36,.72);--card:rgba(20,32,43,.88);--glow:rgb(0 0 0 / .55);--gridc:rgb(255 255 255 / .04)}
+  --glass:rgba(255,255,255,.74);--card:rgba(255,255,255,.9);--glow:rgb(41 51 148 / .38);--gridc:rgb(41 51 148 / .11)}
+:root[data-theme="dark"]{--glass:rgba(15,24,36,.72);--card:rgba(20,32,43,.88);--glow:rgb(0 0 0 / .55);--gridc:rgb(255 255 255 / .09)}
 
 /* ---- خلفية aurora ثابتة خلف التطبيق ---- */
 .fx-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
@@ -389,8 +389,10 @@ button,input{font-family:inherit}
   background:linear-gradient(160deg,color-mix(in srgb,var(--c) 11%,var(--card)),var(--card) 62%);
   box-shadow:0 16px 30px -22px var(--c);
   transform:perspective(800px) rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ry) * 1deg))}
-.hgrid .tab::after{content:"";display:block;position:absolute;inset-inline-end:-34px;top:-34px;width:104px;height:104px;margin:0;border:0;border-radius:50%;
-  background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 30%,transparent),transparent);opacity:.7;pointer-events:none}
+.hgrid .tab::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;z-index:0;
+  background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--c) 80%,transparent) 50%,transparent 70%) 0 0/300% 100%;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);opacity:.18}
 .hgrid .tab svg{width:52px;height:52px;padding:11px;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);
   box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 22%,transparent)}
 .hgrid .tab .cnt{background:linear-gradient(120deg,var(--ink),color-mix(in srgb,var(--c) 70%,var(--ink)));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -469,6 +471,23 @@ button,input{font-family:inherit}
   .btn.ghost:hover{border-color:var(--c,var(--b2))}
   .hgrid .tab:hover{transform:perspective(800px) rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ry) * 1deg)) translateY(-5px);box-shadow:0 26px 40px -22px var(--c)}
   .nav .tab:hover{border-color:color-mix(in srgb,var(--c) 45%,var(--line))}
+}
+
+/* ---- بطاقات: لون متحرك خافت على الحافة (CSS فقط) ---- */
+.card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:0;padding:1px;
+  background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--c,var(--b2)) 75%,transparent) 50%,transparent 70%) 0 0/300% 100%;
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);opacity:.1}
+@media (prefers-reduced-motion:no-preference){
+  .card::after{animation:x-edge 14s ease-in-out infinite alternate}
+}
+@keyframes x-edge{from{background-position:100% 0;opacity:.05}to{background-position:0% 0;opacity:.14}}
+@media (prefers-reduced-motion:no-preference){
+  .hgrid .tab svg{background-image:linear-gradient(135deg,color-mix(in srgb,var(--c) 48%,transparent),color-mix(in srgb,var(--c) 6%,transparent) 50%,color-mix(in srgb,var(--c) 40%,transparent));background-size:250% 250%;animation:x-ico 7s ease-in-out infinite alternate}
+}
+@keyframes x-ico{from{background-position:0% 0%}to{background-position:100% 100%}}
+@media (prefers-reduced-motion:no-preference){
+  .hgrid .tab::after{animation:x-edge 11s ease-in-out infinite alternate}
 }
 </style>
 
