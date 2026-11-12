@@ -1479,7 +1479,8 @@ function allocReady(pid){
     if(o.deliveredAt||avail<=0)return;
     (o.items||[]).forEach(function(it){
       if(it.p!==pid||avail<=0)return;
-      var short=r3(it.qty-((it.fs||0)+(it.got||0)));
+      var pend=0;orderBatches(o).forEach(function(x){if(x.p===pid)pend+=pc(x);});
+      var short=r3(it.qty-((it.fs||0)+(it.got||0))-pend);
       if(short<=0)return;
       var give=r3(Math.min(short,avail));
       it.got=r3((it.got||0)+give);
@@ -2556,6 +2557,7 @@ var ACT={
     }else S.ready[b.p]=(S.ready[b.p]||0)+stk;
     S.done[S.done.length-1].toStk=toStk;
     tombAdd('batches',d.id);S.batches=S.batches.filter(function(x){return x.id!==d.id;});
+    allocReady(b.p);
     toast('اتعتمد '+f(good)+' '+p.unit+' من '+sid(b.id)+' · دخل المخزن '+f(stk));
   },
   fgFilter:function(d){U.fgf=d.v;},
@@ -2847,7 +2849,7 @@ document.addEventListener('focusin',function(e){
 vvSync();
 
 render();
-restoreLocal().then(function(){render();});
+restoreLocal().then(function(){PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();});
 })();
 </script>
 
