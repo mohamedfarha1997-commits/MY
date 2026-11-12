@@ -2326,15 +2326,19 @@ function prodLogCardHTML(){
   var log=S.plog||{};
   var ids=Object.keys(log).sort(function(a,b){return (log[b].at||0)-(log[a].at||0);}).slice(0,300);
   if(!ids.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، هتظهر هنا مع كود كل اللي شاركوا فيها.</p></section>';
+  var sel=(U.plSel||[]).filter(function(id){return ids.indexOf(id)>-1;});
+  var allOn=sel.length===ids.length;
+  var bar='<div class="btns" style="margin-top:8px"><button class="btn ghost sm" data-act="plAll">'+(allOn?'إلغاء التحديد':'حدّد الكل')+'</button>'+
+    '<button class="btn quiet sm" data-act="plDel"'+(sel.length?'':' disabled')+'>'+(U.confirm==='pldel'?'اضغط تاني للتأكيد':'امسح المحدد ('+sel.length+')')+'</button></div>';
   var rows=ids.map(function(id){
-    var e=log[id],p=P(e.p);
+    var e=log[id],p=P(e.p),on=sel.indexOf(id)>-1;
     var names=e.by.map(function(c){var u=userByCode(c);return c+' '+(u?u.name:'');}).join(' ');
     var q=[id,sid(id),p?p.name:'',String(e.qty||''),tstr(e.at),names,e.by.join(' ')].join(' ').toLowerCase();
-    return '<tr class="plrow" data-q="'+esc(q)+'"><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(mealQ(e.qty||0,p))+' · '+esc(tstr(e.at))+'</small></td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
+    return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td><button class="btn '+(on?'':'ghost ')+'sm" data-act="plToggle" data-id="'+id+'" style="min-width:64px">'+(on?'✓ محدد':'تحديد')+'</button></td><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(mealQ(e.qty||0,p))+' · '+esc(tstr(e.at))+'</small></td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها.</p>'+
-    '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+
-    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>الدفعة</th><th>الصنف والتفاصيل</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
+  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها. تقدر تحدد دفعات وتمسحها من السجل.</p>'+
+    '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+bar+
+    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اختيار</th><th>الدفعة</th><th>الصنف والتفاصيل</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
     '<div class="meta" id="plEmpty" hidden style="text-align:center;padding:8px 0">مفيش نتايج للبحث ده.</div></section>';
 }
 document.addEventListener('input',function(e){
@@ -2785,6 +2789,24 @@ var READ_ACTS={tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+ACT.plToggle=function(d){
+  U.plSel=U.plSel||[];var i=U.plSel.indexOf(d.id);
+  if(i>-1)U.plSel.splice(i,1);else U.plSel.push(d.id);
+};
+ACT.plAll=function(){
+  var ids=Object.keys(S.plog||{}).sort(function(a,b){return ((S.plog[b]||{}).at||0)-((S.plog[a]||{}).at||0);}).slice(0,300);
+  U.plSel=(U.plSel||[]).length===ids.length?[]:ids;
+};
+ACT.plDel=function(){
+  var ids=(U.plSel||[]);
+  if(!ids.length){toast('اختار دفعات الأول');return false;}
+  if(U.confirm!=='pldel'){U.confirm='pldel';setTimeout(function(){if(U.confirm==='pldel'){U.confirm=null;render();}},3000);return;}
+  U.confirm=null;
+  ids.forEach(function(id){delete S.plog[id];});
+  U.plSel=[];
+  toast('اتمسحت '+ids.length+' دفعة من السجل');
+};
+READ_ACTS.plToggle=1;READ_ACTS.plAll=1;
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
