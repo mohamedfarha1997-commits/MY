@@ -1293,12 +1293,26 @@ function openCount(kind){return ordersOf(kind).filter(function(o){return !o.deli
 function grpTitle(t,n){return '<div class="grp">'+t+' ('+n+')</div>';}
 function mealQ(qty,p){return f(qty)+' وجبة'+(p&&p.yield>1?' · '+f(r3(qty*p.yield))+' '+p.unit:'');}
 function batchMatsHTML(list){
+  var byP={},order=[];
+  list.forEach(function(b){
+    if(!byP[b.p]){byP[b.p]={p:b.p,meals:0,pcs:0,mats:{},batches:[]};order.push(b.p);}
+    var g=byP[b.p];g.meals=r3(g.meals+b.qty);g.pcs=r3(g.pcs+pc(b));g.batches.push(b);
+    var t=need(b);for(var k in t)g.mats[k]=r3((g.mats[k]||0)+t[k]);
+  });
   var tot={};
-  list.forEach(function(b){var t=need(b);for(var k in t)tot[k]=r3((tot[k]||0)+t[k]);});
-  var rows=Object.keys(tot).map(function(k){var m=M(k);return m?'<tr><td>☐</td><td>'+m.name+'</td><td class="n">'+f(tot[k])+' '+m.unit+'</td></tr>':'';}).join('');
+  order.forEach(function(pid){var g=byP[pid];for(var k in g.mats)tot[k]=r3((tot[k]||0)+g.mats[k]);});
+  function matTable(mats){
+    var rows=Object.keys(mats).map(function(k){var m=M(k);return m?'<tr><td>☐</td><td>'+m.name+'</td><td class="n">'+f(mats[k])+' '+m.unit+'</td></tr>':'';}).join('');
+    return '<table class="pt"><thead><tr><th></th><th>الخامة</th><th>الكمية</th></tr></thead><tbody>'+(rows||'<tr><td colspan="3">مفيش خامات</td></tr>')+'</tbody></table>';
+  }
+  var perProduct=order.map(function(pid){
+    var g=byP[pid],p=P(pid);
+    return '<h2>'+(p?p.name:'صنف محذوف')+' · '+mealQ(g.meals,p)+' · '+g.batches.length+' دفعة</h2>'+matTable(g.mats);
+  }).join('');
   var bs=list.map(function(b){var p=P(b.p);return '<tr><td>'+b.id+'</td><td>'+(p?p.name:'')+'</td><td class="n">'+mealQ(b.qty,p)+'</td></tr>';}).join('');
   return '<h1>الخامات المطلوبة للدفعات</h1><div class="pm">دفعات بانتظار السحب · '+list.length+' دفعة · طُبع '+tstr(Date.now())+'</div>'+
-    (rows?'<table class="pt"><thead><tr><th></th><th>الخامة</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>':'<h1>مفيش خامات</h1>')+
+    perProduct+
+    '<h2>الإجمالي</h2>'+matTable(tot)+
     '<h2>الدفعات</h2><table class="pt"><thead><tr><th>الرقم</th><th>المنتج</th><th>الكمية</th></tr></thead><tbody>'+bs+'</tbody></table>';
 }
 function printAllHTML(list){
