@@ -531,13 +531,19 @@ function parseTolerant(t){
     throw e;
   }
 }
-function readFile(){return FSX.fh.getFile().then(function(f){return f.text();}).then(function(t){return t&&t.trim()?parseTolerant(t).data:null;});}
+function withTimeout(p,ms){
+  return new Promise(function(res,rej){
+    var done=false,tm=setTimeout(function(){if(!done){done=true;rej(new Error('timeout'));}},ms);
+    p.then(function(v){if(!done){done=true;clearTimeout(tm);res(v);}},function(e){if(!done){done=true;clearTimeout(tm);rej(e);}});
+  });
+}
+function readFile(){return withTimeout(FSX.fh.getFile().then(function(f){return f.text();}),8000).then(function(t){return t&&t.trim()?parseTolerant(t).data:null;});}
 function writeFile(){
   var body=JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S});
   FSX.q=FSX.q.then(function(){
-    return FSX.fh.createWritable().then(function(w){
+    return withTimeout(FSX.fh.createWritable().then(function(w){
       return w.truncate(0).then(function(){return w.write(body);}).then(function(){return w.close();},function(e){return w.abort().catch(function(){}).then(function(){throw e;});});
-    });
+    }),10000);
   }).then(function(){FSX.err=null;FSX.at=Date.now();})
     .catch(function(e){writeFailed(e);});
   return FSX.q;
@@ -551,8 +557,9 @@ function writeFailed(e){
 
 /* one import-and-export pass: read the file, merge it with this device, write back only if the file lacks something */
 function syncNow(){
-  if(!FSX.fh||!FSX.ok||FSX.busy)return Promise.resolve();
-  FSX.busy=true;
+  if(!FSX.fh||!FSX.ok)return Promise.resolve();
+  if(FSX.busy&&Date.now()-FSX.busyAt<15000)return Promise.resolve();
+  FSX.busy=true;FSX.busyAt=Date.now();
   return readFile().then(function(remote){
     if(remote)remote=fix(remote);
     markEdits();
@@ -563,7 +570,7 @@ function syncNow(){
       S=M;bind(S);baseline();applyTheme();
       if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
-    if(needWrite)return writeFile();
+    if(needWrite)writeFile();
   }).catch(function(e){FSX.err='تعذّر القراءة من الملف ('+((e&&e.name)||'خطأ')+(e&&e.message?': '+e.message:'')+')';render();})
     .then(function(){FSX.busy=false;});
 }
