@@ -454,7 +454,7 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
 var FSX={fh:null,ok:false,err:null,at:0,busy:false,armed:false,granting:false,wt:null,q:Promise.resolve()};
-var SYNC_MS=5000,SYNC_WAIT=300;
+var SYNC_MS=500,SYNC_WAIT=300;
 var STAMPED=['orders','batches','done','products','materials'];
 var LAST={},LASTN={stock:{},ready:{}};
 function fsSupported(){return typeof window.showOpenFilePicker==='function';}
@@ -548,8 +548,15 @@ function writeFile(){
     .catch(function(e){writeFailed(e);});
   return FSX.q;
 }
+function dropMissingFile(){
+  FSX.fh=null;FSX.ok=false;FSX.armed=false;
+  idbSet('fh',null).catch(function(){});
+  FSX.err='الملف اللي متوصل ما بقاش موجود في المكان ده (ممكن اتمسح أو اتنقل أو اتغيّر اسمه). اختار الملف الحالي من "اختار ملف موجود".';
+  render();
+}
 function writeFailed(e){
   var n=(e&&e.name)||'';
+  if(n==='NotFoundError'){dropMissingFile();return;}
   if(n==='NotAllowedError'||n==='SecurityError'){FSX.ok=false;FSX.err='الإذن على الملف انتهى، اضغط أي مكان في الشاشة عشان يتجدد';armAuto();}
   else FSX.err='تعذّر الحفظ في الملف ('+(n||'خطأ')+')';
   render();
@@ -571,7 +578,10 @@ function syncNow(){
       if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
     if(needWrite)writeFile();
-  }).catch(function(e){FSX.err='تعذّر القراءة من الملف ('+((e&&e.name)||'خطأ')+(e&&e.message?': '+e.message:'')+')';render();})
+  }).catch(function(e){
+    if(e&&e.name==='NotFoundError'){dropMissingFile();return;}
+    FSX.err='تعذّر القراءة من الملف ('+((e&&e.name)||'خطأ')+(e&&e.message?': '+e.message:'')+')';render();
+  })
     .then(function(){FSX.busy=false;});
 }
 function saveSoon(){if(!FSX.fh)return;clearTimeout(FSX.wt);FSX.wt=setTimeout(syncNow,SYNC_WAIT);}
