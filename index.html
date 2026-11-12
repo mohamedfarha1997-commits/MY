@@ -1303,7 +1303,7 @@ fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
     '<datalist id="stagel">'+Object.keys(sn).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>'+
     '<div class="meta">كل مرحلة ليها مكوّناتها وخطواتها، والترتيب اللي تحدده هو اللي يظهر. اكتب أي مكوّن جديد وهيتضاف تلقائي.</div>'+
-    sect('prep','مراحل التحضير','مرحلة تحضير')+sect('finish','مراحل الفنش','مرحلة فنش')+compsFormHTML(F)+area();
+    sect('prep','مراحل التحضير','مرحلة تحضير')+compsFormHTML(F)+area();
 }
 function formHTML(){
   if(!U.form)return '';
@@ -1366,7 +1366,7 @@ function saveProd(F){
   if(!stages.some(function(g){return g.ings.length;})&&!comps.length){toast('ضيف مكوّن أو وصفة فرعية على الأقل');return false;}
   var dup=PRODUCTS.some(function(p){return p.id!==F.edit&&unesc(p.name).trim().toLowerCase()===name.toLowerCase();});
   if(dup){toast('الاسم ده موجود قبل كده');return false;}
-  stages=stages.filter(function(g){return g.kind==='prep';}).concat(stages.filter(function(g){return g.kind==='finish';}));
+  stages=stages.filter(function(g){return g.kind==='prep';});
   stages.forEach(function(g){
     g.name=esc(g.name);g.steps=g.steps.map(esc);
     g.ings=g.ings.map(function(i){
@@ -1980,7 +1980,7 @@ var ACT={
   },
   newProd:function(d){
     U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:null,noOrder:false,shop:!!(d&&d.shop),season:curSeason(),name:'',cat:'',unit:'قطعة',mins:'',temp:'',yield:'1',stages:[mkStage('prep','وزن الصنف'),mkStage('finish','فنش')],comps:[],notes:''};
+    U.form={kind:'prod',edit:null,noOrder:false,shop:!!(d&&d.shop),season:curSeason(),name:'',cat:'',unit:'قطعة',mins:'',temp:'',yield:'1',stages:[mkStage('prep','وزن الصنف')],comps:[],notes:''};
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
