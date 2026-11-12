@@ -649,9 +649,9 @@ function fix(o){
   bind(o);return o;
 }
 var UNITS_M=['جرام','علبة','كيس','بيضة','غطا','حبة'];
-var PROD_UNITS=['قطعة','جرام']; /* وحدة إنتاج الصنف: قطع أو وزن */
-function isPiece(p){return !p||!p.unit||p.unit==='قطعة';}
-function isPieceU(u){return !u||u==='قطعة';}
+var PROD_UNITS=['قطعة','جرام','صاج','كادر']; /* وحدة إنتاج الصنف: قطع أو وزن */
+function isPiece(p){return !p||!p.unit||isPieceU(p.unit);}
+function isPieceU(u){return !u||u==='قطعة'||u==='صاج'||u==='كادر';}
 function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
 /* k = الكمية الجديدة لكل وحدة قديمة */
 function convK(ou,nu){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;return 1;}
@@ -2020,7 +2020,7 @@ function lockKey(kind,k){return kind+'|'+k;}
 function isLocked(o){return !!(S.locks&&S.locks[lockKey(okind(o),monthKey(o.created))]);}
 function isFill(p){return !!(p&&p.fill);}
 function prodsOf(kind){return PRODUCTS.filter(function(p){return !isFill(p)&&(kind==='shop'?!!p.shop:!p.shop);});}
-function ordProdsOf(kind){return PRODUCTS.filter(function(p){return isFill(p)?p.fill===kind:(kind==='shop'?!!p.shop:!p.shop);});}
+function ordProdsOf(kind){return PRODUCTS.filter(function(p){return isFill(p)&&p.fill===kind;});}
 function ordersOf(kind){return S.orders.filter(function(o){return okind(o)===kind&&(o.season||'normal')===ordSeason();});}
 function openCount(kind){return ordersOf(kind).filter(function(o){return !o.deliveredAt;}).length;}
 function grpTitle(t,n){return '<div class="grp">'+t+' ('+n+')</div>';}
@@ -2199,11 +2199,11 @@ function ordSheetHTML(){
   var addedP=addedIds.map(function(id){return seasonP.filter(function(p){return p.id===id;})[0];});
   var grid=tiles.map(function(p){
     var on=addedIds.indexOf(p.id)>=0;
-    if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+p.name+'<small>'+p.mins+' دقيقة تشغيل</small></button>';
+    if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+p.name+(isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+'</button>';
     var q=s.items[p.id]||0;
     return '<div class="pk on" style="--c:var(--orders);cursor:default">'+
       '<div class="opk-h"><b>'+p.name+'</b><button class="ox" data-act="oPick" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
-      '<small>'+p.mins+' دقيقة تشغيل</small>'+
+      (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+
       '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div></div>';
   }).join('');
   return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
