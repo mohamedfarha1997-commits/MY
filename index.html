@@ -2044,7 +2044,6 @@ function monthsHTML(){
       months[a.month]={n:a.orders.length,und:a.orders.filter(function(o){return !o.deliveredAt;}).length};
     });
     var keys=Object.keys(months).sort().reverse();
-    if(!keys.length)return '';
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل شهور '+(kind==='shop'?'أوردرات المحل':'الأوردرات')+'</h3></div>'+
       '<p class="meta" style="margin:0">حسابات النوعين منفصلة. بعد القفل يتم مسح بيانات التشغيل والأوردرات وحركات الخامات، مع الاحتفاظ بالوصفات ومخزون الإنتاج الجاهز. صدّر تقرير PDF قبل القفل لو محتاج تحتفظ به.</p>'+
       keys.map(function(k){
@@ -2052,7 +2051,7 @@ function monthsHTML(){
         var act=locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':
           '<button class="btn ghost sm" data-act="lockMonth" data-kind="'+kind+'" data-k="'+k+'"'+(m.und?' disabled':'')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>';
         return '<div class="hist" style="align-items:center"><span><b>'+k+'</b> <span class="meta">· '+m.n+' أوردر'+(m.und?' · لسه '+m.und+' مش متسلّم':'')+'</span></span><span class="acts">'+(locked?'<span class="pill ok">مقفول</span>':'')+act+'</span></div>';
-      }).join('')+'</section>';
+      }).join('')+(keys.length?'':'<p class="meta" style="margin:0">مفيش أوردرات لسه.</p>')+'</section>';
   }).join('');
 }
 function readyCard(o){
