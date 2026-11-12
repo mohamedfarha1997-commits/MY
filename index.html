@@ -388,7 +388,7 @@ var QC=['الطعم','درجة الحرارة','شكل التقديم','التغ
 var MATERIALS=[],PRODUCTS=[];
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
-function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;}
+function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;PRODUCTS.forEach(function(p){if(p.stages)syncProd(p);});}
 function fix(o){
   if(!o.materials)o.materials=[];
   if(!o.products)o.products=[];
@@ -456,7 +456,8 @@ var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
 if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved'].indexOf(h)>-1)U.view=h;
 
-function need(b){var o={},r=P(b.p).recipe;for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
+function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
+function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
 function shortOf(b){var n=need(b),out=[];if(!TRACK())return out;for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:n[k]-have});}return out;}
 /* sub-recipes: finished pieces of other products taken from the production stock (per ONE meal of this product) */
 function compsOf(pid){var p=P(pid);return (p&&p.comps)||[];}
