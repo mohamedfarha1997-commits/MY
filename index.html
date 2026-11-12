@@ -1821,6 +1821,13 @@ function printOrderHTML(o){
   h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
+function printReport(title,html){
+  var w=window.open('','_blank');
+  if(!w){toast('المتصفح منع فتح نافذة الطباعة');return;}
+  w.document.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>'+title+'</title><style>@page{size:A4;margin:12mm}body{font-family:Tahoma,Arial,sans-serif;font-size:12.5px;color:#000;background:#fff;margin:0;line-height:1.6}h1{font-size:22px;margin:0 0 2px}h2{font-size:16px;margin:16px 0 6px;border-bottom:2px solid #000;padding-bottom:3px}.pm{color:#444;margin-bottom:8px}table{width:100%;border-collapse:collapse;margin:4px 0}th,td{border:1px solid #888;padding:4px 8px;text-align:start}th{background:#eee}td.n{font-weight:700;white-space:nowrap;width:1%}.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}</style></head><body>'+html+'</body></html>');
+  w.document.close();
+  setTimeout(function(){try{w.focus();w.print();}catch(e){}},400);
+}
 function doPrint(html){
   var pa=document.getElementById('printArea');if(!pa)return;
   pa.innerHTML=html;
@@ -2148,7 +2155,7 @@ function ordersView(kind){
   if(ready.length)body+=grpTitle('جاهزة للتسليم',ready.length)+'<div class="list">'+ready.map(readyCard).join('')+'</div>';
   if(!body)body='<div class="empty"><b>'+(kind==='shop'?'مفيش أوردرات محل':'مفيش أوردرات')+'</b><span>سجّل الأوردر من الزرار اللي فوق. لما تسلّمه يتأرشف.</span></div>';
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
-  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSeg(ordSeason(),'setSeason',visibleSeasons())+body+archiveHTML(arch,kind)+lockedMonthsHTML(kind);
+  return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+seasonSeg(ordSeason(),'setSeason',visibleSeasons())+body+archiveHTML(arch,kind);
 }
 var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة'];
 function ordSheetHTML(){
@@ -2611,7 +2618,7 @@ var ACT={
   },
   monthPdf:function(d){
     var old=document.title;document.title='تقرير '+(d.kind==='shop'?'أوردرات المحل':'الأوردرات')+' شهر '+d.k;
-    doPrint(monthReportHTML(d.k,d.kind));document.title=old;return false;
+    try{printReport(document.title,monthReportHTML(d.k,d.kind));}catch(e){toast('حصلت مشكلة في التقرير');}document.title=old;return false;
   },
   oDeliver:function(d){
     var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(!o)return false;
