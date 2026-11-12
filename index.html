@@ -1,15 +1,5 @@
-<!doctype html><html><head><script>document.documentElement.setAttribute('data-theme','light');</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2B3594"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script>
-(function(){
-  var ic=document.querySelector('link[rel="icon"]'),ap=document.querySelector('link[rel="apple-touch-icon"]');
-  var abs=function(p){try{return new URL(p,location.href).href;}catch(e){return p;}};
-  var i192=abs('icons/icon-192.png'),i512=abs('icons/icon-512.png');
-  var base=location.href.split('#')[0].split('?')[0];
-  var m={name:'RMY Pro',short_name:'RMY Pro',description:'نظام إدارة الإنتاج والمخزون والأوردرات للمخبز',id:base,categories:['business','productivity'],lang:'ar',dir:'rtl',start_url:base,scope:base.replace(/[^\/]*$/,''),display:'standalone',orientation:'portrait',background_color:'#EDF0F3',theme_color:'#2B3594',
-    icons:[{src:i192,sizes:'192x192',type:'image/png',purpose:'any'},{src:i512,sizes:'512x512',type:'image/png',purpose:'any'},{src:i512,sizes:'512x512',type:'image/png',purpose:'maskable'}]};
-  var l=document.createElement('link');l.rel='manifest';
-  l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));
-  document.head.appendChild(l);
-})();
+<!doctype html><html><head><script>document.documentElement.setAttribute('data-theme','light');</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2B3594"><link rel="manifest" href="manifest.json"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script>
+
 window.addEventListener('error',function(e){try{var a=document.getElementById('app');var m='خطأ: '+(e&&e.message?e.message:'غير معروف');if(a&&!a.textContent.trim()){a.innerHTML='<div dir="rtl" style="padding:16px;font:14px sans-serif;color:#b91c1c"><b>حصلت مشكلة في تحميل الصفحة</b><div style="margin-top:8px;word-break:break-all">'+m+'</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px">إعادة التحميل</button></div>';}}catch(x){}});
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
 window.addEventListener('appinstalled',function(){window.KH_INSTALL=null;});
