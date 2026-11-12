@@ -3,7 +3,7 @@
 window.addEventListener('error',function(e){try{var a=document.getElementById('app');var m='خطأ: '+(e&&e.message?e.message:'غير معروف');if(a&&!a.textContent.trim()){a.innerHTML='<div dir="rtl" style="padding:16px;font:14px sans-serif;color:#b91c1c"><b>حصلت مشكلة في تحميل الصفحة</b><div style="margin-top:8px;word-break:break-all">'+m+'</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px">إعادة التحميل</button></div>';}}catch(x){}});
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
 window.addEventListener('appinstalled',function(){window.KH_INSTALL=null;});
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});}
 </script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.fgcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fgc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .fgc .mtop{display:flex;justify-content:space-between;align-items:center;gap:6px}
@@ -561,10 +561,10 @@ async function checkPin(p){
   var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
   return hex===AUTH_HASH;
 }
-function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
+function authed(){try{var a=MEM.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
 function usersList(){S.users=S.users||[];return S.users;}
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
-function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
+function sessionCode(){try{var a=MEM.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
 function limited(){return !!sessionCode();}
 function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return STAFF_DEFAULT;}
 function actorCode(){var c=sessionCode();if(c)return c;return 'CHEF MYF';}
@@ -811,10 +811,10 @@ function fsStart(){baseline();gdStart();}
    Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
 var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
 var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
-function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id}));else localStorage.removeItem('khat-gd');}catch(e){}}
+function gdSaveCfg(){try{if(GD.on)MEM.setItem('khat-gd',JSON.stringify({id:GD.id}));else MEM.removeItem('khat-gd');}catch(e){}}
 function gdLoadCfg(){
-  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
-  try{var t=JSON.parse(sessionStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
+  try{var c=JSON.parse(MEM.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
+  try{var t=JSON.parse(MEM.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
 function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
@@ -846,7 +846,7 @@ function gdTokCb(r){
       GD.shown=null;gdPaint();return;
     }}catch(x){}
     GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;
-    try{sessionStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
+    try{MEM.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
     if(GD.pend){var p=GD.pend;GD.pend=null;p.res();}else gdSync();
   }else{
     GD.needTap=true;GD.ok=false;GD.err='تعذّر الربط بجوجل ('+((r&&r.error)||'خطأ')+')';
@@ -888,7 +888,7 @@ function gdApi(url,opt){
   opt.headers=Object.assign({Authorization:'Bearer '+GD.tok},opt.headers||{});
   opt.cache='no-store';
   return withTimeout(fetch(url,opt),20000).then(function(r){
-    if(r.status===401){GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
+    if(r.status===401){GD.tok=null;GD.exp=0;try{MEM.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
     if(!r.ok)return r.text().then(function(t){
       var why='';try{var j=JSON.parse(t).error||{};why=(j.errors&&j.errors[0]&&j.errors[0].reason)||(j.details&&j.details[0]&&j.details[0].reason)||j.status||'';}catch(x){}
       throw {code:r.status,reason:why,msg:t.slice(0,160)};
@@ -934,7 +934,7 @@ function gdFail(e){
   else if(c===403){
     var rs=String((e&&e.reason)||'');
     if(/accessNotConfigured|SERVICE_DISABLED/i.test(rs))GD.err='Drive API مش مفعّل في مشروع الكونسول. فعّله من APIs & Services ثم Library ثم Google Drive API';
-    else if(/insufficient|scope/i.test(rs)){GD.err='صلاحية Drive ما اتأكدتش. افصل واربط تاني، وعلّم على مربع Drive في شاشة جوجل';GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(x){}}
+    else if(/insufficient|scope/i.test(rs)){GD.err='صلاحية Drive ما اتأكدتش. افصل واربط تاني، وعلّم على مربع Drive في شاشة جوجل';GD.tok=null;GD.exp=0;try{MEM.removeItem('khat-gd-tok');}catch(x){}}
     else GD.err='جوجل رفض الطلب ('+(rs||'403')+')';
   }
   else if(e&&e.message==='timeout')GD.err='الاتصال بجوجل بطيء، هيحاول تاني';
@@ -1039,18 +1039,11 @@ function seed(){
   bind(s);return s;
 }
 /* device storage: the data lives on the device itself (IndexedDB, falls back to localStorage) */
+var MEM={_m:{},getItem:function(k){return Object.prototype.hasOwnProperty.call(this._m,k)?this._m[k]:null;},setItem:function(k,v){this._m[k]=String(v);},removeItem:function(k){delete this._m[k];},clear:function(){this._m={};}};
 var LOCAL_READY=false,LOCAL_Q=Promise.resolve();
-function localPut(body){
-  return idbSet('state',body).catch(function(){
-    try{localStorage.setItem('khat-entaj-state',body);}catch(e){}
-  });
-}
-function localGet(){
-  return idbGet('state').catch(function(){return null;}).then(function(v){
-    if(v)return v;
-    try{return localStorage.getItem('khat-entaj-state');}catch(e){return null;}
-  });
-}
+/* التخزين على الجهاز متقفل: البيانات بتفضل في الذاكرة وفي Google Drive بس */
+function localPut(body){return Promise.resolve();}
+function localGet(){return Promise.resolve(null);}
 function persistLocal(){
   if(!LOCAL_READY)return;
   var body=JSON.stringify(S);
@@ -2270,7 +2263,7 @@ function tstr(ts){
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
 }
 /* ---------- actions ---------- */
-function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}}
+function lockSettings(){try{MEM.removeItem('khat-set-ok');}catch(e){}}
 function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;U.rsearch='';try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
 function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);return a;}
 function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
@@ -2280,7 +2273,7 @@ function hiddenTabs(){return pref('tabsHidden',[]);}
 function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
 var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
 function sPwStored(){return pref('pw',SET_DEFAULT);}
-function sUnlocked(){try{return sessionStorage.getItem('khat-set-ok')==='1';}catch(e){return false;}}
+function sUnlocked(){try{return MEM.getItem('khat-set-ok')==='1';}catch(e){return false;}}
 function hexPbkdf2(p,salt,iter){
   var enc=new TextEncoder();
   return crypto.subtle.importKey('raw',enc.encode(p),'PBKDF2',false,['deriveBits']).then(function(key){
@@ -2384,9 +2377,9 @@ var ACT={
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
     checkPin(p).then(function(ok){
-      if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
+      if(ok){lockSettings();try{MEM.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
       return findUserByPw(p).then(function(u){
-        if(u){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';}
+        if(u){lockSettings();try{MEM.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';}
         else{U.loginErr='الباسورد غلط';}
         render();
       });
@@ -2404,12 +2397,12 @@ var ACT={
   },
   gdOff:function(){
     GD.on=false;GD.ok=false;GD.id=null;GD.tok=null;GD.exp=0;GD.ver=null;GD.err=null;GD.shown=null;
-    try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}
+    try{MEM.removeItem('khat-gd-tok');}catch(e){}
     gdSaveCfg();toast('اتفصل عن درايف');
   },
   exportBackup:function(){exportBackup();return false;},
   importBackup:function(){importBackup();return false;},
-  logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
+  logout:function(){try{MEM.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
@@ -2424,7 +2417,7 @@ var ACT={
     var get=function(id){var e=document.getElementById(id);return e?e.value:'';};
     var pw=get('spw1'),c=get('spw2'),old=get('spwOld');
     if(!/^[0-9]+$/.test(pw)||(mode==='unlock'&&!pw)){U.sErr='الـ PIN أرقام بس';render();return false;}
-    var ok=function(){try{sessionStorage.setItem('khat-set-ok','1');}catch(e){}U.sErr=null;U.sChange=false;render();};
+    var ok=function(){try{MEM.setItem('khat-set-ok','1');}catch(e){}U.sErr=null;U.sChange=false;render();};
     var fail=function(){U.sErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();};
     if(mode==='unlock'){
       hexPbkdf2(pw,st.salt,st.iter).then(function(h){if(h===st.hash)ok();else{U.sErr='الـ PIN غلط';render();}}).catch(fail);
@@ -2442,7 +2435,7 @@ var ACT={
   },
   sChangeStart:function(){U.sChange=true;U.sErr=null;render();return false;},
   sCancel:function(){U.sChange=false;U.sErr=null;render();return false;},
-  sLock:function(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}U.view='home';U.sErr=null;render();return false;},
+  sLock:function(){try{MEM.removeItem('khat-set-ok');}catch(e){}U.view='home';U.sErr=null;render();return false;},
   toggleSeason:function(d){
     var a=hiddenSeasons(),i=a.indexOf(d.k);
     if(i>-1)a.splice(i,1);else a.push(d.k);
