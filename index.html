@@ -555,7 +555,7 @@ function syncNow(){
       if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
     }
     if(needWrite)return writeFile();
-  }).catch(function(){FSX.err='تعذّر القراءة من الملف';render();})
+  }).catch(function(e){FSX.err='تعذّر القراءة من الملف ('+((e&&e.name)||'خطأ')+(e&&e.message?': '+e.message:'')+')';render();})
     .then(function(){FSX.busy=false;});
 }
 function saveSoon(){if(!FSX.fh)return;clearTimeout(FSX.wt);FSX.wt=setTimeout(syncNow,SYNC_WAIT);}
@@ -610,6 +610,7 @@ function fsStart(){
 function linkBadge(){
   if(!fsSupported())return '<span class="pill bad">المتصفح مش بيدعم الملف</span>';
   if(FSX.fh&&FSX.ok&&!FSX.err)return '<span class="pill ok" data-act="fsNow">متصل</span>';
+  if(FSX.fh&&FSX.ok)return '<span class="pill low" data-act="fsNow" title="'+esc(FSX.err||'')+'">متصل مع خطأ</span>';
   if(FSX.fh)return '<span class="pill low" data-act="fsConnect">غير متصل</span>';
   return '<span class="pill bad" data-act="fsConnect">غير متصل: اختار الملف</span>';
 }
