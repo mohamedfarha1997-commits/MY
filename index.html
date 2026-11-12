@@ -1,4 +1,4 @@
-<!doctype html><html><head><script>document.documentElement.setAttribute('data-theme','light');</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2B3594"><link rel="manifest" href="manifest.json"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="icon-512.png"><link rel="apple-touch-icon" href="icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script>
+<!doctype html><html><head><script>document.documentElement.setAttribute('data-theme','light');</script><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#2B3594"><link rel="manifest" href="manifest.json"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png"><link rel="apple-touch-icon" href="icons/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script>
 
 window.addEventListener('error',function(e){try{var a=document.getElementById('app');var m='خطأ: '+(e&&e.message?e.message:'غير معروف');if(a&&!a.textContent.trim()){a.innerHTML='<div dir="rtl" style="padding:16px;font:14px sans-serif;color:#b91c1c"><b>حصلت مشكلة في تحميل الصفحة</b><div style="margin-top:8px;word-break:break-all">'+m+'</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px">إعادة التحميل</button></div>';}}catch(x){}});
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
@@ -324,7 +324,155 @@ button,input{font-family:inherit}
 .brand-logo{display:block;width:96px;height:96px;margin:4px auto 2px;border-radius:24px;box-shadow:0 8px 22px rgb(43 53 148 / .28)}
 </style>
 
+<style id="fx">
+/* ===================== طبقة التصميم والحركة (نفس لغة صفحة التحميل) =====================
+   كل الحركات الدخولية مربوطة بـ #app.enter فقط (تُضاف عند تغيّر الشاشة)،
+   عشان إعادة الرسم الدورية (المؤقتات) ما تعيدش تشغيلها. */
+:root{--ease:cubic-bezier(.2,.8,.2,1);--b1:#293394;--b2:#4F5DFF;--b3:#8D97FF;
+  --glass:rgba(255,255,255,.74);--card:rgba(255,255,255,.9);--glow:rgb(41 51 148 / .38);--gridc:rgb(41 51 148 / .05)}
+:root[data-theme="dark"]{--glass:rgba(15,24,36,.72);--card:rgba(20,32,43,.88);--glow:rgb(0 0 0 / .55);--gridc:rgb(255 255 255 / .04)}
 
+/* ---- خلفية aurora ثابتة خلف التطبيق ---- */
+.fx-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.fx-bg i{position:absolute;border-radius:50%;display:block;will-change:transform}
+.fx-bg i:nth-child(1){width:80vmax;height:80vmax;top:-38vmax;inset-inline-start:-26vmax;background:radial-gradient(closest-side,rgb(79 93 255 / .22),transparent)}
+.fx-bg i:nth-child(2){width:64vmax;height:64vmax;top:26vh;inset-inline-end:-30vmax;background:radial-gradient(closest-side,rgb(28 139 214 / .17),transparent)}
+.fx-bg i:nth-child(3){width:60vmax;height:60vmax;bottom:-34vmax;inset-inline-start:8vw;background:radial-gradient(closest-side,rgb(109 40 217 / .13),transparent)}
+:root[data-theme="dark"] .fx-bg i:nth-child(1){background:radial-gradient(closest-side,rgb(79 93 255 / .34),transparent)}
+:root[data-theme="dark"] .fx-bg i:nth-child(2){background:radial-gradient(closest-side,rgb(28 139 214 / .24),transparent)}
+:root[data-theme="dark"] .fx-bg i:nth-child(3){background:radial-gradient(closest-side,rgb(109 40 217 / .26),transparent)}
+.fx-bg::after{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--gridc) 1px,transparent 1px),linear-gradient(90deg,var(--gridc) 1px,transparent 1px);background-size:48px 48px;
+  -webkit-mask-image:radial-gradient(ellipse 85% 60% at 50% 0%,#000 10%,transparent 75%);mask-image:radial-gradient(ellipse 85% 60% at 50% 0%,#000 10%,transparent 75%)}
+@media print{.fx-bg{display:none!important}}
+
+/* ---- الهيدر: لوحة زجاجية ---- */
+.top{position:relative;overflow:hidden;margin-top:8px;padding:12px 16px 10px!important;border-radius:24px;background:var(--glass);border:1px solid var(--line);
+  backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);box-shadow:0 22px 44px -28px var(--glow)}
+.top::before{content:"";position:absolute;top:-70%;height:240%;width:60%;inset-inline-start:-30%;background:radial-gradient(closest-side,rgb(79 93 255 / .17),transparent);pointer-events:none;will-change:transform}
+.top>*{position:relative;z-index:1}
+.top .hlogo{border-radius:14px;box-shadow:0 10px 26px -8px rgb(79 93 255 / .7)}
+.today b{background:linear-gradient(100deg,var(--finish),var(--b2) 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ---- أزرار ---- */
+.btn{position:relative;overflow:hidden;isolation:isolate;border-radius:12px;transition:transform .2s var(--ease),box-shadow .25s var(--ease),filter .2s}
+.btn:not(.ghost):not(.quiet){background-image:linear-gradient(180deg,rgb(255 255 255 / .2),rgb(255 255 255 / 0) 58%);
+  box-shadow:0 12px 24px -14px var(--c,var(--prep)),inset 0 1px 0 rgb(255 255 255 / .35)}
+.btn:not(.ghost):not(.quiet)::after{content:"";position:absolute;top:0;bottom:0;width:46px;inset-inline-start:-80px;background:linear-gradient(100deg,transparent,rgb(255 255 255 / .42),transparent);transform:skewX(-20deg);pointer-events:none}
+.btn[disabled]{box-shadow:none}
+.btn:active{transform:scale(.97)}
+.chip,.pk,.tg,.seg button{transition:transform .18s var(--ease),background .25s,border-color .25s,box-shadow .25s}
+.chip:active,.pk:active,.tg:active{transform:scale(.96)}
+.chip.on,.pk.on{box-shadow:0 8px 18px -12px var(--c)}
+
+/* ---- بطاقات ---- */
+.card,.tile,.rd,.tab{position:relative}
+.card{background:var(--card);border-radius:18px;transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s}
+.tile,.rd{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.card::before,.tile::before,.rd::before,.tab::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;z-index:0;
+  background:radial-gradient(260px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--c,var(--b2)) 16%,transparent),transparent 70%)}
+.sh h2::after{content:"";display:block;height:4px;width:38px;border-radius:4px;margin-top:6px;background:linear-gradient(90deg,var(--c),color-mix(in srgb,var(--c) 25%,transparent))}
+.lvl,.bar,.fgbar{overflow:hidden}
+.bar i,.lvl i,.fgbar i{transform-origin:right}
+.bar i{background-image:linear-gradient(90deg,rgb(255 255 255 / .0),rgb(255 255 255 / .28));}
+
+/* ---- شريط المراحل ---- */
+.nav{background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5)}
+.tab{border-radius:14px;background:var(--card);transition:transform .25s var(--ease),box-shadow .3s var(--ease),border-color .3s,background .3s}
+.tab svg{transition:transform .35s var(--ease)}
+.tab.on svg{transform:scale(1.12) rotate(-4deg)}
+.tab.on{box-shadow:0 12px 24px -14px var(--c),inset 0 -3px 0 var(--c)}
+.tab:active{transform:scale(.96)}
+.tab>*{position:relative;z-index:1}
+
+/* ---- شاشة الرئيسية: بطاقات كبيرة بتوهج ---- */
+.hgrid .tab{--rx:0;--ry:0;border-radius:22px;overflow:hidden;min-height:128px;justify-content:flex-start;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--c) 11%,var(--card)),var(--card) 62%);
+  box-shadow:0 16px 30px -22px var(--c);
+  transform:perspective(800px) rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ry) * 1deg))}
+.hgrid .tab::after{content:"";display:block;position:absolute;inset-inline-end:-34px;top:-34px;width:104px;height:104px;margin:0;border:0;border-radius:50%;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 30%,transparent),transparent);opacity:.7;pointer-events:none}
+.hgrid .tab svg{width:52px;height:52px;padding:11px;border-radius:16px;background:color-mix(in srgb,var(--c) 14%,transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 22%,transparent)}
+.hgrid .tab .cnt{background:linear-gradient(120deg,var(--ink),color-mix(in srgb,var(--c) 70%,var(--ink)));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hgrid .tab .cnt.warn{background:none;color:var(--warn)}
+.hgrid .tab.on{border-color:var(--c)}
+.hgrid .tab:active{transform:scale(.96)}
+.hgrid .glab{letter-spacing:.04em}
+
+/* ---- النوافذ السفلية والتنبيه ---- */
+.back{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);background:rgb(7 10 28 / .5)}
+.sheet{box-shadow:0 -30px 60px -24px rgb(0 0 0 / .5)}
+.sheet::before{content:"";position:absolute;top:7px;inset-inline:0;margin-inline:auto;width:42px;height:4px;border-radius:4px;background:var(--line);z-index:2}
+.bbar{background:var(--glass);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4)}
+#toast{background:linear-gradient(135deg,#1B2370,#293394 55%,#4F5DFF);color:#fff;border-radius:16px;padding:12px 20px;box-shadow:0 18px 40px -14px rgb(41 51 148 / .8),inset 0 1px 0 rgb(255 255 255 / .22);
+  transform:translate(-50%,24px) scale(.94);transition:opacity .25s,transform .45s cubic-bezier(.2,.9,.25,1.15)}
+#toast.show{transform:translate(-50%,0) scale(1)}
+
+/* ---- شاشة الدخول: هيرو داكن بنفس روح الموقع ---- */
+.login{position:fixed;inset:0;z-index:40;overflow:hidden auto;background:#070A1C;--c:#4F5DFF;
+  --surface:rgba(15,20,48,.6);--surface-2:rgba(255,255,255,.07);--line:rgba(255,255,255,.16);--ink:#EDF0FF;--ink-2:#C9CEF5;--muted:#A9B1DD;color:var(--ink)}
+.login::before{content:"";position:absolute;inset:-12%;pointer-events:none;will-change:transform;
+  background:radial-gradient(42vmax 42vmax at 18% 14%,rgb(79 93 255 / .55),transparent 70%),radial-gradient(38vmax 38vmax at 86% 68%,rgb(28 139 214 / .36),transparent 70%),radial-gradient(34vmax 34vmax at 50% 104%,rgb(41 51 148 / .8),transparent 70%)}
+.login::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgb(255 255 255 / .06) 1px,transparent 1px),linear-gradient(90deg,rgb(255 255 255 / .06) 1px,transparent 1px);background-size:56px 56px;opacity:.55;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 35%,#000 20%,transparent 75%)}
+.lcard{position:relative;z-index:1;max-width:380px;padding:32px 26px 26px;border-radius:30px;background:var(--surface);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);
+  box-shadow:0 40px 80px -30px #000,inset 0 1px 0 rgb(255 255 255 / .12)}
+.lcard picture{order:-1;position:relative;display:block;width:104px;height:104px;margin:2px auto 4px}
+.lcard picture::before,.lcard picture::after{content:"";position:absolute;inset:0;border-radius:32px;border:2px solid rgb(141 151 255 / .7);opacity:0;pointer-events:none}
+.lcard .brand-logo{position:relative;z-index:1;width:104px;height:104px;margin:0;border-radius:28px;box-shadow:0 20px 46px -12px rgb(79 93 255 / .85)}
+.lcard h1{font-size:32px;background:linear-gradient(100deg,#fff 0%,#B9C0FF 45%,#6F7DFF 100%);-webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% 100%}
+.lcard input{background:rgba(255,255,255,.07);color:var(--ink);border-color:var(--line);transition:border-color .25s,box-shadow .25s}
+.lcard input:focus{outline:none;border-color:var(--b2);box-shadow:0 0 0 4px rgb(79 93 255 / .28)}
+.lcard .btn{min-height:54px;font-size:17px;border-radius:16px;background-color:var(--b2);background-image:linear-gradient(135deg,#4F5DFF,#293394);box-shadow:0 18px 38px -14px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35)}
+.lcard .note{background:rgb(248 113 113 / .14);color:#FFD5D5}
+
+/* ---- الحركة (تُعطَّل تلقائيًا لمن يفضّل تقليل الحركة) ---- */
+@keyframes x-up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+@keyframes x-down{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
+@keyframes x-pop{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:none}}
+@keyframes x-grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes x-sheet{from{transform:translateY(60px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes x-fade{from{opacity:0}to{opacity:1}}
+@keyframes x-shine{0%{inset-inline-start:-80px}45%,100%{inset-inline-start:130%}}
+@keyframes x-d1{to{transform:translate(8vw,6vh) scale(1.15)}}
+@keyframes x-d2{to{transform:translate(-9vw,-5vh) scale(.9)}}
+@keyframes x-d3{to{transform:translate(5vw,-8vh) scale(1.2)}}
+@keyframes x-sweep{to{transform:translateX(220%)}}
+@keyframes x-ring{0%{transform:scale(1);opacity:.8}100%{transform:scale(2.1);opacity:0}}
+@keyframes x-sheen{to{background-position:100% 0}}
+@keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
+@media (prefers-reduced-motion:no-preference){
+  .fx-bg i:nth-child(1){animation:x-d1 20s ease-in-out infinite alternate}
+  .fx-bg i:nth-child(2){animation:x-d2 24s ease-in-out infinite alternate}
+  .fx-bg i:nth-child(3){animation:x-d3 28s ease-in-out infinite alternate}
+  .top::before{animation:x-sweep 9s ease-in-out infinite alternate}
+  .top .hlogo{animation:x-glow 4s ease-in-out infinite}
+  .btn.block::after,.sfoot .btn.main::after{animation:x-shine 3.8s ease-in-out 1.2s infinite}
+  .btn:not(.ghost):not(.quiet):hover::after{animation:x-shine .9s var(--ease)}
+  .login::before{animation:x-d1 18s ease-in-out infinite alternate}
+  .lcard picture::before{animation:x-ring 3s ease-out infinite}
+  .lcard picture::after{animation:x-ring 3s ease-out 1.5s infinite}
+  .lcard h1{animation:x-sheen 6s ease-in-out infinite alternate}
+  #app.enter .top{animation:x-down .7s var(--ease) both}
+  #app.enter .hgrid .tab,#app.enter .view>*:not(.list),#app.enter .view .list>*,#app.enter .backbar{animation:x-up .65s var(--ease) both;animation-delay:calc(var(--i,0) * 55ms + 80ms - var(--el,0ms))}
+  #app.enter .bar i,#app.enter .lvl i,#app.enter .fgbar i{animation:x-grow .9s var(--ease) both;animation-delay:calc(.3s - var(--el,0ms))}
+  #app.enter .ring{animation:x-pop .7s var(--ease) both;animation-delay:calc(.15s - var(--el,0ms))}
+  #app.enter .lcard{animation:x-up .8s var(--ease) both;animation-delay:calc(.05s - var(--el,0ms))}
+  .back.pop{animation:x-fade .25s both}
+  .sheet.pop{animation:x-sheet .5s cubic-bezier(.2,.9,.25,1.04) both}
+}
+@media (hover:hover){
+  .card:hover,.tile:hover,.rd:hover{transform:translateY(-2px);box-shadow:0 20px 38px -24px var(--glow)}
+  .card:hover{border-color:color-mix(in srgb,var(--c,var(--b2)) 38%,var(--line))}
+  .card:hover::before,.tile:hover::before,.rd:hover::before,.tab:hover::before{opacity:1}
+  .btn:hover{transform:translateY(-2px)}
+  .btn.ghost:hover{border-color:var(--c,var(--b2))}
+  .hgrid .tab:hover{transform:perspective(800px) rotateX(calc(var(--rx) * 1deg)) rotateY(calc(var(--ry) * 1deg)) translateY(-5px);box-shadow:0 26px 40px -22px var(--c)}
+  .nav .tab:hover{border-color:color-mix(in srgb,var(--c) 45%,var(--line))}
+}
+</style>
+
+<div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
 <div class="app" id="app" dir="rtl" lang="ar"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="printArea" dir="rtl" lang="ar"></div>
@@ -1395,13 +1543,72 @@ function footHTML(){
 
 function loginHTML(){
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
-  return '<main class="login" dir="rtl" lang="ar"><div class="lcard"><h1 class="sr">RMY Pro</h1><picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture><p class="meta">سجّل دخولك عشان تكمل</p>'+err+
+  return '<main class="login" dir="rtl" lang="ar"><div class="lcard"><h1>RMY Pro</h1><picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture><p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     '<button class="btn block" data-act="login">دخول</button></div></main>';
 }
+/* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
+var FX=(function(){
+  var lastKey=null,t0=0,tm=0,inited=false;
+  var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function latin(s){return s.replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);});}
+  function countUp(el){
+    var raw=el.textContent.trim(),clean=latin(raw).replace(/[,٬\s]/g,'');
+    if(!/^\d{1,6}$/.test(clean))return;
+    var to=+clean;if(to<2)return;
+    var start=performance.now(),dur=Math.min(900,350+to*6);
+    (function step(now){
+      var k=Math.min(1,(now-start)/dur),e=1-Math.pow(1-k,3);
+      el.textContent=k<1?f(Math.round(to*e)):raw;
+      if(k<1&&el.isConnected)requestAnimationFrame(step);
+    })(start);
+  }
+  function init(){
+    inited=true;
+    var app=document.getElementById('app');
+    if(rm||!window.matchMedia||!matchMedia('(hover:hover)').matches)return;
+    app.addEventListener('pointermove',function(e){
+      var el=e.target.closest&&e.target.closest('.card,.tab,.tile,.rd');if(!el)return;
+      var r=el.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+      el.style.setProperty('--mx',x+'px');el.style.setProperty('--my',y+'px');
+      if(el.classList.contains('tab')&&el.closest('.hgrid')){
+        el.style.setProperty('--ry',((x/r.width-.5)*10).toFixed(1));
+        el.style.setProperty('--rx',((.5-y/r.height)*8).toFixed(1));
+      }
+    },{passive:true});
+    app.addEventListener('pointerout',function(e){
+      var el=e.target.closest&&e.target.closest('.hgrid .tab');
+      if(el){el.style.setProperty('--rx',0);el.style.setProperty('--ry',0);}
+    });
+  }
+  /* بعد كل render: o.key = الشاشة الحالية، o.hadSheet = كان فيه نافذة مفتوحة قبل الرسم */
+  function after(o){
+    var app=document.getElementById('app');if(!app)return;
+    if(!inited)init();
+    var now=performance.now(),changed=o.key!==lastKey;
+    if(changed){
+      lastKey=o.key;t0=now;
+      app.classList.add('enter');
+      clearTimeout(tm);tm=setTimeout(function(){app.classList.remove('enter');app.style.removeProperty('--el');},1600);
+    }
+    if(app.classList.contains('enter')&&!rm){
+      var i=0;
+      [].forEach.call(app.querySelectorAll('.hgrid .tab,.view>*:not(.list),.view .list>*'),function(el){el.style.setProperty('--i',Math.min(i++,12));});
+      app.style.setProperty('--el',Math.round(now-t0)+'ms');
+      if(changed)[].forEach.call(app.querySelectorAll('.today b,.hgrid .cnt'),countUp);
+    }
+    if(!o.hadSheet){
+      var s=app.querySelector('.sheet'),b=app.querySelector('.back');
+      if(s)s.classList.add('pop');if(b)b.classList.add('pop');
+    }
+  }
+  return {after:after};
+})();
+
 function render(){
   applyTheme();
-  if(!authed()){document.getElementById('app').innerHTML=loginHTML();return;}
+  var hadSheet=!!document.querySelector('#app .sheet');
+  if(!authed()){document.getElementById('app').innerHTML=loginHTML();FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   if((U.view!=='settings'||isStaff())&&tabHidden(U.view))U.view='home';
@@ -1411,6 +1618,7 @@ function render(){
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
   var r=document.getElementById('recvIn');if(r)r.focus();
+  FX.after({key:U.view,hadSheet:hadSheet});
   if(ringing())startAlarmLoop();else stopAlarmLoop();
 }
 
