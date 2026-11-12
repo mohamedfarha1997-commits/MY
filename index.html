@@ -1017,7 +1017,9 @@ function pc(b){return b.qty*yieldOf(b.p);}
 function stkQty(b){return b.stk==null?pc(b)-(b.rej||0):b.stk;}
 var IN='';
 function finCard(b){
-  var p=P(b.p),ck=b.fchecks||[],total=pc(b),rej=b.rej||0,good=total-rej,items=finItems(p,b.qty);
+  var p=P(b.p),total=pc(b),rej=b.rej||0,good=total-rej,items=finItems(p,b.qty);
+  if(!b.fdef){b.fdef=1;b.fchecks=items.map(function(x,i){return i;});}
+  var ck=b.fchecks||[];
   return '<article class="card"><div class="bh"><div><span class="bid ltr">'+b.id+'</span><h3 class="bn">'+p.name+' · '+f(total)+' '+p.unit+'</h3>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div><span class="pill c">فحص الجودة</span></div>'+
     '<div class="prog"><span>الفحص '+ck.length+'/'+items.length+'</span><div class="bar"><i style="width:'+(ck.length/items.length*100)+'%"></i></div></div>'+
     chipGroups(items,ck,'fcheck',b.id)+
@@ -1890,7 +1892,7 @@ var ACT={
   },
   startRun:function(d){var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;toast('بدأ تشغيل '+P(b.p).name);},
   skipTimer:function(d){var b=batch(d.id);b.startedAt=Date.now()-dur(b);},
-  toFinish:function(d){var b=batch(d.id);b.stage='finish';b.ringing=false;b.fchecks=[];b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
+  toFinish:function(d){var b=batch(d.id);b.stage='finish';b.ringing=false;b.fdef=1;b.fchecks=finItems(P(b.p),b.qty).map(function(x,i){return i;});b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
   recv:function(d){U.recv={id:d.id,mode:d.m};},
   recvClose:function(){U.recv=null;},
   recvOk:function(){
