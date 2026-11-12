@@ -819,6 +819,7 @@ function stockView(){
 }
 
 function yieldOf(pid){var p=P(pid);return p&&p.yield>0?p.yield:1;}
+function pieceQ(qty,p){return f(qty)+' '+(p?p.unit:'');}
 function pc(b){return b.qty*yieldOf(b.p);}
 function stkQty(b){return b.stk==null?pc(b)-(b.rej||0):b.stk;}
 var IN='';
@@ -1218,7 +1219,7 @@ function alarmHTML(){
 function orderBatches(o){return S.batches.filter(function(b){return b.o===o.id;});}
 function orderNeed(items){
   var o={};
-  items.forEach(function(it){var p=P(it.p);if(!p)return;for(var k in p.recipe)o[k]=r3((o[k]||0)+p.recipe[k]*it.qty);});
+  items.forEach(function(it){var p=P(it.p);if(!p)return;for(var k in p.recipe)o[k]=r3((o[k]||0)+p.recipe[k]*it.qty/yieldOf(it.p));});
   return o;
 }
 function itemsText(o){
@@ -1269,7 +1270,7 @@ function orderCard(o){
         st=from+(b.stage!=='prep'?'عدّى التحضير':(b.withdrawn?'قيد التجهيز '+(b.checks||[]).length+'/'+p.prep.length:'بانتظار سحب المواد'));
         if(x.short>0)st+=' · ناقص '+f(x.short)+' (في النواقص)';
       } else st=from+'ناقص '+f(x.short)+' · محتاج دفعة من النواقص';
-      return '<div class="mrow"><div class="mtop"><div><b>'+p.name+'</b><small>'+st+'</small></div><div class="mq"><b>'+f(x.qty)+'</b> <span>'+p.unit+'</span></div></div>'+(left>0?stagesText(p,'prep',left):'')+'</div>';
+      return '<div class="mrow"><div class="mtop"><div><b>'+p.name+'</b><small>'+st+'</small></div><div class="mq"><b>'+f(x.qty)+'</b> <span>'+p.unit+'</span></div></div>'+(left>0?stagesText(p,'prep',r3(left/yieldOf(p.id))):'')+'</div>';
     }).join('');
     var fin=rows.map(function(x){
       var p=P(x.p),left=x.qty-x.have;if(!p||left<=0)return '';
@@ -1321,11 +1322,11 @@ function printAllHTML(list){
   var h='<h1>الأوردرات المطلوبة</h1><div class="pm">عدد الأوردرات: '+sorted.length+' · طُبع '+tstr(Date.now())+'</div>';
   sorted.forEach(function(o){
     h+='<div class="pg"><h2>'+custName(o)+' — '+o.id+'</h2><div class="pm">تسجيل: '+tstr(o.created)+(o.due?' · معاد التسليم: '+dueStr(o.due):'')+'</div>'+
-      '<table class="pt"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it){var p=P(it.p);return p?'<tr><td>'+p.name+(it.pack?' · '+it.pack:'')+'</td><td class="n">'+mealQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table></div>';
+      '<table class="pt"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it){var p=P(it.p);return p?'<tr><td>'+p.name+(it.pack?' · '+it.pack:'')+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table></div>';
   });
   var prodTot={};
   sorted.forEach(function(o){o.items.forEach(function(it){prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
-  h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(k){var p=P(k);return p?'<tr><td>'+p.name+'</td><td class="n">'+mealQ(prodTot[k],p)+'</td></tr>':'';}).join('')+'</tbody></table>';
+  h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(k){var p=P(k);return p?'<tr><td>'+p.name+'</td><td class="n">'+pieceQ(prodTot[k],p)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
 function monthReportHTML(k,kind){
@@ -1336,7 +1337,7 @@ function monthReportHTML(k,kind){
     list.map(function(o,i){return '<tr><td>'+(i+1)+'</td><td class="ltr">'+o.id+'</td><td>'+custName(o)+'</td><td>'+itemsText(o)+'</td><td>'+tstr(o.created)+'</td><td>'+(o.due?dueStr(o.due):'')+'</td><td>'+(o.deliveredAt?tstr(o.deliveredAt):'')+'</td></tr>';}).join('')+'</tbody></table>';
   var prodTot={};
   list.forEach(function(o){o.items.forEach(function(it){prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
-  h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(p){var pr=P(p);return pr?'<tr><td>'+pr.name+'</td><td class="n">'+mealQ(prodTot[p],pr)+'</td></tr>':'';}).join('')+'</tbody></table>';
+  h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(p){var pr=P(p);return pr?'<tr><td>'+pr.name+'</td><td class="n">'+pieceQ(prodTot[p],pr)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
 function monthsHTML(){
@@ -1409,7 +1410,7 @@ function reservedCard(o){
   var late=!!o.due&&new Date(o.due).getTime()<Date.now();
   var rows=ordShort(o).map(function(x,i){
     var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';
-    return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+mealQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(pk?' · تعبئة: '+esc(pk):'')+'</small></div>'+
+    return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(pk?' · تعبئة: '+esc(pk):'')+'</small></div>'+
       '<span class="pill '+(x.short>0?'low':'ok')+'">'+(x.short>0?'ناقص '+f(x.short):'جاهز')+'</span></div>';
   }).join('');
   return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(custName(o))+'</b>'+
