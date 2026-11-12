@@ -1404,6 +1404,30 @@ function wakeSync(){
     }else if(!need&&WL){WL.release();WL=null;}
   }catch(e){}
 }
+/* system notification: loud + vibrating, shown even when the screen is off or the app is in the background */
+var NOTIF_VIB=[800,200,800,200,800,200,800,200,800];
+function ensureNotifPerm(){
+  try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}
+}
+function showSysNotif(title,body,tag,trigger){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  var opt={body:body,tag:tag,renotify:true,requireInteraction:true,vibrate:NOTIF_VIB,silent:false,icon:(document.querySelector('link[rel="apple-touch-icon"]')||{}).href||undefined,lang:'ar',dir:'rtl'};
+  if(trigger&&window.TimestampTrigger)opt.showTrigger=new TimestampTrigger(trigger);
+  var fallback=function(){if(trigger)return;try{new Notification(title,opt);}catch(e){}};
+  try{
+    if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration){
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        if(reg&&reg.showNotification)reg.showNotification(title,opt).catch(fallback);else fallback();
+      }).catch(fallback);
+    }else fallback();
+  }catch(e){fallback();}
+}
+function notifyDone(b){var p=P(b.p);showSysNotif('خلص الوقت',(p?p.name:'')+' · '+b.id,'done-'+b.id);}
+/* pre-schedule at start time too: browsers that support notification triggers fire it even if the page is closed */
+function scheduleNotif(b){
+  if(!('Notification' in window)||Notification.permission!=='granted'||!window.TimestampTrigger)return;
+  var p=P(b.p);showSysNotif('خلص الوقت',(p?p.name:'')+' · '+b.id,'done-'+b.id,b.startedAt+dur(b));
+}
 function alarmHTML(){
   var rs=S.batches.filter(function(b){return b.ringing;});
   if(!rs.length)return '';
@@ -1890,7 +1914,7 @@ var ACT={
     tombAdd('batches',d.id);S.batches=S.batches.filter(function(x){return x.id!==d.id;});U.confirm=null;
     toast(b.withdrawn?'اتلغت الدفعة ورجعت المواد للمخزن':'اتلغت الدفعة');
   },
-  startRun:function(d){var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;toast('بدأ تشغيل '+P(b.p).name);},
+  startRun:function(d){var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;ensureNotifPerm();scheduleNotif(b);toast('بدأ تشغيل '+P(b.p).name);},
   skipTimer:function(d){var b=batch(d.id);b.startedAt=Date.now()-dur(b);},
   toFinish:function(d){var b=batch(d.id);b.stage='finish';b.ringing=false;b.fdef=1;b.fchecks=finItems(P(b.p),b.qty).map(function(x,i){return i;});b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
   recv:function(d){U.recv={id:d.id,mode:d.m};},
@@ -2013,7 +2037,7 @@ var ACT={
     U.confirm=null;toast('اتلغت الطلبية');
   },
   stopAlarm:function(){S.batches.forEach(function(b){b.ringing=false;});stopAlarmLoop();},
-  testAlarm:function(){unlockAudio();beep();buzz();toast('لو سمعت الصوت وحسيت الاهتزاز يبقى التنبيه شغال');return false;},
+  testAlarm:function(){unlockAudio();beep();buzz();ensureNotifPerm();showSysNotif('تجربة التنبيه','لو وصلك الإشعار بصوت واهتزاز يبقى شغال','test');toast('لو سمعت الصوت وحسيت الاهتزاز يبقى التنبيه شغال');return false;},
   resetAll:function(){
     if(U.confirm!=='reset'){U.confirm='reset';setTimeout(function(){if(U.confirm==='reset'){U.confirm=null;render();}},3000);return;}
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
@@ -2085,7 +2109,7 @@ function tick(){
   updateConn();
   var changed=false;
   S.batches.forEach(function(b){
-    if(b.stage==='prod'&&b.startedAt&&!b.notified&&timerDone(b)){b.notified=true;b.ringing=true;changed=true;}
+    if(b.stage==='prod'&&b.startedAt&&!b.notified&&timerDone(b)){b.notified=true;b.ringing=true;changed=true;notifyDone(b);}
   });
   if(changed){save();render();}
   wakeSync();
