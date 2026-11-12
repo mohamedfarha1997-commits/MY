@@ -197,10 +197,11 @@ button,input{font-family:inherit}
 .fine{margin-top:22px;display:flex;justify-content:space-between;gap:10px;align-items:center;color:var(--muted);font-size:12px}
 #toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60;max-width:calc(100% - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
-.alarm{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:45;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px max(16px,env(safe-area-inset-left,0px));background:#B91C1C;color:#fff;animation:flash .9s steps(2) infinite;box-shadow:0 4px 18px rgb(0 0 0 / .35)}
-.alarm b{font-family:var(--f-disp);font-size:20px}
+.alarm{position:fixed;left:0;right:0;top:env(safe-area-inset-top,0px);z-index:45;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px max(16px,env(safe-area-inset-left,0px));margin:8px 12px 0;border-radius:18px;background:var(--glass);color:var(--ink);border:1px solid var(--line);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);box-shadow:0 18px 36px -18px rgb(16 28 40 / .3),inset 0 1px 0 #fff;animation:x-alarm 2.4s ease-in-out infinite}
+@keyframes x-alarm{0%,100%{box-shadow:0 18px 36px -18px rgb(16 28 40 / .3),0 0 0 0 color-mix(in srgb,var(--prod) 0%,transparent),inset 0 1px 0 #fff}50%{box-shadow:0 18px 36px -18px rgb(16 28 40 / .3),0 0 0 4px color-mix(in srgb,var(--prod) 18%,transparent),inset 0 1px 0 #fff}}
+.alarm b{font-family:var(--f-disp);font-size:20px;color:var(--prod)}
 .alarm div div{font-size:14px;margin-top:2px}
-.alarm button{min-height:50px;padding:0 24px;border:0;border-radius:12px;background:#fff;color:#B91C1C;font-weight:700;font-size:17px;cursor:pointer}
+.alarm button{min-height:50px;padding:0 24px;border:0;border-radius:12px;background:var(--prod);color:#fff;font-weight:700;font-size:17px;cursor:pointer;box-shadow:0 12px 24px -14px var(--prod)}
 @keyframes flash{0%{background:#B91C1C}100%{background:#7F1D1D}}
 @media (prefers-reduced-motion:reduce){.alarm{animation:none}}
 .otag{display:inline-block;margin-top:4px}
