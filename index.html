@@ -345,246 +345,21 @@ function authed(){try{var a=sessionStorage.getItem(AUTH_KEY);return a==='1'||a==
 var STAFF_PIN='0000',STAFF_DEFAULT=['prep','prod','finish'];
 function staffTabs(){try{var v=localStorage.getItem('khat-staff-tabs');return v?JSON.parse(v):STAFF_DEFAULT;}catch(e){return STAFF_DEFAULT;}}
 function isStaff(){try{return sessionStorage.getItem(AUTH_KEY)==='staff';}catch(e){return false;}}
-var FS={h:null,ok:false,at:0,err:null,q:Promise.resolve(),granting:false,armed:false,
-  synced:false,syncing:false,conflicts:0,stockSig:undefined,cache:null,lastOut:{},dirP:{},wt:null};
-var FS_MAIN='khat-entaj-data.json';
-var FS_CONFLICT=/\(\d+\)\.json$/;
-var FS_SYNC_MS=1000;
-
-/* ---------- device id, IndexedDB handle storage ---------- */
-function fsSupported(){return typeof window.showDirectoryPicker==='function'&&typeof indexedDB!=='undefined';}
 function devId(){try{var d=localStorage.getItem('khat-dev');if(!d){d=Math.random().toString(36).slice(2,8);localStorage.setItem('khat-dev',d);}return d;}catch(e){return 'dev';}}
-function idbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('khat-entaj-fs',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv');};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
-function idbGet(k){return idbOpen().then(function(db){return new Promise(function(res,rej){var q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){res(q.result);};q.onerror=function(){rej(q.error);};});});}
-function idbSet(k,v){return idbOpen().then(function(db){return new Promise(function(res,rej){var t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=function(){res();};t.onerror=function(){rej(t.error);};});});}
-
-/* ---------- folder access ---------- */
-function fsList(dir){
-  var out=[],it=dir.values();
-  function nx(){return it.next().then(function(r){if(r.done)return out;out.push(r.value);return nx();});}
-  return nx();
-}
-function fsJSON(dir,fname){
-  return dir.getFileHandle(fname).then(function(fh){return fh.getFile();}).then(function(f){return f.text();}).then(JSON.parse).catch(function(){return null;});
-}
-function fsLoad(){
-  if(!fsSupported())return;
-  idbGet('devid').then(function(v){try{if(v&&!localStorage.getItem('khat-dev'))localStorage.setItem('khat-dev',v);}catch(e){}return idbSet('devid',devId());})
-  .then(function(){return idbGet('dirhandle');}).then(function(h){
-    if(!h)return;FS.h=h;
-    return h.queryPermission({mode:'readwrite'}).then(function(p){FS.ok=p==='granted';});
-  }).then(function(){if(FS.h){render();fsArm();}return syncFromFolder();}).catch(function(){});
-}
-function fsArm(){
-  if(!FS.h||FS.ok||FS.armed)return;FS.armed=true;
-  var evs=['touchend','click','keydown'];
-  function off(){evs.forEach(function(e){document.removeEventListener(e,h,true);});FS.armed=false;}
-  function h(){
-    if(!FS.h||FS.ok){off();return;}
-    if(!authed()||FS.granting)return;
-    ACT.fsGrant({});
-  }
-  evs.forEach(function(e){document.addEventListener(e,h,true);});
-}
-function connOn(){return fsSupported()&&!!FS.h&&FS.ok&&!FS.err;}
-
-/* ---------- the single data file: writes ---------- */
-function canon(x){return JSON.stringify(x,function(k,v){
-  return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
-function fsWriteMain(){
-  if(!FS.h||!FS.ok||!FS.synced)return;
-  clearTimeout(FS.wt);
-  FS.wt=setTimeout(doWriteMain,300);
-}
-function doWriteMain(){
-  if(!FS.h||!FS.ok)return;
-  var body=JSON.stringify({app:'khat-entaj',v:3,savedAt:S.savedAt||0,data:S});
-  if(FS.lastOut[FS_MAIN]===body)return;
-  FS.q=FS.q.then(function(){
-      return FS.h.getFileHandle(FS_MAIN,{create:true}).then(function(fh){
-        return fh.createWritable().then(function(w){
-          return w.write(body).then(function(){return w.close();},function(e){
-            return w.abort().catch(function(){}).then(function(){throw e;});
-          });
-        }).then(function(){return fh.getFile();});
-      });
-    })
-    .then(function(f){FS.lastOut[FS_MAIN]=body;FS.cache={m:f.lastModified,s:f.size,d:JSON.parse(body).data};FS.err=null;FS.at=Date.now();})
-    .catch(function(e){
-      var n=(e&&e.name)||'خطأ';
-      if(n==='NotAllowedError'||n==='SecurityError'){
-        /* the browser dropped write permission for this folder: ask for it again with one tap */
-        FS.ok=false;FS.armed=false;
-        FS.err='الإذن على الفولدر انتهى، اضغط "امنح صلاحية الحفظ" عشان الحفظ يكمل';
-        fsArm();
-        render();
-        return;
-      }
-      FS.err='تعذّر الحفظ في الملف ('+n+')، هيعيد المحاولة';
-      clearTimeout(FS.wt);FS.wt=setTimeout(doWriteMain,3000);
-    });
-  return FS.q;
-}
-function fsWriteRecipes(){S.recipesAt=Date.now();fsWriteMain();}
-function fsWriteStock(){
-  var sig=JSON.stringify([S.stock,S.ready]);
-  if(FS.stockSig===undefined)FS.stockSig=sig;
-  else if(sig!==FS.stockSig){FS.stockSig=sig;S.stockAt=Date.now();}
-  fsWriteMain();
-}
-
-/* ---------- the single data file: reads and merge ---------- */
-function fsReadMain(){
-  return FS.h.getFileHandle(FS_MAIN).then(function(fh){return fh.getFile();}).then(function(f){
-    var c=FS.cache;if(c&&c.m===f.lastModified&&c.s===f.size)return c.d;
-    return f.text().then(function(t){var d=JSON.parse(t).data;FS.cache={m:f.lastModified,s:f.size,d:d};return d;});
-  }).catch(function(){return null;});
-}
-/* old layout (day files + recipes + stock folders), read only when the single file does not exist yet */
-function fsLegacyRead(){
-  return fsList(FS.h).then(function(root){
-    var dirs=root.filter(function(e){return e.kind==='directory';});
-    var dayDirs=dirs.filter(function(d){return /^\d{4}-\d{2}-\d{2}$/.test(d.name);});
-    var recDir=dirs.filter(function(d){return d.name==='الوصفات';})[0];
-    var stDir=dirs.filter(function(d){return d.name==='مخزون الانتاج';})[0];
-    var days=Promise.all(dayDirs.map(function(d){
-      return fsList(d).then(function(files){
-        return Promise.all(files.filter(function(f){return f.kind==='file'&&/\.json$/.test(f.name)&&!FS_CONFLICT.test(f.name);})
-          .map(function(f){return fsJSON(d,f.name);}));
-      });
-    })).then(function(arr){return [].concat.apply([],arr).filter(function(j){return j&&j.data;}).map(function(j){return j.data;});});
-    var rec=recDir?fsJSON(recDir,'khat-entaj-recipes.json'):Promise.resolve(null);
-    var st=stDir?fsJSON(stDir,'khat-entaj-stock.json'):Promise.resolve(null);
-    return Promise.all([days,rec,st]).then(function(r){
-      var list=r[0],rj=r[1],sj=r[2];
-      if(!list.length&&!rj&&!sj)return null;
-      var M=list.length?mergeDays(list):{};
-      if(rj&&rj.data){M.products=rj.data.products||[];M.materials=rj.data.materials||[];M.recipesAt=rj.data.at||0;}
-      if(sj&&sj.data){M.stock=sj.data.stock||{};M.ready=sj.data.ready||{};M.stockAt=sj.data.at||0;}
-      return M;
-    });
-  }).catch(function(){return null;});
-}
 function tombAdd(kind,id){
   S.tomb=S.tomb||{orders:[],batches:[],done:[]};
   S.tomb[kind]=S.tomb[kind]||[];
   if(S.tomb[kind].indexOf(id)<0)S.tomb[kind].push(id);
 }
-function mergeDays(list){
-  var base=list.slice().sort(function(x,y){return (x.savedAt||0)-(y.savedAt||0);});
-  var M={},tomb={orders:{},batches:{},done:{}};
-  base.forEach(function(d){
-    for(var k in d){if(k!=='orders'&&k!=='batches'&&k!=='done'&&k!=='products'&&k!=='materials'&&k!=='tomb')M[k]=d[k];}
-    ((d.tomb&&d.tomb.orders)||[]).forEach(function(i){tomb.orders[i]=1;});
-    ((d.tomb&&d.tomb.batches)||[]).forEach(function(i){tomb.batches[i]=1;});
-    ((d.tomb&&d.tomb.done)||[]).forEach(function(i){tomb.done[i]=1;});
-  });
-  M.tomb={orders:Object.keys(tomb.orders),batches:Object.keys(tomb.batches),done:Object.keys(tomb.done)};
-  function union(key,dead){
-    var map={},order=[];
-    base.forEach(function(d){(d[key]||[]).forEach(function(r){
-      if(dead[r.id])return;
-      if(!map[r.id]){order.push(r.id);}
-      map[r.id]=r;
-    });});
-    return order.map(function(id){return map[id];});
-  }
-  M.orders=union('orders',tomb.orders).map(function(o){
-    var any=base.filter(function(d){return (d.orders||[]).some(function(x){return x.id===o.id&&x.deliveredAt;});})[0];
-    if(any&&!o.deliveredAt){o=Object.assign({},o,{deliveredAt:any.orders.filter(function(x){return x.id===o.id;})[0].deliveredAt});}
-    return o;
-  });
-  M.batches=union('batches',tomb.batches);
-  M.done=union('done',tomb.done);
-  M.savedAt=Math.max.apply(null,[0].concat(base.map(function(d){return d.savedAt||0;})));
-  return M;
-}
-/* products and materials follow the newest recipe edit, stock follows the newest stock change, the rest merges by save time */
-function mergeState(a,b){
-  var list=[a,b].filter(Boolean);
-  var M=mergeDays(list);
-  var byRec=list.slice().sort(function(x,y){return (y.recipesAt||0)-(x.recipesAt||0);})[0];
-  M.products=byRec.products||[];M.materials=byRec.materials||[];M.recipesAt=byRec.recipesAt||0;
-  var byStock=list.slice().sort(function(x,y){return (y.stockAt||0)-(x.stockAt||0);})[0];
-  M.stock=byStock.stock||{};M.ready=byStock.ready||{};M.stockAt=byStock.stockAt||0;
-  return M;
-}
 
-/* ---------- sync: read, merge into this device, write back if needed ---------- */
-function syncFromFolder(){
-  if(!FS.h||!FS.ok)return Promise.resolve();
-  return fsReadMain().then(function(remote){return remote||fsLegacyRead();}).then(function(remote){
-    var local=JSON.parse(JSON.stringify(S));
-    var M=remote?mergeState(remote,local):local;
-    if(canon(M)!==canon(local)){
-      var next=JSON.parse(JSON.stringify(M));
-      Object.keys(S).forEach(function(k){delete S[k];});
-      Object.assign(S,next);
-      try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
-      migrateProducts(S.products);bind(S);
-      if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
-    }
-    FS.stockSig=JSON.stringify([S.stock,S.ready]);
-    FS.synced=true;
-    if(!remote||canon(M)!==canon(remote))fsWriteMain();
-    if(!FS.checked){FS.checked=true;fsConflicts().then(function(l){FS.conflicts=l.length;render();}).catch(function(){});}
-  });
-}
-function fsTick(){
-  if(!FS.h||!FS.ok||!FS.synced||FS.syncing)return;
-  FS.syncing=true;
-  syncFromFolder().catch(function(){}).then(function(){FS.syncing=false;});
-}
-setInterval(fsTick,FS_SYNC_MS);
-document.addEventListener('visibilitychange',function(){if(!document.hidden)fsTick();});
-
-/* ---------- conflict copies (name(1).json) ---------- */
-function fsConflicts(){
-  return fsList(FS.h).then(function(root){
-    var here=root.filter(function(e){return e.kind==='file'&&FS_CONFLICT.test(e.name);}).map(function(e){return {dir:FS.h,name:e.name};});
-    return Promise.all(root.filter(function(e){return e.kind==='directory';}).map(function(d){
-      return fsList(d).then(function(files){
-        return files.filter(function(f){return f.kind==='file'&&FS_CONFLICT.test(f.name);}).map(function(f){return {dir:d,name:f.name};});
-      });
-    })).then(function(parts){return [].concat.apply(here,parts);});
-  });
-}
-function fsCleanupConflicts(){
-  return fsConflicts().then(function(list){
-    return Promise.all(list.map(function(c){return c.dir.removeEntry(c.name);})).then(function(){return list.length;});
-  });
-}
-function connBadge(){
-  if(connOn())return '<span class="pill ok">محفوظ في الفولدر</span>';
-  if(fsSupported()&&FS.h&&!FS.ok)return '<span class="pill low" data-act="fsGrant" style="cursor:pointer">اضغط لتفعيل الحفظ في الفولدر</span>';
-  return '<span class="pill ok">محفوظ على الجهاز</span>';
-}
 function canWrite(){return true;}
 function offNote(){return '';}
 function updateConn(){
-  var el=document.getElementById('connBadge');if(el)el.innerHTML=connBadge();
   var ob=document.getElementById('offBanner');if(ob)ob.innerHTML=offNote();
 }
 function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
 window.addEventListener('online',function(){updateConn();});
 window.addEventListener('offline',function(){updateConn();});
-function fileSaveHTML(){
-  var st,btn;
-  if(!fsSupported()){
-    st='<span class="pill bad">المتصفح مش بيدعم</span>';
-    btn='<div class="meta">البيانات محفوظة على الجهاز نفسه. الحفظ في فولدر على الكمبيوتر بيشتغل من Chrome أو Edge على الكمبيوتر بس، وعلى الموبايل استخدم النسخة الاحتياطية اليدوية.</div>';
-  }else if(!FS.h){
-    st='<span class="pill low">مفيش ملف</span>';
-    btn='<button class="btn sm" data-act="fsPick">اختار الفولدر</button><div class="meta">هيتعمل جوه الفولدر فولدر بتاريخ كل يوم تلقائي، وجواه ملف الجهاز ده. فولدر "الوصفات" فيه ملف الوصفات والخامات، وفولدر "مخزون الانتاج" فيه ملف المخزون لوحده للأمان. التزامن بيحصل بس لما يتغير حاجة.</div>';
-  }else if(!FS.ok){
-    st='<span class="pill low">محتاج صلاحية</span>';
-    btn='<button class="btn sm" data-act="fsGrant">امنح صلاحية الحفظ</button><div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>. ده بيتعمل بضغطة بعد كل مرة تفتح فيها الصفحة.</div>';
-  }else{
-    st='<span class="pill ok">بيحفظ ويزامن كل ثانية</span>';
-    btn='<div class="meta">الملف: <span class="ltr">'+FS.h.name+'</span>'+(FS.at?' · آخر حفظ '+bkAgo(FS.at):'')+'</div>'+(FS.conflicts?'<div class="meta">فيه '+FS.conflicts+' نسخة متعارضة بيتم تجاهلها</div><button class="btn ghost sm" data-act="fsCleanup">'+(U.confirm==="fsc"?'اضغط تاني للحذف':'احذف النسخ المتعارضة')+'</button>':'')+'<div class="acts"><button class="btn ghost sm" data-act="fsSync">زامن الآن</button><button class="btn ghost sm" data-act="fsPick">غيّر الفولدر</button></div>';
-  }
-  return '<section class="card dat" style="--c:var(--stock)"><div class="row"><h3>فولدر الحفظ التلقائي</h3>'+st+'</div>'+(FS.err?'<div class="note">'+FS.err+'</div>':'')+btn+'</section>';
-}
 
 var IC={
   fgstock:'<path d="M4 8h16v11H4z"/><path d="M8 8V5h8v3M8 13h8"/>',
@@ -678,7 +453,7 @@ function load(){
   try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.stock&&o.batches)return fix(o);}}catch(e){}
   return seed();
 }
-function save(){S.savedAt=Date.now();fsWriteStock();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}fsWriteMain();}
+function save(){S.savedAt=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 
 var tt;
 function toast(m){var el=document.getElementById('toast');el.textContent=unesc(m);el.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},2600);}
@@ -693,7 +468,7 @@ function topHTML(){
     '<div class="hl">'+themeBtn()+(isStaff()&&staffTabs().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<img class="hlogo" src="data:image/png;base64,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" alt="RMY Pro" width="44" height="44">'+
     '<div class="today"><b>'+f(total)+'</b><span>جاهز اليوم</span></div>'+
-    '<div class="hsub"><span>'+dateStr()+'</span><span id="connBadge">'+connBadge()+'</span></div>'+
+    '<div class="hsub"><span>'+dateStr()+'</span></div>'+
     '</header>';
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
@@ -1068,7 +843,7 @@ function saveMat(F){
   if(F.edit){Object.assign(M(F.edit),o);toast('تم حفظ التعديلات');}
   else{o.id='m'+Date.now().toString(36);S.materials.push(o);S.stock[o.id]=r3(qty);toast('تمت إضافة '+name);}
   U.form=null;
-fsWriteRecipes();
+
 }
 function saveProd(F){
   var name=F.name.trim();
@@ -1113,27 +888,12 @@ function saveProd(F){
   if(F.edit){var cur=P(F.edit);Object.assign(cur,o);syncProd(cur);toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name);}
   U.form=null;
-fsWriteRecipes();
-}
-function bkAgo(ts){
-  if(!ts)return null;
-  var m=Math.round((Date.now()-ts)/60000);
-  if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' دقيقة';
-  var h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';
-  return 'منذ '+Math.floor(h/24)+' يوم';
+
 }
 function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
-  var lb=S.lastBackup,stale=!lb||Date.now()-lb>7*86400000;
-  var pend='';
-  if(U.pending){
-    var o=U.pending;
-    pend='<div class="note" style="background:color-mix(in srgb,var(--warn) 12%,var(--surface))"><b>تأكيد الاسترجاع</b><div class="meta" style="margin:4px 0 8px">الملف فيه '+o.materials.length+' صنف، '+o.products.length+' منتج، '+o.batches.length+' دفعة. الاسترجاع هيستبدل كل البيانات الحالية.</div><div class="acts"><button class="btn sm" data-act="importOk">استرجع</button><button class="btn ghost sm" data-act="importCancel">إلغاء</button></div></div>';
-  }
-  return '<section class="card dat" style="--c:var(--stock)"><div class="row"><h3>البيانات والنسخ الاحتياطي</h3>'+(stale?'<span class="pill low">'+(lb?'النسخة قديمة':'مفيش نسخة احتياطية')+'</span>':'<span class="pill ok">محفوظة</span>')+'</div>'+
-    '<p class="meta" style="margin:0">'+(lb?'آخر نسخة احتياطية: '+bkAgo(lb)+'. ':'')+'البيانات متخزنة على الجهاز ده بس، فاحتفظ بنسخة احتياطية.</p>'+
-    '<div class="dbtns"><button class="btn sm" data-act="backup">نسخة احتياطية</button><button class="btn ghost sm" data-act="exportXls">تصدير Excel</button><button class="btn ghost sm" data-act="importPick">استرجاع من ملف</button><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>'+pend+'</section>'+
-    ''+installHTML()+fileSaveHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز ده.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>';
+  return installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز ده.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
+    '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
 }
 
 function loginHTML(){
@@ -1525,87 +1285,12 @@ function ordSheetHTML(){
     '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></section>';
 }
 
-/* ---------- export / backup ---------- */
 function stamp(){return new Date().toISOString().slice(0,10);}
-function dl(name,mime,text){
-  var blob=new Blob([text],{type:mime}),a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=name;
-  document.body.appendChild(a);a.click();
-  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
-}
-function xe(v){return esc(unesc(v));}
-function xcell(v){
-  if(typeof v==='number'&&isFinite(v))return '<Cell><Data ss:Type="Number">'+v+'</Data></Cell>';
-  return '<Cell><Data ss:Type="String">'+xe(v==null?'':v)+'</Data></Cell>';
-}
-function xsheet(name,head,rows){
-  var hr='<Row>'+head.map(function(h){return '<Cell ss:StyleID="h"><Data ss:Type="String">'+xe(h)+'</Data></Cell>';}).join('')+'</Row>';
-  var br=rows.map(function(r){return '<Row>'+r.map(xcell).join('')+'</Row>';}).join('');
-  return '<Worksheet ss:Name="'+xe(name)+'"><Table>'+hr+br+'</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayRightToLeft/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane></WorksheetOptions></Worksheet>';
-}
 function tstr(ts){
   if(!ts)return '';
   var d=new Date(ts);function z(n){return String(n).padStart(2,'0');}
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
 }
-var STAGE_AR={prep:'تحضير',prod:'إنتاج',finish:'فنش'};
-function buildXls(){
-  var pn=function(id){var p=P(id);return p?p.name:id;};
-  var mat=MATERIALS.map(function(m){
-    var q=S.stock[m.id]||0;
-    return [m.name,m.cat,m.unit,q,m.min,q<=0?'نافد':(q<m.min?'ناقص':'كافٍ'),m.cost!=null?m.cost:'',m.storage||'',m.exp||'',m.supplier||'',m.notes||''];
-  });
-  var prod=PRODUCTS.map(function(p){
-    var rec=Object.keys(p.recipe).map(function(k){var m=M(k);return (m?unesc(m.name):k)+' '+p.recipe[k]+' '+(m?m.unit:'');}).join(' + ');
-    return [p.name,p.cat,p.unit,p.mins,rec,p.prep.map(unesc).join(' ← '),p.notes||''];
-  });
-  var bat=S.batches.map(function(b){
-    return [b.id,pn(b.p),b.qty,STAGE_AR[b.stage]||b.stage,b.withdrawn?'نعم':'لا',tstr(b.created)];
-  });
-  var done=S.done.map(function(d){
-    return [d.id,pn(d.p),d.qty,d.good,d.rej,d.qty?Math.round(d.good/d.qty*100)/100:0,tstr(d.at)];
-  });
-  var rdy=PRODUCTS.map(function(p){return [p.name,S.ready[p.id]||0,fgReserved(p.id)];});
-  return '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>'+
-    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">'+
-    '<Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#1D4ED8" ss:Pattern="Solid"/></Style></Styles>'+
-    (TRACK()?xsheet('المخزن',['الصنف','التصنيف','الوحدة','الكمية','حد إعادة الطلب','الحالة','تكلفة الوحدة','مكان التخزين','الصلاحية','المورد','ملاحظات'],mat):xsheet('الخامات',['الخامة','التصنيف','الوحدة'],MATERIALS.map(function(m){return [m.name,m.cat,m.unit];})))+
-    xsheet('المنتجات',['المنتج','التصنيف','الوحدة','وقت التشغيل (د)','الوصفة للوحدة','خطوات التجهيز','ملاحظات'],prod)+
-    xsheet('الدفعات الحالية',['رقم الدفعة','المنتج','الكمية','المرحلة','تم السحب','وقت الإنشاء'],bat)+
-    xsheet('سجل الإنتاج',['رقم الدفعة','المنتج','الكمية','جاهز','مرفوض','نسبة الجودة','وقت الاعتماد'],done)+
-    xsheet('مخزن الإنتاج',['المنتج','في المخزن','محجوز للأوردرات'],rdy)+
-    xsheet('الطلبيات',['رقم الطلبية','العميل','الأصناف','الحالة','وقت الإنشاء'],S.orders.map(function(o){return [o.id,o.cust||'',itemsText(o),o.deliveredAt?'مسلّمة':(ordComplete(o)?'جاهزة للتسليم':'مفتوحة'),tstr(o.created)];}))+
-    '</Workbook>';
-}
-var impEl=document.createElement('input');
-impEl.type='file';impEl.accept='.json,application/json';impEl.hidden=true;
-document.body.appendChild(impEl);
-impEl.addEventListener('change',function(){
-  var file=impEl.files&&impEl.files[0];impEl.value='';
-  if(!file)return;
-  var rd=new FileReader();
-  rd.onload=function(){
-    try{
-      var o=JSON.parse(rd.result);
-      if(o&&o.app==='khat-entaj'&&o.data)o=o.data;
-      var ok=o&&o.stock&&typeof o.stock==='object'&&Array.isArray(o.batches)&&Array.isArray(o.done);
-      if(!ok)throw 0;
-      if(!Array.isArray(o.products)||!Array.isArray(o.materials)){
-        (FS.h&&FS.ok?fsReadMain().then(function(r){return r||fsLegacyRead();}):Promise.resolve(null)).then(function(r){
-          if(!r){toast('الملف ده ما فيهوش الوصفات، ومفيش ملف وصفات في الفولدر');return;}
-          o.products=r.products;o.materials=r.materials;
-          U.pending=o;render();toast('راجع بيانات الملف وأكد الاسترجاع');
-        });
-        return;
-      }
-      U.pending=o;render();
-      toast('راجع بيانات الملف وأكد الاسترجاع');
-    }catch(e){toast('الملف مش نسخة احتياطية صحيحة');}
-  };
-  rd.onerror=function(){toast('تعذّرت قراءة الملف');};
-  rd.readAsText(file);
-});
-
 /* ---------- actions ---------- */
 function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}}
 function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
@@ -1685,46 +1370,6 @@ var ACT={
       else{U.loginErr='الرقم السري غلط';}
       render();
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
-    return false;
-  },
-  fsPick:function(){
-    if(!fsSupported()){toast('المتصفح ده مش بيدعم الحفظ في ملف، استخدم Chrome أو Edge على الكمبيوتر');return false;}
-    window.showDirectoryPicker({mode:'readwrite'})
-      .then(function(h){FS.h=h;FS.ok=true;FS.dirP={};FS.cache={};FS.lastOut={};return idbSet('dirhandle',h);})
-      .then(function(){return syncFromFolder();})
-      .then(function(){toast('تم ربط ملف الحفظ، كل التغييرات هتتحفظ فيه');render();})
-      .catch(function(e){if(!e||e.name!=='AbortError')toast('تعذّر فتح الملف');});
-    return false;
-  },
-  fsGrant:function(){
-    if(!FS.h){toast('اختار الفولدر الأول');return false;}
-    if(FS.ok||FS.granting)return false;
-    if(typeof FS.h.requestPermission!=='function'){toast('المتصفح ده مش بيدعم إذن الفولدر');return false;}
-    FS.granting=true;toast('بطلب إذن الفولدر...');
-    FS.h.requestPermission({mode:'readwrite'}).then(function(p){
-      FS.ok=p==='granted';
-      if(!FS.ok){
-        if(p==='denied'){
-          FS.h=null;FS.err=null;
-          idbSet('dirhandle',null).catch(function(){});
-          toast('المتصفح رفض الوصول للفولدر. اختار الفولدر من جديد');
-        }else toast('الإذن ما اتوافقش عليه (الحالة: '+p+')');
-        return;
-      }
-      toast('تم منح الإذن');return syncFromFolder();
-    }).catch(function(e){
-      toast('المتصفح رفض الطلب: '+((e&&e.name)||'خطأ'));
-    }).then(function(){FS.granting=false;render();});
-    return false;
-  },
-  fsCleanup:function(){
-    if(U.confirm!=='fsc'){U.confirm='fsc';setTimeout(function(){if(U.confirm==='fsc'){U.confirm=null;render();}},3000);return;}
-    U.confirm=null;
-    fsCleanupConflicts().then(function(n){toast(n?'اتحذف '+n+' نسخة متعارضة':'مفيش نسخ متعارضة');FS.conflicts=0;return syncFromFolder();}).then(function(){render();}).catch(function(){toast('تعذّر التنظيف');});
-    return false;
-  },
-  fsSync:function(){
-    syncFromFolder().then(function(){toast('تمت المزامنة مع الفولدر');render();}).catch(function(){toast('تعذّرت المزامنة');});
     return false;
   },
   logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
@@ -1829,7 +1474,7 @@ var ACT={
       if(inUse){toast('عليه دفعات أو إنتاج مسجل، ما ينفعش يتحذف');render();return false;}
       S.products=S.products.filter(function(p){return p.id!==F.edit;});delete S.ready[F.edit];
     }
-    bind(S);fsWriteRecipes();U.form=null;toast('تم الحذف');
+    bind(S);U.form=null;toast('تم الحذف');
   },
   sheetClose:function(){U.sheet=null;},
   sheetProd:function(d){U.sheet.p=d.p;},
@@ -1975,7 +1620,7 @@ var ACT={
     S.seq=100;S.oseq=0;
     U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
     bind(S);
-    fsWriteStock();fsWriteRecipes();
+    
     toast('اتقفل شهر '+d.k+' واتمسحت بيانات التشغيل؛ الوصفات ومخزون الإنتاج محفوظين');
   },
   oCancel:function(d){
@@ -1993,32 +1638,15 @@ var ACT={
   },
   stopAlarm:function(){S.batches.forEach(function(b){b.ringing=false;});stopAlarmLoop();},
   testAlarm:function(){unlockAudio();beep();buzz();toast('لو سمعت الصوت وحسيت الاهتزاز يبقى التنبيه شغال');return false;},
-  backup:function(){
-    S.lastBackup=Date.now();
-    dl('khat-entaj-backup-'+stamp()+'.json','application/json',JSON.stringify({app:'khat-entaj',v:1,exported:new Date().toISOString(),data:S},null,1));
-    toast('تم تنزيل النسخة الاحتياطية');
-  },
-  exportXls:function(){
-    dl('khat-entaj-'+stamp()+'.xml','application/xml',buildXls());
-    toast('تم تصدير ملف Excel');
-    return false;
-  },
-  importPick:function(){impEl.click();return false;},
-  importOk:function(){
-    var o=U.pending;if(!o)return false;
-    S=fix(o);fsWriteRecipes();U.pending=null;U.recv=null;U.sheet=null;U.form=null;U.confirm=null;U.filter='all';
-    toast('تم استرجاع البيانات');
-  },
-  importCancel:function(){U.pending=null;},
   resetAll:function(){
     if(U.confirm!=='reset'){U.confirm='reset';setTimeout(function(){if(U.confirm==='reset'){U.confirm=null;render();}},3000);return;}
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
 var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,oShop:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
-  formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,backup:1,exportXls:1,
-  printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,exportBatchMats:1,monthPdf:1,fsGrant:1,fsPick:1,fsSync:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,importPick:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+  formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
+  printOrder:1,printMats:1,printAllOrders:1,exportMatsAll:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
@@ -2093,7 +1721,6 @@ function tick(){
   }
 }
 setInterval(tick,1000);
-fsLoad();
 document.addEventListener('visibilitychange',tick);
 function vvSync(){
   var vv=window.visualViewport,root=document.documentElement;
