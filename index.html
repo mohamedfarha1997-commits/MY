@@ -366,6 +366,7 @@ window.addEventListener('online',function(){updateConn();});
 window.addEventListener('offline',function(){updateConn();});
 
 var IC={
+  reserved:'<path d="M9 4h6v3H9z"/><path d="M6 6h12v15H6z"/><path d="M9 11h6M9 15h6"/>',
   fgstock:'<path d="M4 8h16v11H4z"/><path d="M8 8V5h8v3M8 13h8"/>',
   prep:'<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h4.5"/>',
   prod:'<path d="M12 3c.6 3.2 4.6 5.2 4.6 9.6A4.6 4.6 0 0 1 12 17.2a4.6 4.6 0 0 1-4.6-4.6c0-1.9.9-3.1 2-4.1.1 1.6.9 2.5 1.9 2.8C11.1 8.6 10.9 5.6 12 3z"/><path d="M7 21h10"/>',
@@ -430,7 +431,7 @@ function num(s){
 var S=load();
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
-if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock'].indexOf(h)>-1)U.view=h;
+if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved'].indexOf(h)>-1)U.view=h;
 
 function need(b){var o={},r=P(b.p).recipe;for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
 function shortOf(b){var n=need(b),out=[];if(!TRACK())return out;for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:n[k]-have});}return out;}
@@ -648,7 +649,7 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'الأوردرات المحجوزة',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
@@ -659,7 +660,7 @@ function navItems(){
   var low=MATERIALS.filter(isLow).length;
   var running=by('prod').some(function(b){return b.startedAt&&!timerDone(b);});
   var st=[
-    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية',g:'orders'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية',g:'orders'},
+    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية',g:'orders'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية',g:'orders'},{k:'reserved',l:'محجوزة',n:reservedList().length,u:'طلبية',g:'orders',warn:reservedToday().length>0},
     {k:'prep',l:'تحضير',n:by('prep').length,u:'دفعة'},
     {k:'prod',l:'إنتاج',n:by('prod').length,u:'دفعة',live:running},
     {k:'stock',l:'خامات',n:low,u:'ناقص',warn:low>0},
@@ -671,7 +672,7 @@ function navItems(){
 }
 var GROUP_LABEL={orders:'الأوردرات',recipes:'الوصفات'};
 function navTab(s){
-  return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+(s.k==='shopOrders'?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
+  return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+((s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
     (s.live?'<i class="live" title="قيد التشغيل"></i>':'')+svg(s.k)+'<span class="tl">'+s.l+'</span><span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span><small>'+s.u+'</small></button>';
 }
 function navHTML(){
@@ -1085,7 +1086,7 @@ function render(){
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   if((U.view!=='settings'||isStaff())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -1387,6 +1388,41 @@ function shopProductsHTML(){
       (full?'<details class="det"><summary>عرض الوصفة كاملة</summary>'+full+'</details>':'')+'</article>';
   }).join('')+'</div>':'<div class="empty"><b>مفيش وصفات محل</b><span>ضيف وصفة وحدّدها كوصفة محل عشان تظهر في أوردرات المحل.</span></div>';
   return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+seasonSegHTML()+body;
+}
+/* ---------- الأوردرات المحجوزة (عرض فقط) ---------- */
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function reservedList(){
+  var now=Date.now();
+  function dueT(o){return o.due?new Date(o.due).getTime():Infinity;}
+  return S.orders.filter(function(o){return !o.deliveredAt;}).sort(function(a,b){
+    var da=dueT(a),db=dueT(b),la=da<now,lb=db<now;
+    if(la!==lb)return la?-1:1;
+    if(da!==db)return da<db?-1:1;
+    return (a.created||0)-(b.created||0);
+  });
+}
+function reservedToday(){
+  var t=ymd(new Date());
+  return reservedList().filter(function(o){return o.due&&o.due.slice(0,10)===t;});
+}
+function reservedCard(o){
+  var late=!!o.due&&new Date(o.due).getTime()<Date.now();
+  var rows=ordShort(o).map(function(x){
+    var p=P(x.p)||{name:'صنف محذوف',unit:''};
+    return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+mealQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+'</small></div>'+
+      '<span class="pill '+(x.short>0?'low':'ok')+'">'+(x.short>0?'ناقص '+f(x.short):'جاهز')+'</span></div>';
+  }).join('');
+  return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(custName(o))+'</b>'+
+    '<small>طلبية '+o.id+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+(o.pack?' · '+esc(o.pack):'')+'</small></div>'+
+    '<span class="pill '+(late?'bad':'low')+'">'+(o.due?(late?'متأخر · ':'')+dueStr(o.due):'بدون معاد')+'</span></div>'+rows+'</article>';
+}
+function reservedView(){
+  var list=reservedList(),today=reservedToday();
+  var banner=today.length?'<div class="note" style="background:color-mix(in srgb,var(--warn) 14%,var(--surface))"><b>حفلات هتتسلم النهارده ('+today.length+')</b><div class="meta" style="margin-top:4px">'+
+    today.map(function(o){return esc(custName(o))+' · '+o.due.slice(11,16);}).join(' — ')+'</div></div>':'';
+  var body=list.length?'<div class="list">'+list.map(reservedCard).join('')+'</div>':
+    '<div class="empty"><b>مفيش أوردرات محجوزة</b><span>الأوردرات اللي لسه ما اتسلمتش هتظهر هنا.</span></div>';
+  return head('الأوردرات المحجوزة','عرض فقط · المتأخر فوق، وبعده الأقرب معاد. الأوردر بيختفي لما يتسلم.','')+banner+body;
 }
 function ordersView(kind){
   kind=kind||'cust';
@@ -1836,7 +1872,7 @@ document.addEventListener('input',onField);
 document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
-  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
+  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
 });
 
 /* ---------- live timers ---------- */
