@@ -2026,7 +2026,7 @@ function printAllHTML(list){
 function monthReportHTML(k,kind){
   var title=kind==='shop'?'أوردرات المحل':'الأوردرات';
   var arc=S.archive&&S.archive[lockKey(kind,k)];
-  var list=(arc?arc.orders.slice():ordersOf(kind).filter(function(o){return monthKey(o.created)===k;})).sort(function(a,b){return a.created-b.created;});
+  var list=((arc?arc.orders.slice():[]).concat(ordersOf(kind).filter(function(o){return monthKey(o.created)===k;}))).sort(function(a,b){return a.created-b.created;});
   var h='<h1>تقرير '+title+' — شهر '+k+'</h1><div class="pm">عدد الأوردرات: '+list.length+' · طُبع '+tstr(Date.now())+'</div>';
   h+='<table class="pt"><thead><tr><th>#</th><th>الرقم</th><th>'+(kind==='shop'?'المحل':'العميل')+'</th><th>الأصناف</th><th>التسجيل</th><th>معاد التسليم</th><th>اتسلّم</th></tr></thead><tbody>'+
     list.map(function(o,i){return '<tr><td>'+(i+1)+'</td><td class="ltr">'+sid(o.id)+'</td><td>'+custName(o)+'</td><td>'+itemsText(o)+'</td><td>'+tstr(o.created)+'</td><td>'+(o.due?dueStr(o.due):'')+'</td><td>'+(o.deliveredAt?tstr(o.deliveredAt):'')+'</td></tr>';}).join('')+'</tbody></table>';
@@ -2038,18 +2038,18 @@ function monthReportHTML(k,kind){
 function monthsHTML(){
   return ['cust','shop'].map(function(kind){
     var months={};
-    ordersOf(kind).forEach(function(o){var k=monthKey(o.created);months[k]=months[k]||{n:0,und:0};months[k].n++;if(!o.deliveredAt)months[k].und++;});
+    ordersOf(kind).forEach(function(o){var k=monthKey(o.created);months[k]=months[k]||{n:0,und:0,live:0};months[k].n++;months[k].live++;if(!o.deliveredAt)months[k].und++;});
     Object.keys(S.archive||{}).forEach(function(key){
       var a=S.archive[key];if(!a||a.kind!==kind)return;
-      months[a.month]={n:a.orders.length,und:a.orders.filter(function(o){return !o.deliveredAt;}).length};
+      months[a.month]=months[a.month]||{n:0,und:0,live:0};months[a.month].n+=a.orders.length;
     });
     var keys=Object.keys(months).sort().reverse();
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل شهور '+(kind==='shop'?'أوردرات المحل':'الأوردرات')+'</h3></div>'+
       '<p class="meta" style="margin:0">حسابات النوعين منفصلة. بعد القفل يتم مسح بيانات التشغيل والأوردرات وحركات الخامات، مع الاحتفاظ بالوصفات ومخزون الإنتاج الجاهز. صدّر تقرير PDF قبل القفل لو محتاج تحتفظ به.</p>'+
       keys.map(function(k){
         var m=months[k],locked=!!(S.locks&&S.locks[lockKey(kind,k)]),conf=U.confirm==='lock:'+lockKey(kind,k);
-        var act=locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':
-          '<button class="btn ghost sm" data-act="lockMonth" data-kind="'+kind+'" data-k="'+k+'"'+(m.und?' disabled':'')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>';
+        var act=(locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':'')+
+          (m.live?'<button class="btn ghost sm" data-act="lockMonth" data-kind="'+kind+'" data-k="'+k+'"'+(m.und?' disabled':'')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>':'');
         return '<div class="hist" style="align-items:center"><span><b>'+k+'</b> <span class="meta">· '+m.n+' أوردر'+(m.und?' · لسه '+m.und+' مش متسلّم':'')+'</span></span><span class="acts">'+(locked?'<span class="pill ok">مقفول</span>':'')+act+'</span></div>';
       }).join('')+(keys.length?'':'<p class="meta" style="margin:0">مفيش أوردرات لسه.</p>')+'</section>';
   }).join('');
@@ -2614,7 +2614,8 @@ var ACT={
     U.confirm=null;
     /* أرشفة الشهر: نسخة من أوردرات الشهر قبل ما تتمسح، عشان تفضل ظاهرة وتتطبع */
     S.archive=S.archive||{};
-    S.archive[key]={kind:d.kind,month:d.k,at:Date.now(),orders:JSON.parse(JSON.stringify(S.orders.filter(function(o){return okind(o)===d.kind&&monthKey(o.created)===d.k;})))};
+    var prevArc=S.archive[key];var toArc=JSON.parse(JSON.stringify(S.orders.filter(function(o){return okind(o)===d.kind&&monthKey(o.created)===d.k;})));
+    S.archive[key]={kind:d.kind,month:d.k,at:Date.now(),orders:((prevArc&&prevArc.orders)||[]).concat(toArc)};
     /* إقفال الشهر: امسح أوردرات الشهر ده بس (نفس النوع)، وسيب باقي الشهور والنوع التاني */
     var ids={};
     S.orders.forEach(function(o){if(okind(o)===d.kind&&monthKey(o.created)===d.k)ids[o.id]=1;});
