@@ -1407,13 +1407,13 @@ function reservedToday(){
 }
 function reservedCard(o){
   var late=!!o.due&&new Date(o.due).getTime()<Date.now();
-  var rows=ordShort(o).map(function(x){
-    var p=P(x.p)||{name:'صنف محذوف',unit:''};
-    return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+mealQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+'</small></div>'+
+  var rows=ordShort(o).map(function(x,i){
+    var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';
+    return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+mealQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(pk?' · تعبئة: '+esc(pk):'')+'</small></div>'+
       '<span class="pill '+(x.short>0?'low':'ok')+'">'+(x.short>0?'ناقص '+f(x.short):'جاهز')+'</span></div>';
   }).join('');
   return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(custName(o))+'</b>'+
-    '<small>طلبية '+o.id+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+(o.pack?' · '+esc(o.pack):'')+'</small></div>'+
+    '<small>طلبية '+o.id+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+'</small></div>'+
     '<span class="pill '+(late?'bad':'low')+'">'+(o.due?(late?'متأخر · ':'')+dueStr(o.due):'بدون معاد')+'</span></div>'+rows+'</article>';
 }
 function reservedView(){
