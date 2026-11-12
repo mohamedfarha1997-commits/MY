@@ -415,6 +415,26 @@ function fix(o){
 var UNITS_M=['جرام','علبة','كيس','بيضة','غطا','حبة'];
 var PROD_UNITS=['قطعة','جرام']; /* وحدة إنتاج الصنف: قطع أو وزن */
 function isPiece(p){return !p||!p.unit||p.unit==='قطعة';}
+function isPieceU(u){return !u||u==='قطعة';}
+function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
+/* k = الكمية الجديدة لكل وحدة قديمة */
+function convK(ou,nu,gPer){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;if(!ao&&an)return gPer/an;if(ao&&!an)return ao/gPer;return 1;}
+function prodConvNeedG(F){if(!F.edit)return false;var ou=P(F.edit).unit||'قطعة';return ou!==F.unit&&isPieceU(ou)!==isPieceU(F.unit);}
+/* بتحوّل كل الكميات المرتبطة بالصنف لما وحدته تتغير */
+function convertUnitData(pid,k,nu){
+  var isP=isPieceU(nu);
+  var cv=function(v){if(typeof v!=='number'||!isFinite(v))return v;var x=v*k;return r3(isP?Math.round(x):x);};
+  if(S.ready&&S.ready[pid]!=null)S.ready[pid]=cv(S.ready[pid]);
+  (S.batches||[]).forEach(function(b){
+    if(b.p===pid){if(b.rej!=null)b.rej=cv(b.rej);if(b.stk!=null)b.stk=cv(b.stk);}
+    if(b.drawnC&&b.drawnC[pid]!=null)b.drawnC[pid]=cv(b.drawnC[pid]);
+    if(b.drawn&&b.drawn[pid]!=null)b.drawn[pid]=cv(b.drawn[pid]);
+  });
+  (S.done||[]).forEach(function(d){if(d.p!==pid)return;d.qty=cv(d.qty);if(d.good!=null)d.good=cv(d.good);if(d.rej!=null)d.rej=cv(d.rej);if(d.stk!=null)d.stk=cv(d.stk);});
+  (S.orders||[]).forEach(function(od){(od.items||[]).forEach(function(it){if(it.p!==pid)return;it.qty=cv(it.qty);if(it.got!=null)it.got=cv(it.got);});});
+  PRODUCTS.forEach(function(p){(p.comps||[]).forEach(function(c){if(c.p===pid)c.q=r3(c.q*k);});});
+  if(U.osheet&&U.osheet.items&&U.osheet.items[pid]!=null)U.osheet.items[pid]=cv(U.osheet.items[pid]);
+}
 function qIM(p){return isPiece(p)?'numeric':'decimal';}
 function qFloor(p,v){return isPiece(p)?Math.floor(v):r3(v);}
 var STORES=['مخزن جاف','ثلاجة','فريزر'];
@@ -1279,7 +1299,7 @@ function prodFormHTML(){
     '<div class="fld"><span class="sec-l">ظهور الصنف في الأوردرات</span><div class="seg" style="align-self:flex-start"><button class="'+(F.noOrder?'':'on')+'" data-act="prodOrd" data-v="show">يظهر</button><button class="'+(F.noOrder?'on':'')+'" data-act="prodOrd" data-v="hide">مش يظهر</button></div><div class="meta">لو مش يظهر، الصنف مش هيتضاف في الطلبيات الجديدة، والطلبيات اللي فيها بالفعل مش هتتأثر.</div></div>'+
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
-    '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
+    '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+(prodConvNeedG(F)?fld('convG','وزن القطعة الواحدة (جرام)',{im:'decimal',hint:'هنستخدمه عشان نحوّل الدفعات والمخزون والأوردرات تلقائي'}):'')+
     '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
     '<datalist id="stagel">'+Object.keys(sn).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>'+
     '<div class="meta">كل مرحلة ليها مكوّناتها وخطواتها، والترتيب اللي تحدده هو اللي يظهر. اكتب أي مكوّن جديد وهيتضاف تلقائي.</div>'+
@@ -1359,9 +1379,10 @@ function saveProd(F){
     });
   });
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
-  if(F.edit){var pe=P(F.edit);if((pe.unit||'قطعة')!==nu&&(S.batches.some(function(b){return b.p===F.edit;})||(S.ready[F.edit]||0)>0||S.orders.some(function(od){return od.items.some(function(it){return it.p===F.edit;});}))){toast('الصنف ده فيه دفعات أو مخزون أو أوردرات، ما ينفعش تغيّر وحدته');return false;}}
-  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',comps:comps,noOrder:!!F.noOrder};
-  if(F.edit){var cur=P(F.edit);Object.assign(cur,o);syncProd(cur);toast('تم حفظ التعديلات');}
+  var conv=null;
+  if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var gp=1;if(isPieceU(ou)!==isPieceU(nu)){gp=num(F.convG);if(!isFinite(gp)||gp<=0){toast('اكتب وزن القطعة الواحدة بالجرام عشان نحوّل الكميات');return false;}}var kk=convK(ou,nu,gp);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
+  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',comps:comps,noOrder:!!F.noOrder};
+  if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name);}
   U.form=null;
 
@@ -1963,7 +1984,7 @@ var ACT={
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:p.unit,mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
+    U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
           ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.q),u:m?m.unit:'جرام'};}),
