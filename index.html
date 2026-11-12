@@ -2192,6 +2192,14 @@ function prodLogCardHTML(){
   return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها.</p><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>الدفعة</th><th>الصنف</th><th>الكود</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
 }
 
+function seasonsCardHTML(){
+  var rows=SEASONS.map(function(x){
+    if(x[0]==='normal')return '<tr><td>'+x[1]+'</td><td><span class="meta">دايمًا ظاهر</span></td></tr>';
+    var hid=seasonHidden(x[0]);
+    return '<tr><td>'+x[1]+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="toggleSeason" data-k="'+x[0]+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
+  }).join('');
+  return '<section class="card" style="--c:var(--settings)"><h3>المواسم في الأوردرات</h3><p class="meta" style="margin:0">التبويبات دي بتظهر في الأوردرات وأوردرات المحل بس. لو خفيت موسم، أوردراته مش هتظهر لحد ما ترجعه.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
+}
 function securityCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
