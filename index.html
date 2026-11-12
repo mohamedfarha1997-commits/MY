@@ -453,11 +453,9 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    The file is read and merged every 5 seconds, so changes from other devices show up here.
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
-var FSX={fh:null,ok:false,err:null,at:0,busy:false,armed:false,granting:false,wt:null,q:Promise.resolve()};
 var SYNC_MS=2000,SYNC_WAIT=300;
 var STAMPED=['orders','batches','done','products','materials'];
 var LAST={},LASTN={stock:{},ready:{}};
-function fsSupported(){return typeof window.showOpenFilePicker==='function';}
 function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
 function canon(x){return JSON.stringify(x,function(k,v){
   return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
@@ -537,118 +535,8 @@ function withTimeout(p,ms){
     p.then(function(v){if(!done){done=true;clearTimeout(tm);res(v);}},function(e){if(!done){done=true;clearTimeout(tm);rej(e);}});
   });
 }
-/* before every auto-sync read: reload a fresh handle to the file from storage, so a phone that keeps a stale cached copy (Google Drive) is asked again */
-function refreshHandle(){
-  return idbGet('fh').then(function(h){
-    if(!h||!h.queryPermission)return;
-    return h.queryPermission({mode:'readwrite'}).then(function(p){if(p==='granted')FSX.fh=h;});
-  }).catch(function(){});
-}
-function readOnce(){
-  return refreshHandle().then(function(){return FSX.fh.getFile();}).then(function(f){return f.text();});
-}
-function readFile(tries){
-  tries=tries||0;
-  return withTimeout(readOnce(),8000).then(function(t){return t&&t.trim()?parseTolerant(t).data:null;},function(e){
-    if(e&&e.name==='NotReadableError'&&tries<3)return new Promise(function(res){setTimeout(res,150);}).then(function(){return readFile(tries+1);});
-    throw e;
-  });
-}
-function writeFile(){
-  var body=JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S});
-  FSX.q=FSX.q.then(function(){
-    return withTimeout(FSX.fh.createWritable().then(function(w){
-      return w.truncate(0).then(function(){return w.write(body);}).then(function(){return w.close();},function(e){return w.abort().catch(function(){}).then(function(){throw e;});});
-    }),10000);
-  }).then(function(){FSX.err=null;FSX.at=Date.now();})
-    .catch(function(e){writeFailed(e);});
-  return FSX.q;
-}
-function dropMissingFile(){
-  FSX.fh=null;FSX.ok=false;FSX.armed=false;
-  idbSet('fh',null).catch(function(){});
-  FSX.err='الملف اللي متوصل ما بقاش موجود في المكان ده (ممكن اتمسح أو اتنقل أو اتغيّر اسمه). اختار الملف الحالي من "اختار ملف موجود".';
-  render();
-}
-function writeFailed(e){
-  var n=(e&&e.name)||'';
-  if(n==='NotFoundError'){dropMissingFile();return;}
-  if(n==='NotAllowedError'||n==='SecurityError'){FSX.ok=false;FSX.err='الإذن على الملف انتهى، اضغط أي مكان في الشاشة عشان يتجدد';armAuto();}
-  else FSX.err='تعذّر الحفظ في الملف ('+(n||'خطأ')+')';
-  render();
-}
-
-/* one import-and-export pass: read the file, merge it with this device, write back only if the file lacks something */
-function syncNow(){
-  if(!FSX.fh||!FSX.ok||!LOCAL_READY)return Promise.resolve();
-  if(FSX.busy&&Date.now()-FSX.busyAt<15000)return Promise.resolve();
-  FSX.busy=true;FSX.busyAt=Date.now();
-  return readFile().then(function(remote){
-    if(remote)remote=fix(remote);
-    markEdits();
-    var local=S;
-    var M=remote?mergeStates(local,remote):local;
-    var needWrite=!remote||canon(M)!==canon(remote);
-    if(canon(M)!==canon(local)){
-      S=M;bind(S);baseline();applyTheme();
-      if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();
-    }
-    if(needWrite)writeFile();
-  }).catch(function(e){
-    if(e&&e.name==='NotReadableError')return;
-    if(e&&e.name==='NotFoundError'){dropMissingFile();return;}
-    FSX.err='تعذّر القراءة من الملف ('+((e&&e.name)||'خطأ')+(e&&e.message?': '+e.message:'')+')';render();
-  })
-    .then(function(){FSX.busy=false;});
-}
-function saveSoon(){if(!FSX.fh&&!GD.on)return;clearTimeout(FSX.wt);FSX.wt=setTimeout(function(){syncNow();gdSync();},SYNC_WAIT);}
-function attachFile(h){
-  FSX.fh=h;FSX.err=null;FSX.ok=false;
-  return idbSet('fh',h).catch(function(){})
-    .then(function(){return h.requestPermission({mode:'readwrite'});})
-    .then(function(p){
-      FSX.ok=p==='granted';
-      if(FSX.ok){toast('تم ربط الملف');return syncNow();}
-      armAuto();toast('اضغط أي مكان في الشاشة عشان أطلب الإذن');
-    })
-    .catch(function(){armAuto();toast('اضغط أي مكان في الشاشة عشان أطلب الإذن');})
-    .then(function(){render();});
-}
-/* the browser needs a tap before it allows writing: take the first tap anywhere and ask for permission then */
-function armAuto(){
-  if(FSX.armed||!FSX.fh||FSX.ok)return;
-  FSX.armed=true;
-  var evs=['touchend','click','keydown'];
-  function off(){evs.forEach(function(e){document.removeEventListener(e,tap,true);});FSX.armed=false;}
-  function tap(){
-    if(!FSX.fh||FSX.ok){off();return;}
-    if(FSX.granting)return;
-    FSX.granting=true;
-    FSX.fh.requestPermission({mode:'readwrite'}).then(function(p){
-      FSX.ok=p==='granted';
-      if(FSX.ok){FSX.err=null;off();return syncNow();}
-      off();FSX.err='المتصفح ما وافقش على الإذن، اضغط "اختار ملف موجود" من الإعدادات';
-    }).catch(function(){off();FSX.err='المتصفح رفض الإذن، اضغط "اختار ملف موجود" من الإعدادات';})
-      .then(function(){FSX.granting=false;render();});
-  }
-  evs.forEach(function(e){document.addEventListener(e,tap,true);});
-}
-function fsStart(){
-  baseline();
-  gdStart();
-  if(!fsSupported())return;
-  idbGet('fh').then(function(h){
-    if(!h)return;
-    FSX.fh=h;
-    return h.queryPermission({mode:'readwrite'}).then(function(p){
-      FSX.ok=p==='granted';
-      if(FSX.ok)return syncNow();
-      armAuto();
-    });
-  }).catch(function(){}).then(function(){render();});
-  setInterval(function(){syncNow();},SYNC_MS);
-  document.addEventListener('visibilitychange',function(){if(!document.hidden)syncNow();});
-}
+function saveSoon(){if(!GD.on)return;clearTimeout(GD.wt);GD.wt=setTimeout(gdSync,SYNC_WAIT);}
+function fsStart(){baseline();gdStart();}
 
 /* ---------- Google Drive sync (Drive API, drive.file scope) ----------
    The app keeps one file (khat-entaj.json) in the user's Drive and syncs with it every SYNC_MS.
@@ -684,6 +572,11 @@ function gdRequest(){
 }
 function gdTokCb(r){
   if(r&&r.access_token){
+    try{if(!google.accounts.oauth2.hasGrantedAllScopes(r,GD_SCOPE)){
+      GD.tok=null;GD.exp=0;GD.needTap=true;GD.ok=false;GD.err='لازم تعلّم على مربع الوصول لـ Drive في شاشة جوجل، وبعدين اضغط زامن الآن';
+      if(GD.pend){var z=GD.pend;GD.pend=null;z.rej({code:'tap'});}
+      GD.shown=null;gdPaint();return;
+    }}catch(x){}
     GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;
     try{sessionStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
     if(GD.pend){var p=GD.pend;GD.pend=null;p.res();}else gdSync();
@@ -728,7 +621,10 @@ function gdApi(url,opt){
   opt.cache='no-store';
   return withTimeout(fetch(url,opt),20000).then(function(r){
     if(r.status===401){GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
-    if(!r.ok)return r.text().then(function(t){throw {code:r.status,msg:t.slice(0,160)};});
+    if(!r.ok)return r.text().then(function(t){
+      var why='';try{var j=JSON.parse(t).error||{};why=(j.errors&&j.errors[0]&&j.errors[0].reason)||(j.details&&j.details[0]&&j.details[0].reason)||j.status||'';}catch(x){}
+      throw {code:r.status,reason:why,msg:t.slice(0,160)};
+    });
     return r;
   });
 }
@@ -767,7 +663,12 @@ function gdFail(e){
   var c=e&&e.code;GD.ok=false;
   if(c==='tap'||c===401){GD.needTap=true;GD.err='محتاج تأكيد من جوجل، اضغط أي مكان في الشاشة';gdArm();}
   else if(c===404){GD.id=null;GD.ver=null;gdSaveCfg();GD.err='الملف اتمسح من درايف، هيتعمل من جديد';}
-  else if(c===403)GD.err='جوجل رفض الصلاحية. تأكد إن Drive API مفعّل وإن إيميلك مضاف كـ Test user';
+  else if(c===403){
+    var rs=String((e&&e.reason)||'');
+    if(/accessNotConfigured|SERVICE_DISABLED/i.test(rs))GD.err='Drive API مش مفعّل في مشروع الكونسول. فعّله من APIs & Services ثم Library ثم Google Drive API';
+    else if(/insufficient|scope/i.test(rs)){GD.err='صلاحية Drive ما اتأكدتش. افصل واربط تاني، وعلّم على مربع Drive في شاشة جوجل';GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(x){}}
+    else GD.err='جوجل رفض الطلب ('+(rs||'403')+')';
+  }
   else if(e&&e.message==='timeout')GD.err='الاتصال بجوجل بطيء، هيحاول تاني';
   else if(!navigator.onLine)GD.err='مفيش إنترنت';
   else GD.err='خطأ في الاتصال بجوجل'+(c?' ('+c+')':'');
@@ -820,11 +721,7 @@ function gdCardHTML(){
 /* header and settings */
 function linkBadge(){
   if(GD.on)return gdBadge();
-  if(!fsSupported())return '<span class="pill bad">المتصفح مش بيدعم الملف</span>';
-  if(FSX.fh&&FSX.ok&&!FSX.err)return '<span class="pill ok" data-act="fsNow">متصل</span>';
-  if(FSX.fh&&FSX.ok)return '<span class="pill low" data-act="fsNow" title="'+esc(FSX.err||'')+'">متصل مع خطأ</span>';
-  if(FSX.fh)return '<span class="pill low" data-act="fsConnect">غير متصل</span>';
-  return '<span class="pill bad" data-act="fsConnect">غير متصل: اختار الملف</span>';
+  return '<span class="pill bad" data-act="tab" data-v="settings">غير متصل بدرايف</span>';
 }
 function exportBackup(){
   var body=JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S},null,2);
@@ -839,18 +736,6 @@ function parseBackupText(t){
   var o=parseTolerant(t),d=(o&&o.data)?o.data:o;
   if(!d||!d.stock||!d.batches)throw new Error('bad');
   return {d:d,at:(o&&o.savedAt)||d.savedAt||0};
-}
-function readFresh(h){
-  /* read the file twice with a pause between, and keep the newest copy: the first read can return a cached snapshot */
-  function one(){return withTimeout(h.getFile().then(function(f){return f.text();}),12000).then(parseBackupText);}
-  return one().then(function(a){
-    return new Promise(function(res){setTimeout(res,700);}).then(one).then(function(b){return b.at>a.at?b:a;},function(){return a;});
-  });
-}
-function applyBackup(r){
-  S=fix(r.d);bind(S);baseline();applyTheme();
-  save();render();
-  toast('تم استيراد النسخة'+(r.at?' (بتاريخ '+tstr(r.at)+')':''));
 }
 function importFromInput(){
   var inp=document.createElement('input');
@@ -867,43 +752,11 @@ function importFromInput(){
   };
   inp.click();
 }
-function importBackup(){
-  if(!fsSupported()){
-    toast('لو الملف على جوجل درايف: افتحه الأول وحمّله على الجهاز عشان تضمن إنه آخر نسخة');
-    importFromInput();return;
-  }
-  /* 1) refresh the location: always ask the browser for a fresh handle to the file, starting from the linked file's folder */
-  var opts={types:[{description:'ملف الحفظ',accept:{'application/json':['.json']}}],multiple:false};
-  if(FSX.fh)opts.startIn=FSX.fh;
-  toast('اختار الملف عشان نحدّث المكان ونقرأ آخر نسخة');
-  window.showOpenFilePicker(opts).then(function(hs){
-    return readFresh(hs[0]).then(function(r){
-      /* 2) if a linked file exists, compare with it and warn when the picked copy is older */
-      var cmp=FSX.fh&&FSX.ok?readFresh(FSX.fh).catch(function(){return null;}):Promise.resolve(null);
-      return cmp.then(function(c){
-        if(c&&c.at>r.at&&!window.confirm('الملف اللي اخترته أقدم من الملف المتوصل ('+tstr(r.at)+' مقابل '+tstr(c.at)+'). تكمل بالأقدم؟'))return;
-        applyBackup(r);
-      });
-    });
-  }).catch(function(e){
-    if(e&&e.name==='AbortError')return;
-    if(e&&e.message==='bad'){toast('الملف ده مش نسخة صالحة');return;}
-    toast('تعذّر قراءة الملف، جرّب تاني أو اختار ملف من الجهاز');
-  });
-}
+function importBackup(){importFromInput();}
 function backupCardHTML(){
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>نسخة احتياطية</h3></div>'+
     '<p class="meta" style="margin:0">البيانات بتتحفظ على الجهاز تلقائي. تقدر تنزّل نسخة وتفتحها على جهاز تاني.</p>'+
     '<div class="dbtns"><button class="btn sm" data-act="exportBackup">تنزيل نسخة</button><button class="btn ghost sm" data-act="importBackup">استيراد نسخة</button></div></section>';
-}
-/* the file-sync card only shows on browsers that support it */
-function fileCardHTML(){
-  if(!fsSupported())return '';
-  var name=FSX.fh?FSX.fh.name:'';
-  return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>ملف الحفظ</h3>'+linkBadge()+'</div>'+
-    '<p class="meta" style="margin:0">'+(name?'الملف: <span class="ltr">'+esc(name)+'</span>':'مفيش ملف متوصل، البيانات على الجهاز لحد ما توصل ملف.')+'</p>'+
-    (FSX.err?'<div class="note">'+esc(FSX.err)+'</div>':'')+
-    '<div class="dbtns"><button class="btn sm" data-act="fsConnect">اختار ملف موجود</button><button class="btn ghost sm" data-act="fsNew">ملف جديد</button><button class="btn ghost sm" data-act="fsNow">زامن الآن</button></div></section>';
 }
 function idbOpen(){return new Promise(function(res,rej){var r=indexedDB.open('khat-entaj-fs',1);r.onupgradeneeded=function(){r.result.createObjectStore('kv');};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
 function idbGet(k){return idbOpen().then(function(db){return new Promise(function(res,rej){var q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=function(){res(q.result);};q.onerror=function(){rej(q.error);};});});}
@@ -1380,7 +1233,7 @@ function saveProd(F){
 }
 function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
-  return backupCardHTML()+gdCardHTML()+fileCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
+  return backupCardHTML()+gdCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
 }
 
@@ -1857,21 +1710,6 @@ var ACT={
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
     return false;
   },
-  fsConnect:function(){
-    if(!fsSupported()){toast('المتصفح ده مش بيدعم ملف الحفظ');return false;}
-    window.showOpenFilePicker({types:[{description:'ملف الحفظ',accept:{'application/json':['.json']}}],multiple:false})
-      .then(function(hs){return attachFile(hs[0]);})
-      .catch(function(e){if(!e||e.name!=='AbortError')toast('تعذّر فتح الملف');});
-    return false;
-  },
-  fsNew:function(){
-    if(!fsSupported()){toast('المتصفح ده مش بيدعم ملف الحفظ');return false;}
-    window.showSaveFilePicker({suggestedName:'khat-entaj.json',types:[{description:'ملف الحفظ',accept:{'application/json':['.json']}}]})
-      .then(function(h){return attachFile(h);})
-      .catch(function(e){if(!e||e.name!=='AbortError')toast('تعذّر إنشاء الملف');});
-    return false;
-  },
-  fsNow:function(){syncNow().then(function(){render();});return false;},
   gdConnect:function(){
     if(!GD.tc){gdLoadGis();toast('استنى ثانية لحد ما جوجل يحمّل وجرّب تاني');return false;}
     GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
