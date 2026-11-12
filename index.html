@@ -562,7 +562,15 @@ async function checkPin(p){
   return hex===AUTH_HASH;
 }
 function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
-function usersList(){S.users=S.users||[];return S.users;}
+var SEED_USERS=[
+    {id:'U512',name:'كريم',code:'512',salt:'865b1776b6f7fcae1bf38a89e9f0b192',h:'5eaa94d61dd481fdca6e30fb7d0f4972160bc270c8a0a4d6801f91d564d5e0bd',iter:200000},
+    {id:'U879',name:'عبدالله',code:'879',salt:'f0fe856c05b1ea0b60a59bef25762ad2',h:'053272f74ab7a7b97ba4a5e6f6954139c486ea5cf685c216c3f64125a88737a5',iter:200000}
+];
+function usersList(){
+  S.users=S.users||[];
+  SEED_USERS.forEach(function(u){if(!S.users.some(function(x){return x.code===u.code;}))S.users.push(Object.assign({},u));});
+  return S.users;
+}
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
 function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
 function limited(){return !!sessionCode();}
@@ -1711,7 +1719,7 @@ function saveProd(F){
   U.form=null;
 
 }
-function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+usersCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
+function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
 /* كل كارت في الإعدادات بيتقفل ويتفتح بالضغط على عنوانه */
 function foldSections(html){
   return String(html).split(/(?=<section )/).map(function(part){return foldable(part);}).join('');
