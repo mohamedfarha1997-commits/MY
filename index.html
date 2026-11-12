@@ -13,6 +13,7 @@ if('serviceWorker' in navigator){window.addEventListener('load',function(){navig
 .fgbar i{display:block;height:100%;transition:width .3s}
 .fgbar .f{background:#16a34a}
 .fgbar .r{background:var(--warn)}
+.fgc{cursor:pointer}.fgc.sel{border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--surface))}.fgzbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
 @media (max-width:360px){.fgcards{grid-template-columns:1fr}}
 </style></head><body>
 <title>RMY Pro</title>
@@ -1192,10 +1193,17 @@ function lotsHTML(p){
 function fgCardHTML(p,q,res){
   var tot=q+res,pct=tot>0?Math.round(q/tot*100):0;
   var st=q>0?'<span class="pill ok">متاح</span>':(res>0?'<span class="pill low">محجوز كله</span>':'<span class="pill bad">نافد</span>');
-  return '<div class="fgc"><div class="mtop"><b>'+p.name+'</b>'+st+'</div>'+
+  var on=(U.fgSel||[]).indexOf(p.id)>-1;
+  return '<div class="fgc'+(on?' sel':'')+'" data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"><div class="mtop"><b>'+p.name+'</b>'+st+'</div>'+
     '<div class="fgn">'+f(q)+' <span class="meta">'+p.unit+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
     '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+'</div>';
+}
+function fgZeroBar(){
+  var n=(U.fgSel||[]).length;
+  if(!n)return '';
+  var conf=U.confirm==='fgzero';
+  return '<div class="fgzbar"><span class="meta">محدد '+n+' صنف</span><span class="acts"><button class="btn ghost sm" data-act="fgClear">إلغاء التحديد</button><button class="btn '+(conf?'':'quiet ')+'sm" data-act="fgZero">'+(conf?'اضغط تاني للتأكيد':'صفّر المخزون')+'</button></span></div>';
 }
 function fgStockView(){
   var rows=fgShortRows(),raw=rawShortList(),nS=rows.length+raw.length,F=U.fgf||'all';
@@ -1212,7 +1220,8 @@ function fgStockView(){
   if(F==='short') body=fgShortHTML(rows,raw);
   else if(!PRODUCTS.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
   else body='<div class="fgcards">'+PRODUCTS.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
-  return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+body;
+  var zb=F==='all'?fgZeroBar():'';
+  return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+zb+body;
 }
 
 function sheetHTML(){
@@ -2084,6 +2093,23 @@ var ACT={
     toast('اتعتمد '+f(good)+' '+p.unit+' من '+sid(b.id)+' · دخل المخزن '+f(stk));
   },
   fgFilter:function(d){U.fgf=d.v;},
+  fgSel:function(d){
+    U.fgSel=U.fgSel||[];var i=U.fgSel.indexOf(d.p);
+    if(i>-1)U.fgSel.splice(i,1);else U.fgSel.push(d.p);
+    U.confirm=null;
+  },
+  fgClear:function(){U.fgSel=[];U.confirm=null;},
+  fgZero:function(){
+    var ids=U.fgSel||[];if(!ids.length)return;
+    if(U.confirm!=='fgzero'){
+      U.confirm='fgzero';
+      setTimeout(function(){if(U.confirm==='fgzero'){U.confirm=null;render();}},3000);
+      return;
+    }
+    ids.forEach(function(id){S.ready[id]=0;});
+    toast('اتصفر مخزون '+ids.length+' صنف');
+    U.confirm=null;U.fgSel=[];
+  },
   cleanStart:function(){
     if(U.confirm!=='clean'){U.confirm='clean';setTimeout(function(){if(U.confirm==='clean'){U.confirm=null;render();}},3000);return;}
     S.materials=[];S.products=[];S.stock={};S.batches=[];S.done=[];S.ready={};S.demo=false;S.seq=100;S.orders=[];S.oseq=0;
@@ -2182,7 +2208,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
