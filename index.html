@@ -1142,17 +1142,22 @@ function fgStockView(){
 
 function sheetHTML(){
   if(!U.sheet)return '';
-  var s=U.sheet,fake={p:s.p,qty:s.qty},n=need(fake),sh=shortOf(fake),p=P(s.p);
-  var shk={};sh.forEach(function(x){shk[x.k]=x.lack;});
+  var s=U.sheet,n={},sh=[];
+  s.sel.forEach(function(id){var nd=need({p:id,qty:s.q[id]||1});for(var k in nd)n[k]=r3((n[k]||0)+nd[k]);});
+  if(TRACK())for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])sh.push({k:k,lack:n[k]-have});}
   var rows=matRows(n,null);
+  var qrows=s.sel.map(function(id){
+    var x=P(id),q=s.q[id]||1;
+    return '<div class="qrow" style="justify-content:space-between"><b>'+x.name+'</b><div class="step"><button data-act="sheetQty" data-p="'+id+'" data-d="-1"'+(q<=1?' disabled':'')+' aria-label="أنقص">−</button><input type="text" inputmode="numeric" data-sq="'+id+'" value="'+q+'" aria-label="الكمية" style="width:56px;height:40px;text-align:center;border:0;background:transparent;color:var(--ink);font-size:16px;font-weight:600"><button data-act="sheetQty" data-p="'+id+'" data-d="1" aria-label="زوّد">+</button></div><span class="meta">وجبة</span></div>';
+  }).join('');
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
-    '<div class="pgrid">'+PRODUCTS.map(function(x){return '<button class="pk'+(x.id===s.p?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+x.name+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
-    '<div class="qrow"><div class="step"><button data-act="sheetQty" data-d="-1"'+(s.qty<=1?' disabled':'')+' aria-label="أنقص">−</button><b>'+s.qty+'</b><button data-act="sheetQty" data-d="1" aria-label="زوّد">+</button></div><span class="meta">'+p.unit+'</span>'+
-    [5,10,20,50].map(function(q){return '<button class="chip'+(s.qty===q?' on':'')+'" data-act="sheetSet" data-v="'+q+'">'+q+'</button>';}).join('')+'</div>'+
-    '<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة للدفعة</div>'+rows+'</div>'+
+    '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
+    '<div class="pgrid">'+PRODUCTS.map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+x.name+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
+    (qrows?'<div class="stack">'+qrows+'</div>':'')+
+    (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length?'<div class="note">في نقص في '+sh.length+(sh.length>2?' أصناف':' صنف')+'. تقدر تنشئ الدفعة وتستلم النقص قبل السحب.</div>':'')+
-    '<button class="btn block" data-act="sheetCreate">أنشئ الدفعة</button></section>';
+    '<button class="btn block" data-act="sheetCreate"'+(s.sel.length?'':' disabled')+'>'+(s.sel.length>1?'أنشئ '+s.sel.length+' دفعات':'أنشئ الدفعة')+'</button></section>';
 }
 function opts(a,sel){return a.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>';}).join('');}
 function fld(key,label,o){
@@ -1847,7 +1852,7 @@ var ACT={
   matsToggle:function(){U.matsOpen=!U.matsOpen;render();return false;},
   newBatch:function(){
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
-    U.form=null;U.sheet={p:PRODUCTS[0].id,qty:1};
+    U.form=null;U.sheet={sel:[],q:{}};
   },
   newMat:function(){U.sheet=null;U.confirm=null;U.form={kind:'mat',edit:null,name:'',cat:'',unit:'كجم',min:'',qty:'',storage:'مخزن جاف',exp:'',supplier:'',notes:''};},
   editMat:function(d){
@@ -1898,17 +1903,25 @@ var ACT={
     bind(S);U.form=null;toast('تم الحذف');
   },
   sheetClose:function(){U.sheet=null;},
-  sheetProd:function(d){U.sheet.p=d.p;},
-  sheetQty:function(d){U.sheet.qty=Math.max(1,Math.min(500,U.sheet.qty+Number(d.d)));},
-  sheetSet:function(d){U.sheet.qty=Number(d.v);},
+  sheetProd:function(d){
+    var sh=U.sheet,i=sh.sel.indexOf(d.p);
+    if(i>-1){sh.sel.splice(i,1);}else{sh.sel.push(d.p);if(!sh.q[d.p])sh.q[d.p]=1;}
+  },
+  sheetQty:function(d){var sh=U.sheet;sh.q[d.p]=Math.max(1,Math.min(500,(sh.q[d.p]||1)+Number(d.d)));},
   sheetCreate:function(){
-    var s=U.sheet;S.seq++;var id='B-'+S.seq+'-'+devId();
-    var nb={id:id,p:s.p,qty:s.qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()};
-    var tgt=fgShortRows().filter(function(r){return r.x.p===s.p;}).sort(function(a,b){return String(a.o.due||'').localeCompare(String(b.o.due||''));})[0];
-    if(tgt)nb.o=tgt.o.id;
-    S.batches.push(nb);
-    if(tgt)toast('الدفعة اتحجزت للطلبية '+tgt.o.id);
-    U.sheet=null;toast('تم إنشاء الدفعة '+id);go('prep');
+    var s=U.sheet;
+    if(!s.sel.length){toast('اختار صنف واحد على الأقل');return false;}
+    var ids=[],held=0;
+    s.sel.forEach(function(pid){
+      S.seq++;var id='B-'+S.seq+'-'+devId();
+      var nb={id:id,p:pid,qty:s.q[pid]||1,stage:'prep',withdrawn:false,checks:[],created:Date.now()};
+      var tgt=fgShortRows().filter(function(r){return r.x.p===pid&&!S.batches.some(function(b){return b.o===r.o.id&&b.p===pid;});}).sort(function(a,b){return String(a.o.due||'').localeCompare(String(b.o.due||''));})[0];
+      if(tgt){nb.o=tgt.o.id;held++;}
+      S.batches.push(nb);ids.push(id);
+    });
+    U.sheet=null;
+    toast(ids.length>1?'تم إنشاء '+ids.length+' دفعات'+(held?' · '+held+' منها اتحجزت لأوردرات':''):'تم إنشاء الدفعة '+ids[0]+(held?' · اتحجزت لطلبية':''));
+    go('prep');
   },
   withdraw:function(d){
     var b=batch(d.id);if(!b)return;
@@ -2053,7 +2066,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,sheetSet:1,
+var READ_ACTS={tab:1,fgFilter:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,toggleStaffTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
@@ -2077,6 +2090,7 @@ document.addEventListener('keydown',function(e){
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
+  if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>=1)?Math.min(500,Math.floor(sv)):1;return;}
   if(d.opk!==undefined&&U.osheet){U.osheet.pack=t.value;return;}
   if(d.oq!==undefined&&U.osheet){var ov=num(t.value);U.osheet.items[d.oq]=(isFinite(ov)&&ov>=0)?Math.min(99999,Math.floor(ov)):0;return;}
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
@@ -2108,7 +2122,7 @@ function onField(e){
 }
 document.addEventListener('input',onField);
 document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;
-  if(ds&&ds.oadd!==undefined){var v=e.target.value;if(v&&U.osheet){U.osheet.added=U.osheet.added||[];if(U.osheet.added.indexOf(v)<0)U.osheet.added.push(v);if(U.osheet.items[v]===undefined)U.osheet.items[v]=0;}render();return;}if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
+  if(ds&&ds.oadd!==undefined){var v=e.target.value;if(v&&U.osheet){U.osheet.added=U.osheet.added||[];if(U.osheet.added.indexOf(v)<0)U.osheet.added.push(v);if(U.osheet.items[v]===undefined)U.osheet.items[v]=0;}render();return;}if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.sq!==undefined){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
