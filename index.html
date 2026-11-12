@@ -573,7 +573,7 @@ function writeFailed(e){
 
 /* one import-and-export pass: read the file, merge it with this device, write back only if the file lacks something */
 function syncNow(){
-  if(!FSX.fh||!FSX.ok)return Promise.resolve();
+  if(!FSX.fh||!FSX.ok||!LOCAL_READY)return Promise.resolve();
   if(FSX.busy&&Date.now()-FSX.busyAt<15000)return Promise.resolve();
   FSX.busy=true;FSX.busyAt=Date.now();
   return readFile().then(function(remote){
@@ -650,7 +650,40 @@ function linkBadge(){
   if(FSX.fh)return '<span class="pill low" data-act="fsConnect">غير متصل</span>';
   return '<span class="pill bad" data-act="fsConnect">غير متصل: اختار الملف</span>';
 }
+function exportBackup(){
+  var body=JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S},null,2);
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([body],{type:'application/json'}));
+  a.download='khat-entaj-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
+}
+function importBackup(){
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0];if(!f)return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{
+        var o=JSON.parse(rd.result),d=(o&&o.data)?o.data:o;
+        if(!d||!d.stock||!d.batches)throw new Error('bad');
+        S=fix(d);bind(S);baseline();applyTheme();
+        save();render();toast('تم استيراد النسخة');
+      }catch(e){toast('الملف ده مش نسخة صالحة');}
+    };
+    rd.readAsText(f);
+  };
+  inp.click();
+}
+function backupCardHTML(){
+  return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>نسخة احتياطية</h3></div>'+
+    '<p class="meta" style="margin:0">البيانات بتتحفظ على الجهاز تلقائي. تقدر تنزّل نسخة وتفتحها على جهاز تاني.</p>'+
+    '<div class="dbtns"><button class="btn sm" data-act="exportBackup">تنزيل نسخة</button><button class="btn ghost sm" data-act="importBackup">استيراد نسخة</button></div></section>';
+}
+/* the file-sync card only shows on browsers that support it */
 function fileCardHTML(){
+  if(!fsSupported())return '';
   var name=FSX.fh?FSX.fh.name:'';
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>ملف الحفظ</h3>'+linkBadge()+'</div>'+
     '<p class="meta" style="margin:0">'+(name?'الملف: <span class="ltr">'+esc(name)+'</span>':'مفيش ملف متوصل، البيانات على الجهاز لحد ما توصل ملف.')+'</p>'+
@@ -665,8 +698,32 @@ function seed(){
   var s={stock:{},batches:[],done:[],ready:{},orders:[],oseq:0,seq:100,demo:false,materials:[],products:[],locks:{}};
   bind(s);return s;
 }
+/* device storage: the data lives on the device itself (IndexedDB, falls back to localStorage) */
+var LOCAL_READY=false,LOCAL_Q=Promise.resolve();
+function localPut(body){
+  return idbSet('state',body).catch(function(){
+    try{localStorage.setItem('khat-entaj-state',body);}catch(e){}
+  });
+}
+function localGet(){
+  return idbGet('state').catch(function(){return null;}).then(function(v){
+    if(v)return v;
+    try{return localStorage.getItem('khat-entaj-state');}catch(e){return null;}
+  });
+}
+function persistLocal(){
+  if(!LOCAL_READY)return;
+  var body=JSON.stringify(S);
+  LOCAL_Q=LOCAL_Q.then(function(){return localPut(body);});
+}
+function restoreLocal(){
+  return localGet().then(function(raw){
+    if(raw){try{S=fix(JSON.parse(raw));}catch(e){}}
+    bind(S);baseline();applyTheme();
+  }).catch(function(){}).then(function(){LOCAL_READY=true;});
+}
 function load(){return seed();}
-function save(){S.savedAt=Date.now();markEdits();saveSoon();}
+function save(){S.savedAt=Date.now();markEdits();saveSoon();persistLocal();}
 
 var tt;
 function toast(m){var el=document.getElementById('toast');el.textContent=unesc(m);el.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},2600);}
@@ -1108,7 +1165,7 @@ function saveProd(F){
 }
 function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
-  return fileCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الملف المتصل.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
+  return backupCardHTML()+fileCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
 }
 
@@ -1600,6 +1657,8 @@ var ACT={
     return false;
   },
   fsNow:function(){syncNow().then(function(){render();});return false;},
+  exportBackup:function(){exportBackup();return false;},
+  importBackup:function(){importBackup();return false;},
   logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
@@ -1949,6 +2008,7 @@ document.addEventListener('focusin',function(e){
 vvSync();
 
 render();
+restoreLocal().then(function(){render();});
 })();
 </script>
 
