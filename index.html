@@ -551,7 +551,23 @@ async function checkPin(p){
   var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
   return hex===AUTH_HASH;
 }
-function authed(){try{var a=sessionStorage.getItem(AUTH_KEY);return a==='1'||a==='staff';}catch(e){return false;}}
+function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a==='staff'||a.indexOf('u:')===0;}catch(e){return false;}}
+function usersList(){S.users=S.users||[];return S.users;}
+function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
+function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
+function limited(){return isStaff()||!!sessionCode();}
+function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return staffTabs();}
+function actorCode(){var c=sessionCode();if(c)return c;if(isStaff())return 'موظف';return 'المالك';}
+function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
+function markBy(b){
+  if(!b)return;
+  S.plog=S.plog||{};
+  var e=S.plog[b.id]||{p:b.p,qty:b.qty,by:[],at:Date.now()};
+  e.p=b.p;e.qty=b.qty;
+  var c=actorCode();
+  if(e.by.indexOf(c)<0)e.by.push(c);
+  S.plog[b.id]=e;
+}
 var STAFF_PIN='0000',STAFF_DEFAULT=['prep','prod','finish'];
 function staffTabs(){return pref('staffTabs',STAFF_DEFAULT);}
 function isStaff(){try{return sessionStorage.getItem(AUTH_KEY)==='staff';}catch(e){return false;}}
@@ -1041,7 +1057,7 @@ function dateStr(){
 function topHTML(){
   var total=S.done.reduce(function(a,d){return a+d.good;},0);
   return '<header class="top">'+
-    '<div class="hl">'+themeBtn()+(isStaff()&&staffTabs().indexOf('settings')<0?'':settingsBtn())+'</div>'+
+    '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<img class="hlogo" src="icons/icon-192.png" alt="RMY Pro" width="44" height="44">'+
     '<div class="today"><b>'+f(total)+'</b><span>جاهز اليوم</span></div>'+
     '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
@@ -1619,7 +1635,7 @@ function saveProd(F){
   U.form=null;
 
 }
-function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
+function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+usersCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
   return backupCardHTML()+gdCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
@@ -1628,6 +1644,7 @@ function footHTML(){
 function loginHTML(){
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard"><picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture><p class="meta">سجّل دخولك عشان تكمل</p>'+err+
+    '<div class="fld"><label for="lcode">الكود (للمستخدمين بس)</label><input id="lcode" inputmode="numeric" autocomplete="username" placeholder="سيبه فاضي لو انت المالك"></div>'+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     '<button class="btn block" data-act="login">دخول</button></div></main>';
 }
@@ -2119,7 +2136,7 @@ function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
-function tabHidden(k){if(isStaff())return staffTabs().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
+function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return !TRACK();return hiddenTabs().indexOf(k)>-1;}
 var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
 function sPwStored(){return pref('pw',SET_DEFAULT);}
 function sUnlocked(){try{return sessionStorage.getItem('khat-set-ok')==='1';}catch(e){return false;}}
@@ -2136,24 +2153,45 @@ function saveSettingsPw(p){
 }
 function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
 function tabsCardHTML(){
+  var users=usersList();
   var rows=navItems().map(function(t){
     var hid=tabHidden(t.k),sh=staffTabs().indexOf(t.k)<0;
     var ownerCell='<button class="tg'+(hid?'':' on')+'" data-act="'+(t.k==='stock'?'toggleTrack':'toggleTab')+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
     var staffCell='<button class="tg'+(sh?'':' on')+'" data-act="toggleStaffTab" data-k="'+t.k+'">'+(sh?'مخفي':'ظاهر')+'</button>';
-    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td><td>'+staffCell+'</td></tr>';
+    var userCells=users.map(function(u){var on=userTabs(u.code).indexOf(t.k)>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+u.code+'" data-k="'+t.k+'">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('');
+    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td><td>'+staffCell+'</td>'+userCells+'</tr>';
   }).join('');
   var shS=staffTabs().indexOf('settings')<0;
-  rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td><td><button class="tg'+(shS?'':' on')+'" data-act="toggleStaffTab" data-k="settings">'+(shS?'مخفي':'ظاهر')+'</button></td></tr>';
-  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المالك بيشوف الكل حسب العمود ده، والموظف (الدخول بـ 0000) بيشوف اللي ظاهر في عمود الموظف بس. الإعدادات للمالك دايمًا، وممكن تظهر للموظف لو فتحته، بس هيحتاج الـ PIN.</p><table class="ttab"><thead><tr><th>التبويب</th><th>المالك</th><th>الموظف</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+  rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td><td><button class="tg'+(shS?'':' on')+'" data-act="toggleStaffTab" data-k="settings">'+(shS?'مخفي':'ظاهر')+'</button></td>'+
+    users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+u.code+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
+  var hd='<tr><th>التبويب</th><th>المالك</th><th>الموظف (0000)</th>'+users.map(function(u){return '<th><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
+  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المستخدم اللي بيتضاف بيتسجل هنا تلقائي بالتبويبات الافتراضية.</p><div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+rows+'</tbody></table></div></section>';
 }
-function seasonsCardHTML(){
-  var rows=SEASONS.map(function(x){
-    if(x[0]==='normal')return '<tr><td>'+x[1]+'</td><td><span class="meta">دايمًا ظاهر</span></td></tr>';
-    var hid=seasonHidden(x[0]);
-    return '<tr><td>'+x[1]+'</td><td><button class="tg'+(hid?'':' on')+'" data-act="toggleSeason" data-k="'+x[0]+'">'+(hid?'مخفي':'ظاهر')+'</button></td></tr>';
+function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
+function usersCardHTML(){
+  var list=usersList();
+  var rows=list.map(function(u){
+    var conf=U.confirm==='udel:'+u.id;
+    return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--settings)"><h3>المواسم في الأوردرات</h3><p class="meta" style="margin:0">التبويبات دي بتظهر في الأوردرات وأوردرات المحل بس. لو خفيت موسم، أوردراته مش هتظهر لحد ما ترجعه.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
+  var form='<div class="stack" style="margin-top:10px">'+
+    '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
+    '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
+    '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
+  return '<section class="card" style="--c:var(--settings)"><h3>المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بياخد كود مختصر تلقائي (3 أرقام). بيدخل بالكود وبعده الباسورد، والكود بيتكتب قدام الباسورد.</p>'+
+    (list.length?'<table class="ttab"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta">مفيش مستخدمين لسه.</div>')+form+'</section>';
 }
+function prodLogCardHTML(){
+  var log=S.plog||{};
+  var ids=Object.keys(log).sort(function(a,b){return (log[b].at||0)-(log[a].at||0);}).slice(0,60);
+  if(!ids.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، هتظهر هنا مع كود كل اللي شاركوا فيها.</p></section>';
+  var rows=ids.map(function(id){
+    var e=log[id],p=P(e.p);
+    return '<tr><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'</td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
+  }).join('');
+  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها.</p><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>الدفعة</th><th>الصنف</th><th>الكود</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+
 function securityCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
@@ -2184,6 +2222,17 @@ var ACT={
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
+    var c=((document.getElementById('lcode')||{}).value||'').trim();
+    if(c){
+      var u=userByCode(c);
+      if(!u){U.loginErr='الكود ده مش موجود';render();return false;}
+      hexPbkdf2(p,u.salt,u.iter||200000).then(function(h){
+        if(h===u.h){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'u:'+c);}catch(e){}U.loginErr=null;U.view='home';}
+        else{U.loginErr='الرقم السري غلط';}
+        render();
+      }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
+      return false;
+    }
     if(p===STAFF_PIN){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'staff');}catch(e){}U.loginErr=null;U.view='home';render();return false;}
     checkPin(p).then(function(ok){
       if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;}
@@ -2336,15 +2385,15 @@ var ACT={
     toast(ids.length>1?'تم إنشاء '+ids.length+' دفعات'+(held?' · '+held+' منها اتحجزت لأوردرات':''):'تم إنشاء الدفعة '+sid(ids[0])+(held?' · اتحجزت لطلبية':''));
     go('prep');
   },
-  withdraw:function(d){
+  withdraw:function(d){markBy(batch(d.id));
     var b=batch(d.id);if(!b)return;
     if(shortOf(b).length){toast('في نقص في المخزن');return;}
     if(compShort(b).length){toast('في نقص في مخزن الإنتاج');return;}
     applyWithdraw(S,b);toast(TRACK()?'تم سحب المواد من المخزن':'تم تأكيد الخامات');
   },
-  toggleCheck:function(d){var b=batch(d.id);b.checks=toggle(b.checks,Number(d.i));},
-  toggleMat:function(d){var b=batch(d.id);b.mchecks=toggle(b.mchecks,d.k);},
-  toProd:function(d){var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
+  toggleCheck:function(d){markBy(batch(d.id));var b=batch(d.id);b.checks=toggle(b.checks,Number(d.i));},
+  toggleMat:function(d){markBy(batch(d.id));var b=batch(d.id);b.mchecks=toggle(b.mchecks,d.k);},
+  toProd:function(d){markBy(batch(d.id));var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
   cancel:function(d){
     var b=batch(d.id);
     if(U.confirm!==d.id){U.confirm=d.id;setTimeout(function(){if(U.confirm===d.id){U.confirm=null;render();}},3000);return;}
@@ -2353,9 +2402,9 @@ var ACT={
     tombAdd('batches',d.id);S.batches=S.batches.filter(function(x){return x.id!==d.id;});U.confirm=null;
     toast(b.withdrawn?'اتلغت الدفعة ورجعت المواد للمخزن':'اتلغت الدفعة');
   },
-  startRun:function(d){var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;ensureNotifPerm();scheduleNotif(b);toast('بدأ تشغيل '+P(b.p).name);},
-  skipTimer:function(d){var b=batch(d.id);b.startedAt=Date.now()-dur(b);},
-  toFinish:function(d){var b=batch(d.id);b.stage='finish';b.ringing=false;b.fdef=1;b.fchecks=finItems(P(b.p),b.qty).map(function(x,i){return i;});b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
+  startRun:function(d){markBy(batch(d.id));var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;ensureNotifPerm();scheduleNotif(b);toast('بدأ تشغيل '+P(b.p).name);},
+  skipTimer:function(d){markBy(batch(d.id));var b=batch(d.id);b.startedAt=Date.now()-dur(b);},
+  toFinish:function(d){markBy(batch(d.id));var b=batch(d.id);b.stage='finish';b.ringing=false;b.fdef=1;b.fchecks=finItems(P(b.p),b.qty).map(function(x,i){return i;});b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
   recv:function(d){U.recv={id:d.id,mode:d.m};},
   recvClose:function(){U.recv=null;},
   recvOk:function(){
@@ -2365,8 +2414,8 @@ var ACT={
     S.stock[m.id]=r3(U.recv.mode==='add'?(S.stock[m.id]||0)+v:v);
     toast((U.recv.mode==='add'?'تم استلام ':'تم تسجيل ')+f(v)+' '+m.unit+' '+m.name);U.recv=null;
   },
-  fcheck:function(d){var b=batch(d.id);b.fchecks=toggle(b.fchecks,Number(d.i));},
-  approve:function(d){
+  fcheck:function(d){markBy(batch(d.id));var b=batch(d.id);b.fchecks=toggle(b.fchecks,Number(d.i));},
+  approve:function(d){markBy(batch(d.id));
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
     S.done.push({id:b.id,p:b.p,qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o});
@@ -2432,6 +2481,31 @@ var ACT={
     var os=U.osheet;if(!os)return false;
     var p=P(d.p),st=isPiece(p)?1:0.5,v=(os.items[d.p]||0)+Number(d.d)*st;
     os.items[d.p]=Math.max(st,Math.min(99999,qFloor(p,v)));
+  },
+  userAdd:function(){
+    var n=((document.getElementById('uName')||{}).value||'').trim();
+    var pw=(document.getElementById('uPw')||{}).value||'';
+    if(!n){toast('اكتب اسم المستخدم');return false;}
+    if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
+    var code=nextUserCode(),salt=randHex();
+    hexPbkdf2(pw,salt,200000).then(function(h){
+      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:h,iter:200000});
+      var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
+      toast('اتضاف المستخدم · الكود '+code);render();
+    });
+    return false;
+  },
+  userDel:function(d){
+    if(U.confirm!=='udel:'+d.id){U.confirm='udel:'+d.id;setTimeout(function(){if(U.confirm==='udel:'+d.id){U.confirm=null;render();}},3000);render();return false;}
+    var u=usersList().filter(function(x){return x.id===d.id;})[0];
+    S.users=usersList().filter(function(x){return x.id!==d.id;});
+    if(u){var m=Object.assign({},pref('userTabs',{}));delete m[u.code];setPref('userTabs',m);}
+    U.confirm=null;toast('اتشال المستخدم');render();return false;
+  },
+  toggleUserTab:function(d){
+    var m=Object.assign({},pref('userTabs',{}));var a=(m[d.u]||STAFF_DEFAULT).slice();var ix=a.indexOf(d.k);
+    if(ix>-1)a.splice(ix,1);else a.push(d.k);
+    m[d.u]=a;setPref('userTabs',m);render();return false;
   },
   oRemove:function(d){
     var os=U.osheet;if(!os)return false;
