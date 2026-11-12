@@ -411,7 +411,16 @@ function doWriteMain(){
     })
     .then(function(f){FS.lastOut[FS_MAIN]=body;FS.cache={m:f.lastModified,s:f.size,d:JSON.parse(body).data};FS.err=null;FS.at=Date.now();})
     .catch(function(e){
-      FS.err='تعذّر الحفظ في الملف ('+((e&&e.name)||'خطأ')+')، هيعيد المحاولة';
+      var n=(e&&e.name)||'خطأ';
+      if(n==='NotAllowedError'||n==='SecurityError'){
+        /* the browser dropped write permission for this folder: ask for it again with one tap */
+        FS.ok=false;FS.armed=false;
+        FS.err='الإذن على الفولدر انتهى، اضغط "امنح صلاحية الحفظ" عشان الحفظ يكمل';
+        fsArm();
+        render();
+        return;
+      }
+      FS.err='تعذّر الحفظ في الملف ('+n+')، هيعيد المحاولة';
       clearTimeout(FS.wt);FS.wt=setTimeout(doWriteMain,3000);
     });
   return FS.q;
