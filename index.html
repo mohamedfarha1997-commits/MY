@@ -1199,7 +1199,7 @@ function prepCard(b){
       prepGroupsHTML(b)+
       '<button class="btn block" data-act="toProd" data-id="'+b.id+'"'+(ck.length<tot?' disabled':'')+'>حوّل للإنتاج</button>';
   }
-  return '<article class="card"><div class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+' · '+mealQ(b.qty,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
+  return '<article class="card"><div class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
     '<span class="pill '+(b.withdrawn?'c':'low')+'">'+(b.withdrawn?'قيد التجهيز':'بانتظار السحب')+'</span></div>'+
     '<div>'+rows+crows+'</div>'+perMealHTML(p)+act+
     '<div class="foot"><span class="meta">'+p.mins+' دقيقة تشغيل</span><button class="btn quiet" data-act="cancel" data-id="'+b.id+'">'+(U.confirm===b.id?'اضغط تاني للتأكيد':'إلغاء الدفعة')+'</button></div></article>';
@@ -1294,7 +1294,7 @@ function prodCard(b){
   else act='<button class="btn block" data-act="startRun" data-id="'+b.id+'">ابدأ التشغيل · '+p.mins+' دقيقة</button>';
   return '<article class="card"><div class="prow"><div class="ring" data-ring="'+b.id+'" data-fin="'+(fin?1:0)+'">'+
     '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle class="rp" cx="38" cy="38" r="30" fill="none" stroke="'+(fin?'var(--good)':'var(--c)')+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'"/></svg><b class="rt">'+label+'</b></div>'+
-    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+'</h3><div class="meta">'+mealQ(b.qty,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
+    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+'</h3><div class="meta">'+batchQ(b,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
 }
 function prodView(){
   var all=S.batches.filter(function(b){return b.stage==='prod';});
@@ -1471,6 +1471,22 @@ function fgZeroBar(){
   if(!n)return '';
   var conf=U.confirm==='fgzero';
   return '<div class="fgzbar"><span class="meta">محدد '+n+' صنف</span><span class="acts"><button class="btn ghost sm" data-act="fgClear">إلغاء التحديد</button><button class="btn '+(conf?'':'quiet ')+'sm" data-act="fgZero">'+(conf?'اضغط تاني للتأكيد':'صفّر المخزون')+'</button></span></div>';
+}
+function allocReady(pid){
+  var avail=S.ready[pid]||0;
+  if(avail<=0)return;
+  S.orders.slice().sort(function(a,b){return a.created-b.created;}).forEach(function(o){
+    if(o.deliveredAt||avail<=0)return;
+    (o.items||[]).forEach(function(it){
+      if(it.p!==pid||avail<=0)return;
+      var short=r3(it.qty-((it.fs||0)+(it.got||0)));
+      if(short<=0)return;
+      var give=r3(Math.min(short,avail));
+      it.got=r3((it.got||0)+give);
+      avail=r3(avail-give);
+    });
+  });
+  S.ready[pid]=avail;
 }
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{}});
@@ -1953,6 +1969,16 @@ function orderNeed(items){
 }
 function itemsText(o){
   return o.items.map(function(it){var p=P(it.p);return p?p.name+' ×'+f(it.qty):'';}).filter(Boolean).join(' · ');
+}
+function batchQ(b,p){
+  if(!b.o)return mealQ(b.qty,p);
+  var o=S.orders.filter(function(x){return x.id===b.o;})[0];
+  var it=o&&(o.items||[]).filter(function(i){return i.p===b.p;})[0];
+  if(!it)return mealQ(b.qty,p);
+  var have=(it.fs||0)+(it.got||0),others=0;
+  orderBatches(o).forEach(function(x){if(x!==b&&x.p===b.p)others+=pc(x);});
+  var left=Math.max(0,r3(it.qty-have-others));
+  return 'العجز '+f(Math.min(left,pc(b)))+' '+p.unit;
 }
 function otag(b){
   var o=S.orders.filter(function(x){return x.id===b.o;})[0];
@@ -2688,7 +2714,7 @@ var ACT={
     var total=r3(src.reduce(function(a,p){return a+F.q[p.id];},0));
     src.forEach(function(p){S.ready[p.id]=r3((S.ready[p.id]||0)-F.q[p.id]);});
     var np={id:'p'+Date.now().toString(36),name:name,unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})};
-    S.products.push(np);S.ready[np.id]=total;
+    S.products.push(np);S.ready[np.id]=total;allocReady(np.id);
     bind(S);U.fill=null;
     toast('اتعمل '+name+' بكمية '+f(total)+' '+unit+' واتحط في '+(F.kind==='shop'?'سحب أوردرات المحل':'سحب أوردرات'));
   },
