@@ -537,8 +537,15 @@ function withTimeout(p,ms){
     p.then(function(v){if(!done){done=true;clearTimeout(tm);res(v);}},function(e){if(!done){done=true;clearTimeout(tm);rej(e);}});
   });
 }
+/* before every auto-sync read: reload a fresh handle to the file from storage, so a phone that keeps a stale cached copy (Google Drive) is asked again */
+function refreshHandle(){
+  return idbGet('fh').then(function(h){
+    if(!h||!h.queryPermission)return;
+    return h.queryPermission({mode:'readwrite'}).then(function(p){if(p==='granted')FSX.fh=h;});
+  }).catch(function(){});
+}
 function readOnce(){
-  return FSX.fh.getFile().then(function(f){return f.text();});
+  return refreshHandle().then(function(){return FSX.fh.getFile();}).then(function(f){return f.text();});
 }
 function readFile(tries){
   tries=tries||0;
@@ -594,7 +601,7 @@ function syncNow(){
   })
     .then(function(){FSX.busy=false;});
 }
-function saveSoon(){if(!FSX.fh)return;clearTimeout(FSX.wt);FSX.wt=setTimeout(syncNow,SYNC_WAIT);}
+function saveSoon(){if(!FSX.fh&&!GD.on)return;clearTimeout(FSX.wt);FSX.wt=setTimeout(function(){syncNow();gdSync();},SYNC_WAIT);}
 function attachFile(h){
   FSX.fh=h;FSX.err=null;FSX.ok=false;
   return idbSet('fh',h).catch(function(){})
@@ -628,6 +635,7 @@ function armAuto(){
 }
 function fsStart(){
   baseline();
+  gdStart();
   if(!fsSupported())return;
   idbGet('fh').then(function(h){
     if(!h)return;
@@ -642,8 +650,176 @@ function fsStart(){
   document.addEventListener('visibilitychange',function(){if(!document.hidden)syncNow();});
 }
 
+/* ---------- Google Drive sync (Drive API, drive.file scope) ----------
+   The app keeps one file (khat-entaj.json) in the user's Drive and syncs with it every SYNC_MS.
+   Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
+var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
+var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
+function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id}));else localStorage.removeItem('khat-gd');}catch(e){}}
+function gdLoadCfg(){
+  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
+  try{var t=JSON.parse(sessionStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
+}
+function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
+function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
+function gdPaint(){var sg=(GD.ok?1:0)+'|'+GD.err+'|'+GD.on;if(sg!==GD.shown){GD.shown=sg;renderIdle();}}
+function gdLoadGis(){
+  if(GD.tc||GD.loading)return;
+  if(window.google&&google.accounts&&google.accounts.oauth2){gdInitTc();return;}
+  GD.loading=true;
+  var s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.async=true;
+  s.onload=function(){GD.loading=false;gdInitTc();};
+  s.onerror=function(){GD.loading=false;};
+  document.head.appendChild(s);
+}
+function gdInitTc(){
+  try{GD.tc=google.accounts.oauth2.initTokenClient({client_id:GD_CLIENT,scope:GD_SCOPE,callback:gdTokCb,error_callback:gdTokErr});}catch(e){return;}
+  if(GD.on){if(gdTokOk())gdSync();else gdArm();}
+  GD.shown=null;gdPaint();
+}
+function gdRequest(){
+  if(!GD.tc||Date.now()-GD.reqAt<1500)return;
+  GD.reqAt=Date.now();
+  try{GD.tc.requestAccessToken({prompt:''});}catch(e){}
+}
+function gdTokCb(r){
+  if(r&&r.access_token){
+    GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;
+    try{sessionStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
+    if(GD.pend){var p=GD.pend;GD.pend=null;p.res();}else gdSync();
+  }else{
+    GD.needTap=true;GD.ok=false;GD.err='تعذّر الربط بجوجل ('+((r&&r.error)||'خطأ')+')';
+    if(GD.pend){var q=GD.pend;GD.pend=null;q.rej({code:'tap'});}
+    gdArm();GD.shown=null;gdPaint();
+  }
+}
+function gdTokErr(e){
+  var t=e&&e.type;
+  GD.needTap=true;GD.ok=false;
+  GD.err=t==='popup_closed'?'اتقفلت نافذة جوجل قبل التأكيد، اضغط أي مكان وجرّب تاني':(t==='popup_failed_to_open'?'المتصفح منع نافذة جوجل، اضغط أي مكان وجرّب تاني':'تعذّر الربط بجوجل');
+  if(GD.pend){var p=GD.pend;GD.pend=null;p.rej({code:'tap'});}
+  gdArm();GD.shown=null;gdPaint();
+}
+/* the browser only opens Google's window after a tap: take the first tap anywhere */
+function gdArm(){
+  if(GD.armed||!GD.on)return;
+  GD.armed=true;
+  var evs=['touchend','click','keydown'];
+  function off(){evs.forEach(function(e){document.removeEventListener(e,tap,true);});GD.armed=false;}
+  function tap(){
+    if(!GD.on||gdTokOk()){off();return;}
+    if(!GD.tc)return;
+    off();gdRequest();
+  }
+  evs.forEach(function(e){document.addEventListener(e,tap,true);});
+}
+function gdAuth(){
+  if(gdTokOk())return Promise.resolve();
+  if(GD.needTap||!GD.tc)return Promise.reject({code:'tap'});
+  return new Promise(function(res,rej){
+    GD.pend={res:res,rej:rej};
+    setTimeout(function(){if(GD.pend&&GD.pend.rej===rej){GD.pend=null;GD.needTap=true;rej({code:'tap'});}},8000);
+    gdRequest();
+  });
+}
+function gdApi(url,opt){
+  opt=opt||{};
+  opt.headers=Object.assign({Authorization:'Bearer '+GD.tok},opt.headers||{});
+  opt.cache='no-store';
+  return withTimeout(fetch(url,opt),20000).then(function(r){
+    if(r.status===401){GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
+    if(!r.ok)return r.text().then(function(t){throw {code:r.status,msg:t.slice(0,160)};});
+    return r;
+  });
+}
+function gdBody(){return JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S});}
+function gdFindOldest(){
+  var q=encodeURIComponent("name='"+GD_NAME+"' and trashed=false");
+  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime&pageSize=5&fields=files(id)&spaces=drive')
+    .then(function(r){return r.json();}).then(function(j){return j.files&&j.files[0]?j.files[0].id:null;});
+}
+function gdCreate(){
+  var at=S.savedAt,b='khat'+Date.now().toString(36);
+  var body='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GD_NAME,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+gdBody()+'\r\n--'+b+'--';
+  return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,version',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:body})
+    .then(function(r){return r.json();}).then(function(j){GD.id=j.id;GD.ver=String(j.version);GD.upAt=at;gdSaveCfg();});
+}
+/* every ~minute re-check which file is the oldest, so devices that connected at the same moment end up on one file */
+function gdEnsureFile(){
+  GD.n++;
+  if(GD.id&&GD.n%30!==0)return Promise.resolve();
+  return gdFindOldest().then(function(id){
+    if(id){if(id!==GD.id){GD.id=id;GD.ver=null;gdSaveCfg();}return;}
+    if(GD.id)return;
+    return gdCreate();
+  });
+}
+function gdDownload(){
+  return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?alt=media').then(function(r){return r.text();})
+    .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
+}
+function gdUpload(){
+  var at=S.savedAt;
+  return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+GD.id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:gdBody()})
+    .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;});
+}
+function gdFail(e){
+  var c=e&&e.code;GD.ok=false;
+  if(c==='tap'||c===401){GD.needTap=true;GD.err='محتاج تأكيد من جوجل، اضغط أي مكان في الشاشة';gdArm();}
+  else if(c===404){GD.id=null;GD.ver=null;gdSaveCfg();GD.err='الملف اتمسح من درايف، هيتعمل من جديد';}
+  else if(c===403)GD.err='جوجل رفض الصلاحية. تأكد إن Drive API مفعّل وإن إيميلك مضاف كـ Test user';
+  else if(e&&e.message==='timeout')GD.err='الاتصال بجوجل بطيء، هيحاول تاني';
+  else if(!navigator.onLine)GD.err='مفيش إنترنت';
+  else GD.err='خطأ في الاتصال بجوجل'+(c?' ('+c+')':'');
+  gdPaint();
+}
+function gdSync(){
+  if(!GD.on||!LOCAL_READY)return Promise.resolve();
+  if(GD.busy&&Date.now()-GD.busyAt<30000)return Promise.resolve();
+  GD.busy=true;GD.busyAt=Date.now();
+  return gdAuth().then(gdEnsureFile).then(function(){
+    if(!GD.id)return;
+    return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
+      if(m.trashed){GD.id=null;GD.ver=null;gdSaveCfg();return;}
+      var pull=!GD.ver||String(m.version)!==String(GD.ver);
+      return (pull?gdDownload():Promise.resolve(undefined)).then(function(remote){
+        markEdits();
+        var need=false;
+        if(remote!==undefined){
+          var local=S,Mg=remote?mergeStates(local,remote):local;
+          need=!remote||canon(Mg)!==canon(remote);
+          if(canon(Mg)!==canon(local)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
+          GD.ver=String(m.version);
+          if(!need)GD.upAt=S.savedAt||0;
+        }else need=(S.savedAt||0)!==GD.upAt;
+        return need?gdUpload():undefined;
+      });
+    });
+  }).then(function(){GD.ok=true;GD.err=null;GD.at=Date.now();gdPaint();})
+    .catch(gdFail).then(function(){GD.busy=false;});
+}
+function gdStart(){
+  gdLoadCfg();
+  if(GD.on)gdLoadGis();
+  setInterval(gdSync,SYNC_MS);
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)gdSync();});
+  if(GD.on&&!gdTokOk())gdArm();
+}
+function gdBadge(){
+  if(GD.ok)return '<span class="pill ok" data-act="gdNow">متصل بدرايف</span>';
+  return '<span class="pill low" data-act="gdNow">درايف: '+(GD.needTap?'محتاج تأكيد':'جاري الاتصال')+'</span>';
+}
+function gdCardHTML(){
+  gdLoadGis();
+  return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>جوجل درايف</h3>'+(GD.on?gdBadge():'<span class="pill">غير متصل</span>')+'</div>'+
+    '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة كل ثانيتين مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):''):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
+    (GD.on&&GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
+    '<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
+}
+
 /* header and settings */
 function linkBadge(){
+  if(GD.on)return gdBadge();
   if(!fsSupported())return '<span class="pill bad">المتصفح مش بيدعم الملف</span>';
   if(FSX.fh&&FSX.ok&&!FSX.err)return '<span class="pill ok" data-act="fsNow">متصل</span>';
   if(FSX.fh&&FSX.ok)return '<span class="pill low" data-act="fsNow" title="'+esc(FSX.err||'')+'">متصل مع خطأ</span>';
@@ -658,23 +834,62 @@ function exportBackup(){
   document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
 }
-function importBackup(){
+/* restore: refresh the source first, so a stale cached copy (Google Drive on some phones) is never used */
+function parseBackupText(t){
+  var o=parseTolerant(t),d=(o&&o.data)?o.data:o;
+  if(!d||!d.stock||!d.batches)throw new Error('bad');
+  return {d:d,at:(o&&o.savedAt)||d.savedAt||0};
+}
+function readFresh(h){
+  /* read the file twice with a pause between, and keep the newest copy: the first read can return a cached snapshot */
+  function one(){return withTimeout(h.getFile().then(function(f){return f.text();}),12000).then(parseBackupText);}
+  return one().then(function(a){
+    return new Promise(function(res){setTimeout(res,700);}).then(one).then(function(b){return b.at>a.at?b:a;},function(){return a;});
+  });
+}
+function applyBackup(r){
+  S=fix(r.d);bind(S);baseline();applyTheme();
+  save();render();
+  toast('تم استيراد النسخة'+(r.at?' (بتاريخ '+tstr(r.at)+')':''));
+}
+function importFromInput(){
   var inp=document.createElement('input');
   inp.type='file';inp.accept='.json,application/json';
   inp.onchange=function(){
     var f=inp.files&&inp.files[0];if(!f)return;
     var rd=new FileReader();
     rd.onload=function(){
-      try{
-        var o=JSON.parse(rd.result),d=(o&&o.data)?o.data:o;
-        if(!d||!d.stock||!d.batches)throw new Error('bad');
-        S=fix(d);bind(S);baseline();applyTheme();
-        save();render();toast('تم استيراد النسخة');
-      }catch(e){toast('الملف ده مش نسخة صالحة');}
+      try{applyBackup(parseBackupText(rd.result));}
+      catch(e){toast('الملف ده مش نسخة صالحة');}
     };
+    rd.onerror=function(){toast('تعذّر قراءة الملف، جرّب تاني');};
     rd.readAsText(f);
   };
   inp.click();
+}
+function importBackup(){
+  if(!fsSupported()){
+    toast('لو الملف على جوجل درايف: افتحه الأول وحمّله على الجهاز عشان تضمن إنه آخر نسخة');
+    importFromInput();return;
+  }
+  /* 1) refresh the location: always ask the browser for a fresh handle to the file, starting from the linked file's folder */
+  var opts={types:[{description:'ملف الحفظ',accept:{'application/json':['.json']}}],multiple:false};
+  if(FSX.fh)opts.startIn=FSX.fh;
+  toast('اختار الملف عشان نحدّث المكان ونقرأ آخر نسخة');
+  window.showOpenFilePicker(opts).then(function(hs){
+    return readFresh(hs[0]).then(function(r){
+      /* 2) if a linked file exists, compare with it and warn when the picked copy is older */
+      var cmp=FSX.fh&&FSX.ok?readFresh(FSX.fh).catch(function(){return null;}):Promise.resolve(null);
+      return cmp.then(function(c){
+        if(c&&c.at>r.at&&!window.confirm('الملف اللي اخترته أقدم من الملف المتوصل ('+tstr(r.at)+' مقابل '+tstr(c.at)+'). تكمل بالأقدم؟'))return;
+        applyBackup(r);
+      });
+    });
+  }).catch(function(e){
+    if(e&&e.name==='AbortError')return;
+    if(e&&e.message==='bad'){toast('الملف ده مش نسخة صالحة');return;}
+    toast('تعذّر قراءة الملف، جرّب تاني أو اختار ملف من الجهاز');
+  });
 }
 function backupCardHTML(){
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>نسخة احتياطية</h3></div>'+
@@ -1165,7 +1380,7 @@ function saveProd(F){
 }
 function settingsView(){return head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+monthsHTML()+footHTML();}
 function footHTML(){
-  return backupCardHTML()+fileCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
+  return backupCardHTML()+gdCardHTML()+fileCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
 }
 
@@ -1657,6 +1872,20 @@ var ACT={
     return false;
   },
   fsNow:function(){syncNow().then(function(){render();});return false;},
+  gdConnect:function(){
+    if(!GD.tc){gdLoadGis();toast('استنى ثانية لحد ما جوجل يحمّل وجرّب تاني');return false;}
+    GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
+  },
+  gdNow:function(){
+    if(!GD.on)return false;
+    if(!gdTokOk()){GD.needTap=false;gdRequest();return false;}
+    GD.busy=false;gdSync().then(function(){render();});return false;
+  },
+  gdOff:function(){
+    GD.on=false;GD.ok=false;GD.id=null;GD.tok=null;GD.exp=0;GD.ver=null;GD.err=null;GD.shown=null;
+    try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}
+    gdSaveCfg();toast('اتفصل عن درايف');
+  },
   exportBackup:function(){exportBackup();return false;},
   importBackup:function(){importBackup();return false;},
   logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
