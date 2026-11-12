@@ -453,7 +453,7 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    The file is read and merged every 5 seconds, so changes from other devices show up here.
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
-var SYNC_MS=2000,SYNC_WAIT=300;
+var SYNC_MS=1000,SYNC_WAIT=150;
 var STAMPED=['orders','batches','done','products','materials'];
 var LAST={},LASTN={stock:{},ready:{}};
 function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
@@ -635,7 +635,7 @@ function gdFindOldest(){
     .then(function(r){return r.json();}).then(function(j){return j.files&&j.files[0]?j.files[0].id:null;});
 }
 function gdCreate(){
-  var at=S.savedAt,b='khat'+Date.now().toString(36);
+  var at=S.savedAt||0,b='khat'+Date.now().toString(36);
   var body='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:GD_NAME,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+gdBody()+'\r\n--'+b+'--';
   return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,version',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:body})
     .then(function(r){return r.json();}).then(function(j){GD.id=j.id;GD.ver=String(j.version);GD.upAt=at;gdSaveCfg();});
@@ -655,7 +655,7 @@ function gdDownload(){
     .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
 }
 function gdUpload(){
-  var at=S.savedAt;
+  var at=S.savedAt||0;
   return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+GD.id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:gdBody()})
     .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;});
 }
@@ -676,7 +676,7 @@ function gdFail(e){
 }
 function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
-  if(GD.busy&&Date.now()-GD.busyAt<30000)return Promise.resolve();
+  if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
   GD.busy=true;GD.busyAt=Date.now();
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
@@ -697,7 +697,7 @@ function gdSync(){
       });
     });
   }).then(function(){GD.ok=true;GD.err=null;GD.at=Date.now();gdPaint();})
-    .catch(gdFail).then(function(){GD.busy=false;});
+    .catch(gdFail).then(function(){GD.busy=false;if(GD.again){GD.again=false;gdSync();}});
 }
 function gdStart(){
   gdLoadCfg();
@@ -713,7 +713,7 @@ function gdBadge(){
 function gdCardHTML(){
   gdLoadGis();
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>جوجل درايف</h3>'+(GD.on?gdBadge():'<span class="pill">غير متصل</span>')+'</div>'+
-    '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة كل ثانيتين مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):''):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
+    '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة كل ثانية مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):''):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
     (GD.on&&GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
     '<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
 }
