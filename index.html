@@ -761,7 +761,9 @@ function markEdits(){
 }
 /* merge two states: per record the newest _u wins, tombstones beat older versions, stock/ready per item by its last change */
 function mergeStates(a,b){
-  var M=Object.assign({},b,a);
+  /* الإعدادات والمستخدمين (غير المسجلين لكل سجل) بياخدهم الأحدث، عشان الحالة الفاضية عند فتح الصفحة متمسحش اللي في درايف */
+  var newer=(a.savedAt||0)>=(b.savedAt||0)?a:b,older=newer===a?b:a;
+  var M=Object.assign({},older,newer);
   M.tomb={};
   STAMPED.forEach(function(c){
     var tomb={};
