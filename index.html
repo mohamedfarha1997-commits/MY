@@ -868,7 +868,7 @@ function perMealHTML(p){
   var g=0,oth={},any=false;
   Object.keys(p.recipe||{}).forEach(function(k){
     var m=M(k),q=p.recipe[k];any=true;
-    if(m.unit==='جرام')g+=q;else if(m.unit==='كجم')g+=q*1000;
+    if(m.unit==='جرام')g+=q;else if(m.unit==='كجم')g+=q*1000;else if(m.unit==='بيضة')g+=q*50; /* البيضة = 50 جرام */
     else oth[m.unit]=r3((oth[m.unit]||0)+q);
   });
   if(!any)return '';
