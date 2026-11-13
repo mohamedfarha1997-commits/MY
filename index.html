@@ -1522,7 +1522,11 @@ function groupedJoin(list,fn){
   var openMap=U.oGrp||{},selIds=(U.osheet&&U.osheet.added)||[],out='';
   order.forEach(function(k){
     var items=buckets[k];
-    if(!k){items.forEach(function(p){out+=fn(p);});return;}
+    if(!k){
+      if(order.some(function(x){return !!x;}))out+='<div class="grp" style="grid-column:1/-1;margin-top:8px">أصناف بدون مجموعة</div>';
+      items.forEach(function(p){out+=fn(p);});
+      return;
+    }
     var isOpen=!!openMap[k];
     var n=items.filter(function(p){return selIds.indexOf(p.id)>-1;}).length;
     out+='<button class="btn ghost sm" data-act="grpOpen" data-g="'+esc(k)+'" aria-expanded="'+(isOpen?'true':'false')+'" style="grid-column:1/-1;justify-content:space-between">'+
