@@ -27,6 +27,14 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .ordfold>summary::-webkit-details-marker{display:none}
 .ordpills{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .ordbody{display:flex;flex-direction:column;gap:12px}
+.pkgrid{grid-auto-rows:136px}
+.pkgrid .pk,.pkgrid .pk.on{height:136px;min-height:136px;max-height:136px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;margin:0;width:100%}
+.pkgrid .pk.on{justify-content:flex-start}
+.arch>summary{list-style:none;cursor:pointer;align-items:center}
+.arch>summary::-webkit-details-marker{display:none}
+.arch>summary::after{content:'▾';color:var(--muted);font-size:14px;transition:transform .2s;margin-inline-start:6px;align-self:center}
+.arch:not([open])>summary::after{transform:rotate(-90deg)}
+.arch[open]>summary{margin-bottom:4px}
 </style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -2404,6 +2412,8 @@ function lockedMonthsHTML(kind){
       '<div class="btns"><button class="btn ghost sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button></div></section>';
   }).join('');
 }
+var FOLD_OPEN={};
+document.addEventListener('toggle',function(e){var d=e.target;if(d&&d.dataset&&d.dataset.fk){FOLD_OPEN[d.dataset.fk]=d.open;}},true);
 function archiveHTML(arch,kind){
   if(!arch.length)return '';
   var months={};
@@ -2411,11 +2421,11 @@ function archiveHTML(arch,kind){
   return '<div class="grp" style="margin-top:18px">الأرشيف</div>'+Object.keys(months).sort().reverse().map(function(k){
     var list=months[k].slice().reverse(),locked=!!(S.locks&&S.locks[lockKey(kind,k)]);
     var undeliv=ordersOf(kind).filter(function(o){return monthKey(o.created)===k&&!o.deliveredAt;}).length;
-    return '<section class="card" style="margin-top:10px;--c:var(--orders)"><div class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' أوردر'+(undeliv?' · لسه فيه '+undeliv+' مش متسلّم':'')+'</span></div>'+
-      (locked?'<span class="pill ok">مقفول</span>':'<span class="pill low">مفتوح</span>')+'</div>'+
+    return '<details class="card arch" data-fk="arch-'+k+'" style="margin-top:10px;--c:var(--orders)"'+(FOLD_OPEN['arch-'+k]?' open':'')+'><summary class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' أوردر'+(undeliv?' · لسه فيه '+undeliv+' مش متسلّم':'')+'</span></div>'+
+      '<span class="pill '+(locked?'ok':'low')+'">'+(locked?'مقفول':'مفتوح')+'</span></summary>'+
       list.map(function(o){
         return '<div class="hist"><span><span class="ltr">'+sid(o.id)+'</span> · '+custName(o)+'<br><span class="meta">'+itemsText(o)+'</span></span><span class="meta" style="text-align:end">'+tstr(o.created)+'<br>سُلّم: '+tstr(o.deliveredAt)+'</span></div>';
-      }).join('')+'</section>';
+      }).join('')+'</details>';
   }).join('');
 }
 function shopProductsHTML(){
@@ -2570,7 +2580,7 @@ function ordSheetHTML(){
     }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
-      (seasonP.length?tabBar+'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+      (seasonP.length?tabBar+'<div class="pkgrid" style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
   }
   var rows=addedP.map(function(p){
