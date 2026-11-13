@@ -24,7 +24,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 :root{
   --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#DAE0E6;
   --ink:#101C28; --ink-2:#3A4959; --muted:#5F6E7F;
-  --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490;
+  --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED;
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
   --shadow:0 1px 2px rgb(16 28 40 / .06);
   --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
@@ -34,7 +34,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
   :root:not([data-theme="light"]){
     --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
     --ink:#E7EDF3; --ink-2:#B4C0CD; --muted:#8C9BAC;
-    --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE;
+    --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD;
     --good:#4ADE80; --warn:#FBBF24; --bad:#F87171; --on-c:#0C141C;
     --shadow:none; color-scheme:dark;
   }
@@ -42,7 +42,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 :root[data-theme="dark"]{
   --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
   --ink:#E7EDF3; --ink-2:#B4C0CD; --muted:#8C9BAC;
-  --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE;
+  --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD;
   --good:#4ADE80; --warn:#FBBF24; --bad:#F87171; --on-c:#0C141C;
   --shadow:none; color-scheme:dark;
 }
@@ -610,6 +610,7 @@ window.addEventListener('offline',function(){updateConn();});
 
 var IC={
      filling:'<path d="M4 5h16l-6 7v6l-4-2v-4z"/>',
+     prepreq:'<path d="M5 6h14M5 12h14M5 18h9"/>',
   reserved:'<path d="M9 4h6v3H9z"/><path d="M6 6h12v15H6z"/><path d="M9 11h6M9 15h6"/>',
   fgstock:'<path d="M4 8h16v11H4z"/><path d="M8 8V5h8v3M8 13h8"/>',
   prep:'<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h4.5"/>',
@@ -698,7 +699,7 @@ function num(s){
 var S=load();
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
-if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling'].indexOf(h)>-1)U.view=h;
+if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling','prepreq'].indexOf(h)>-1)U.view=h;
 
 function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
 function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
@@ -1085,7 +1086,7 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
@@ -1103,6 +1104,7 @@ function navItems(){
     {k:'finish',l:'فنش',n:by('finish').length,u:'للفحص'},{k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
   st.push({k:'filling',l:'حشو وفنش',n:PRODUCTS.filter(isFill).length,u:'صنف'});
+  st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
   st.push({k:'shopProducts',l:'وصفات المحل',n:prodsOf('shop').length,u:'وصفة',g:'recipes'});
   return st;
@@ -1562,6 +1564,30 @@ function fillSuggest(F){
   return '<div class="meta" style="margin:-4px 0 8px">أصناف محشوة موجودة بنفس الاسم أو قريبة منه، لو اخترت واحد الكمية بتتزود عليه:</div><div class="btns">'+
     m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(p.fill==='shop'?'أوردرات المحل':'أوردرات')+'</button>';}).join('')+'</div>';
 }
+function prepReqIds(){
+  var seen=[];fgShortRows().forEach(function(r){if(seen.indexOf(r.x.p)<0)seen.push(r.x.p);});return seen;
+}
+function prepReqView(){
+  var short={};fgShortRows().forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);});
+  var ids=prepReqIds();
+  if(!ids.length)return head('تحضيرات مطلوبة','الأصناف اللي فيها عجز في المنيو، ومكوّناتها','')+'<div class="empty"><b>مفيش عجز</b><span>لما يكون فيه عجز في أصناف المنيو هتظهر هنا الأصناف اللي بيتكون منها.</span></div>';
+  var cards=ids.map(function(pid){
+    var p=P(pid);if(!p)return '';
+    var sh=short[pid],y=yieldOf(pid),meals=sh/y;
+    var comps=compsOf(pid).filter(function(c){var cp=P(c.p);return cp&&!cp.missing;}).map(function(c){
+      var cp=P(c.p),need=r3(c.q*meals),have=S.ready[c.p]||0,ok=have+1e-9>=need;
+      return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>محتاج '+f(need)+' '+cp.unit+' · متاح '+f(have)+'</small></div><span class="pill '+(ok?'ok':'low')+'">'+(ok?'متاح':'ناقص '+f(r3(need-have)))+'</span></div>';
+    }).join('');
+    var mats=Object.keys(p.recipe||{}).map(function(k){
+      var m=M(k),need=r3(p.recipe[k]*sh/y);
+      return '<div class="rq"><div><b>'+esc(m?m.name:k)+'</b><small>محتاج '+f(need)+' '+(m?m.unit:'')+' · في المخزن '+f(S.stock[k]||0)+'</small></div></div>';
+    }).join('');
+    return '<article class="card" style="--c:var(--prepreq)"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><small class="meta">العجز '+f(sh)+' '+p.unit+'</small></div></div>'+
+      (comps?'<div class="grp">أصناف داخلة فيه</div>'+comps:'<div class="meta">مفيش أصناف فرعية للصنف ده</div>')+
+      (mats?'<div class="grp">خامات داخلة فيه</div>'+mats:'')+'</article>';
+  }).join('');
+  return head('تحضيرات مطلوبة','الأصناف اللي فيها عجز في المنيو، ومكوّناتها','')+'<div class="list">'+cards+'</div>';
+}
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{}});
   var src=PRODUCTS.filter(function(p){return !isFill(p)&&(S.ready[p.id]||0)>0;});
@@ -1639,7 +1665,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
-    '<div class="pgrid">'+PRODUCTS.map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+x.name+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
+    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x);}).map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+x.name+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
     (qrows?'<div class="stack">'+qrows+'</div>':'')+
     (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length||cshort.length?'<div class="note">في نقص في '+(sh.length+cshort.length)+((sh.length+cshort.length)>2?' أصناف':' صنف')+(cshort.length?' (منها وصفات من مخزن الإنتاج)':'')+'. تقدر تنشئ الدفعة وتكمّل النقص قبل السحب.</div>':'')+
@@ -1877,7 +1903,7 @@ function render(){
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView,filling:fillingView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -2965,7 +2991,7 @@ document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset
   if(ds&&ds.oadd!==undefined){var v=e.target.value;if(v&&U.osheet){U.osheet.added=U.osheet.added||[];if(U.osheet.added.indexOf(v)<0)U.osheet.added.push(v);if(U.osheet.items[v]===undefined)U.osheet.items[v]=0;}render();return;}if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.sq!==undefined){onField(e);render();return;}if(ds&&ds.f==='unit'&&U.form&&U.form.kind==='prod'){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
-  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
+  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling','prepreq'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
 });
 
 /* ---------- live timers ---------- */
