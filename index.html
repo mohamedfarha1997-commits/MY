@@ -29,12 +29,18 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .ordbody{display:flex;flex-direction:column;gap:12px}
 .pkgrid{grid-auto-rows:104px;gap:6px}
 .pkgrid .pk,.pkgrid .pk.on{height:104px;min-height:104px;max-height:104px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column;justify-content:center;margin:0;width:100%;padding:8px 10px;gap:4px;font-size:13px;line-height:1.3}
-.pkgrid .pk.on{justify-content:flex-start}
 .pkgrid .pk small{font-size:11px;line-height:1.2}
 .pkgrid .pk.on .opk-h b{font-size:13px;line-height:1.25}
 .pkgrid .pk.on .opk-q{padding-top:0;margin-top:auto}
 .pkgrid .pk.on .opk-q input{height:30px!important;font-size:14px}
 .pkgrid .ox{width:24px;height:24px;font-size:16px;line-height:1}
+.pkgrid .pk,.pkgrid .pk.on{height:104px;min-height:104px;max-height:104px;text-align:center;align-items:center;justify-content:center}
+.pkgrid .pk.on{position:relative;justify-content:center}
+.pkgrid .pk.on .opk-h{justify-content:center;align-items:center;width:100%;position:relative}
+.pkgrid .pk.on .opk-h .ox{position:absolute;inset-inline-end:-4px;top:-6px}
+.pkgrid .pk.on .opk-q{width:100%}
+.pkgrid .pk small{display:block;text-align:center;font-size:11px;line-height:1.25}
+.pkgrid .pk.on>small{margin-top:0}
 .arch>summary{list-style:none;cursor:pointer;align-items:center}
 .arch>summary::-webkit-details-marker{display:none}
 .arch>summary::after{content:'▾';color:var(--muted);font-size:14px;transition:transform .2s;margin-inline-start:6px;align-self:center}
@@ -2575,11 +2581,12 @@ function ordSheetHTML(){
     var shown=curTab==='__all'?seasonP:seasonP.filter(function(p){return (p.grp||'__none')===curTab;});
     var grid=shown.map(function(p){
       var on=addedIds.indexOf(p.id)>=0;
-      if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+(isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+'</button>';
+      var stkTxt='<small>المتاح: '+f(S.ready[p.id]||0)+' '+esc(p.unit)+'</small>';
+      if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+stkTxt+'</button>';
       var q=s.items[p.id]||0;
       return '<div class="pk on" style="--c:var(--orders);cursor:default">'+
         '<div class="opk-h"><b>'+esc(p.name)+'</b><button class="ox" data-act="oPick" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
-        (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+
+        stkTxt+
         '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+esc(p.unit)+'</span></div>'+
         '</div>';
     }).join('');
