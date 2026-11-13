@@ -793,7 +793,31 @@ function mergeStates(a,b){
   var newer=(a.prefsT||0)>=(b.prefsT||0)?a:b;
   M.prefs=newer.prefs||{};
   M.prefsT=Math.max(a.prefsT||0,b.prefsT||0);
+  /* سجل الإنتاج: الحركات من الجهازين بتتجمع، والدفعة المحذوفة بتفضل محذوفة إلا لو فيها حركة أحدث من الحذف */
+  var pt={};
+  [a,b].forEach(function(s){var t=s.plogTomb||{};Object.keys(t).forEach(function(id){pt[id]=Math.max(pt[id]||0,t[id]);});});
+  M.plogTomb=pt;
+  M.plog=mergePlog(a.plog||{},b.plog||{});
+  Object.keys(M.plog).forEach(function(id){
+    var e=M.plog[id],last=(e.ev||[]).reduce(function(m,v){return Math.max(m,v.t||0);},e.at||0);
+    if(pt[id]!==undefined&&pt[id]>=last)delete M.plog[id];
+  });
   return M;
+}
+function mergePlog(a,b){
+  var out={};
+  [a,b].forEach(function(s){
+    Object.keys(s).forEach(function(id){
+      var x=s[id];if(!x)return;
+      var y=out[id];
+      if(!y){out[id]=JSON.parse(JSON.stringify(x));return;}
+      var by=(y.by||[]).slice();(x.by||[]).forEach(function(c){if(by.indexOf(c)<0)by.push(c);});
+      var seen={},ev=(y.ev||[]).concat(x.ev||[]).filter(function(v){var k=v.c+'|'+v.a+'|'+v.t;if(seen[k])return false;seen[k]=1;return true;}).sort(function(p,q){return p.t-q.t;}).slice(-40);
+      var at=(y.at&&x.at)?Math.min(y.at,x.at):(y.at||x.at);
+      out[id]={p:y.p||x.p,qty:y.qty||x.qty,at:at,by:by,ev:ev};
+    });
+  });
+  return out;
 }
 
 /* file access */
@@ -3154,7 +3178,8 @@ ACT.plDel=function(){
   if(!ids.length){toast('اختار دفعات الأول');return false;}
   if(U.confirm!=='pldel'){U.confirm='pldel';setTimeout(function(){if(U.confirm==='pldel'){U.confirm=null;render();}},3000);return;}
   U.confirm=null;
-  ids.forEach(function(id){delete S.plog[id];});
+  S.plogTomb=S.plogTomb||{};
+  ids.forEach(function(id){delete S.plog[id];S.plogTomb[id]=Date.now();});
   U.plSel=[];
   toast('اتمسحت '+ids.length+' دفعة من السجل');
 };
