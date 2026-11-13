@@ -1085,7 +1085,7 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'الأوردرات المحجوزة',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
@@ -1096,7 +1096,7 @@ function navItems(){
   var low=MATERIALS.filter(isLow).length;
   var running=by('prod').some(function(b){return b.startedAt&&!timerDone(b);});
   var st=[
-    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية',g:'orders'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية',g:'orders'},{k:'reserved',l:'محجوزة',n:reservedList().length,u:'طلبية',g:'orders',warn:reservedToday().length>0},
+    {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية',g:'orders'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية',g:'orders'},{k:'reserved',l:'تحت التشغيل',n:reservedList().length,u:'طلبية',g:'orders',warn:reservedToday().length>0},
     {k:'prep',l:'تحضير',n:by('prep').length,u:'دفعة'},
     {k:'prod',l:'إنتاج',n:by('prod').length,u:'دفعة',live:running},
     {k:'stock',l:'خامات',n:low,u:'ناقص',warn:low>0},
@@ -2205,7 +2205,7 @@ function shopProductsHTML(){
   if(!prodsOf('shop').length)return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+'<div class="empty"><b>مفيش وصفات محل</b><span>ضيف وصفة وحدّدها كوصفة محل عشان تظهر في أوردرات المحل.</span></div>';
   return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+recipePanel();
 }
-/* ---------- الأوردرات المحجوزة (عرض فقط) ---------- */
+/* ---------- تحت التشغيل (عرض فقط) ---------- */
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function reservedList(){
   var now=Date.now();
@@ -2237,8 +2237,8 @@ function reservedView(){
   var banner=today.length?'<div class="note" style="background:color-mix(in srgb,var(--warn) 14%,var(--surface))"><b>حفلات هتتسلم النهارده ('+today.length+')</b><div class="meta" style="margin-top:4px">'+
     today.map(function(o){return esc(custName(o))+' · '+o.due.slice(11,16);}).join(' — ')+'</div></div>':'';
   var body=list.length?'<div class="list">'+list.map(reservedCard).join('')+'</div>':
-    '<div class="empty"><b>مفيش أوردرات محجوزة</b><span>الأوردرات اللي لسه ما اتسلمتش هتظهر هنا.</span></div>';
-  return head('الأوردرات المحجوزة','عرض فقط · المتأخر فوق، وبعده الأقرب معاد. الأوردر بيختفي لما يتسلم.','')+banner+body;
+    '<div class="empty"><b>مفيش أوردرات تحت التشغيل</b><span>الأوردرات اللي لسه ما اتسلمتش هتظهر هنا.</span></div>';
+  return head('تحت التشغيل','عرض فقط · المتأخر فوق، وبعده الأقرب معاد. الأوردر بيختفي لما يتسلم.','')+banner+body;
 }
 function ordersView(kind){
   kind=kind||'cust';
@@ -2732,7 +2732,7 @@ var ACT={
   oDeliver:function(d){
     var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(!o)return false;
     if(orderBatches(o).length||!ordComplete(o)){toast('الأوردر لسه ناقص أصناف، شوف النواقص');return false;}
-    if(!allOk(o)){toast('علّم كل الأصناف في صفحة الأوردرات المحجوزة الأول');return false;}
+    if(!allOk(o)){toast('علّم كل الأصناف في صفحة تحت التشغيل الأول');return false;}
     o.deliveredAt=Date.now();toast('تم تسليم '+o.id+' وأرشفته');
   },
   lockMonth:function(d){
