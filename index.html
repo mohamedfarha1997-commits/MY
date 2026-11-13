@@ -1503,6 +1503,17 @@ function takeLots(pid,q){
   });
   return out;
 }
+function isWeightU(u){return u==='جرام'||u==='كجم';}
+function toTarget(p,q,target,F){
+  var from=p.unit;
+  if(from===target)return {v:q};
+  if(isWeightU(from)&&isWeightU(target))return {v:r3(q*unitGrams(from)/unitGrams(target))};
+  if(!isWeightU(from)&&!isWeightU(target))return {v:q};
+  var g=F&&F.w&&F.w[p.id];
+  if(!g)return {err:'اكتب وزن القطعة بالجرام لصنف '+p.name};
+  if(isWeightU(from))return {v:r3(q*unitGrams(from)/g)};
+  return {v:r3(q*g/unitGrams(target))};
+}
 function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
@@ -1514,9 +1525,15 @@ function fillSuggest(F){
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{}});
   var src=PRODUCTS.filter(function(p){return !isFill(p)&&(S.ready[p.id]||0)>0;});
+  var exF=PRODUCTS.filter(function(x){return isFill(x)&&x.fill===F.kind&&x.name===String(F.name||'').trim();})[0];
+  var tgt=exF?exF.unit:(F.unit||(src[0]&&src[0].unit)||'قطعة');
   var rows=src.map(function(p){
-    return '<div class="rq"><div><b>'+p.name+'</b><small>المتاح '+f(S.ready[p.id]||0)+' '+p.unit+'</small></div><span><input type="text" inputmode="decimal" data-fq="'+p.id+'" value="'+(F.q[p.id]||'')+'" placeholder="0" style="width:90px;min-height:38px;text-align:center"> <span class="meta">'+p.unit+'</span></span></div>';
+    var mix=isWeightU(p.unit)!==isWeightU(tgt);
+    return '<div class="rq"><div><b>'+p.name+'</b><small>المتاح '+f(S.ready[p.id]||0)+' '+p.unit+'</small></div><span><input type="text" inputmode="decimal" data-fq="'+p.id+'" value="'+(F.q[p.id]||'')+'" placeholder="0" style="width:90px;min-height:38px;text-align:center"> <span class="meta">'+p.unit+'</span></span>'+
+      (mix?'<div class="meta" style="width:100%;margin-top:6px">وزن القطعة بالجرام: <input type="text" inputmode="decimal" data-fw="'+p.id+'" value="'+((F.w&&F.w[p.id])||'')+'" placeholder="مثلاً 50" style="width:90px;min-height:34px;text-align:center"></div>':'')+'</div>';
   }).join('');
+  var unitBtns=exF?'<div class="meta" style="margin-top:8px">الوحدة هتكون زي الصنف الموجود: '+exF.unit+'</div>':
+    '<div class="meta" style="margin-top:8px">الوحدة اللي هيتسجل بيها الصنف</div><div class="btns">'+['قطعة','جرام','كجم','صاج','كادر'].map(function(u){return '<button class="btn '+(tgt===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
   var kindBtns='<div class="btns">'+[['cust','سحب أوردرات'],['shop','سحب أوردرات المحل']].map(function(x){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>';
@@ -1527,7 +1544,7 @@ function fillingView(){
   var form=src.length?'<section class="card" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
     '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+'<div id="fillSug">'+fillSuggest(F)+'</div>'+
     '<div class="meta">اكتب الكميات اللي هتتسحب من مخزن الإنتاج، وهتتجمع في صنف واحد</div>'+rows+
-    '<div class="meta" style="margin-top:8px">اختار التبويب اللي هيروح له الصنف</div>'+kindBtns+
+    unitBtns+'<div class="meta" style="margin-top:8px">اختار التبويب اللي هيروح له الصنف</div>'+kindBtns+
     '<div class="btns"><button class="btn" data-act="fillMake">حشو وفنش</button></div></section>'
     :'<div class="empty"><b>مفيش مخزون إنتاج</b><span>لازم يكون فيه أصناف جاهزة في مخزن الإنتاج الأول.</span></div>';
   return head('حشو وفنش','خد من مخزن الإنتاج واجمع في صنف واحد','')+form+'<div class="grp" style="margin-top:18px">الأصناف المحشوة</div><div class="list">'+list+'</div>';
@@ -2734,6 +2751,7 @@ var ACT={
     if(!p||!isFill(p))return false;
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;
   },
+  fillUnit:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.unit=d.v;},
   fillKind:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.kind=d.v;},
   fillMake:function(){
     var F=U.fill||{name:'',kind:'cust',q:{}};
@@ -2741,12 +2759,13 @@ var ACT={
     if(!name){toast('اكتب اسم الصنف');return false;}
     var src=PRODUCTS.filter(function(p){return !isFill(p)&&(F.q[p.id]||0)>0;});
     if(!src.length){toast('اختار صنف وكمية من مخزن الإنتاج');return false;}
-    var unit=src[0].unit;
-    if(src.some(function(p){return p.unit!==unit;})){toast('الأصناف دي وحداتها مختلفة، اختار أصناف بنفس الوحدة');return false;}
     for(var i=0;i<src.length;i++){if(F.q[src[i].id]>(S.ready[src[i].id]||0)+1e-9){toast('الكمية أكبر من المتاح في '+src[i].name);return false;}}
     var ex=PRODUCTS.filter(function(x){return isFill(x)&&x.fill===F.kind&&x.name===name;})[0];
-    if(ex&&ex.unit!==unit){toast('وحدة الصنف ده '+ex.unit+'، اختار أصناف بنفس الوحدة');return false;}
-    var total=r3(src.reduce(function(a,p){return a+F.q[p.id];},0));
+    var unit=ex?ex.unit:(F.unit||src[0].unit);
+    var conv=0,convErr=null;
+    src.forEach(function(p){var r=toTarget(p,F.q[p.id],unit,F);if(r.err)convErr=r.err;else conv+=r.v;});
+    if(convErr){toast(convErr);return false;}
+    var total=r3(conv);
     var taken={};src.forEach(function(p){taken[p.id]=takeLots(p.id,F.q[p.id]);});
     var newCodes=[];src.forEach(function(p){taken[p.id].forEach(function(l){if(l.id&&newCodes.indexOf(l.id)<0)newCodes.push(l.id);});});
     var prevCodes=ex?(ex.srcCodes||[]):[];
@@ -2828,6 +2847,7 @@ function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
   if(d.fn!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);return;}
+  if(d.fw!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.w=U.fill.w||{};var wv=num(t.value);U.fill.w[d.fw]=(isFinite(wv)&&wv>0)?wv:0;return;}
   if(d.fq!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};var fv=num(t.value);U.fill.q[d.fq]=(isFinite(fv)&&fv>0)?r3(fv):0;return;}
   if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>=1)?Math.min(500,Math.floor(sv)):1;return;}
   if(d.opk!==undefined&&U.osheet){U.osheet.pack=t.value;return;}
