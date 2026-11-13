@@ -708,7 +708,24 @@ function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty
 function shortOf(b){var n=need(b),out=[];if(!TRACK())return out;for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:n[k]-have});}return out;}
 /* sub-recipes: finished pieces of other products taken from the production stock (per ONE meal of this product) */
 function compsOf(pid){var p=P(pid);return (p&&p.comps)||[];}
-function compNeed(b){var o={};compsOf(b.p).forEach(function(c){if(P(c.p).missing)return;o[c.p]=r3((o[c.p]||0)+c.q*b.qty);});return o;}
+/* conversions from تبويب التحويلات: factor = how many [to] in ONE [from], or null if none */
+function convFactor(from,to){
+  if(!from||!to||from===to)return 1;
+  if(isWeightU(from)&&isWeightU(to))return convK(from,to);
+  var list=S.conv||[];
+  var d=list.filter(function(c){return c.from===from&&c.to===to;})[0];
+  if(d&&d.n>0)return d.n;
+  var r=list.filter(function(c){return c.from===to&&c.to===from;})[0];
+  if(r&&r.n>0)return 1/r.n;
+  return null;
+}
+/* quantity of a sub-recipe per ONE meal of the parent, expressed in the sub-recipe's own unit */
+function compPerMeal(c){
+  var cp=P(c.p);if(!cp)return c.q;
+  var f=convFactor(c.u||cp.unit,cp.unit);
+  return f==null?c.q:r3(c.q*f);
+}
+function compNeed(b){var o={};compsOf(b.p).forEach(function(c){if(P(c.p).missing)return;o[c.p]=r3((o[c.p]||0)+compPerMeal(c)*b.qty);});return o;}
 function compShort(b){var n=compNeed(b),out=[];for(var k in n){var have=S.ready[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:r3(n[k]-have),need:n[k]});}return out;}
 function compBack(b){if(b.withdrawn&&b.drawnC){for(var k in b.drawnC)S.ready[k]=r3((S.ready[k]||0)+b.drawnC[k]);}}
 function applyWithdraw(s,b){var n=need(b);if(s.track===true){for(var k in n)s.stock[k]=r3((s.stock[k]||0)-n[k]);}var cn=compNeed(b);for(var c in cn)s.ready[c]=r3((s.ready[c]||0)-cn[c]);b.drawnC=cn;b.withdrawn=true;b.drawn=s.track===true?n:{};}
@@ -1245,7 +1262,7 @@ function finHasContent(p){return (p.stages||[]).some(function(g){return g.kind==
 function compText(p,q){
   var c=(p.comps||[]).filter(function(x){return !P(x.p).missing;});
   if(!c.length)return '';
-  return '<div class="livec" style="--c:var(--prep)">من مخزن الإنتاج: '+c.map(function(x){var cp=P(x.p);return cp.name+' '+f(r3(x.q*(q||1)))+' '+cp.unit;}).join(' · ')+'</div>';
+  return '<div class="livec" style="--c:var(--prep)">من مخزن الإنتاج: '+c.map(function(x){var cp=P(x.p);return cp.name+' '+f(r3(compPerMeal(x)*(q||1)))+' '+cp.unit;}).join(' · ')+'</div>';
 }
 function recipeCardHTML(p,q){
   var full=stagesText(p,'prep',q)+(finHasContent(p)?stagesText(p,'finish',q):'');
@@ -1603,7 +1620,7 @@ function prepReqView(){
       }).join('');
     }else{
       comps=compsOf(pid).filter(function(c){var cp=P(c.p);return cp&&!cp.missing;}).map(function(c){
-        var cp=P(c.p),need=r3(c.q*meals),have=S.ready[c.p]||0,ok=have+1e-9>=need;
+        var cp=P(c.p),need=r3(compPerMeal(c)*meals),have=S.ready[c.p]||0,ok=have+1e-9>=need;
         return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>محتاج '+f(need)+' '+cp.unit+' · متاح '+f(have)+'</small></div><span class="pill '+(ok?'ok':'low')+'">'+(ok?'متاح':'ناقص '+f(r3(need-have)))+'</span></div>';
       }).join('');
     }
@@ -1751,9 +1768,12 @@ function stageForm(g,gi,n,cnt){
 function compsFormHTML(F){
   var st='height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px;min-width:0;width:100%';
   var rows=(F.comps||[]).map(function(c,i){
-    return '<div class="sline" style="grid-template-columns:minmax(0,1fr) 76px 36px"><select data-ci="'+i+'" data-cf="p" style="'+st+'" aria-label="الوصفة الفرعية"><option value="">اختار وصفة...</option>'+
+    var cp=c.p?P(c.p):null,childU=cp?cp.unit:'',parU=F.unit||'قطعة';
+    var uOpts=[childU,parU].filter(function(x,k,a){return x&&a.indexOf(x)===k;});
+    var uSel=uOpts.length?'<select data-ci="'+i+'" data-cf="u" style="'+st+'" aria-label="وحدة الكمية">'+uOpts.map(function(u){return '<option value="'+u+'"'+((c.u||childU)===u?' selected':'')+'>'+u+'</option>';}).join('')+'</select>':'<span></span>';
+    return '<div class="sline" style="grid-template-columns:minmax(0,1fr) 76px 84px 36px"><select data-ci="'+i+'" data-cf="p" style="'+st+'" aria-label="الوصفة الفرعية"><option value="">اختار وصفة...</option>'+
       PRODUCTS.filter(function(x){return x.id!==F.edit;}).map(function(x){return '<option value="'+x.id+'"'+(c.p===x.id?' selected':'')+'>'+x.name+'</option>';}).join('')+'</select>'+
-      '<input data-ci="'+i+'" data-cf="q" inputmode="decimal" placeholder="الكمية" value="'+esc(c.q)+'" aria-label="الكمية للوجبة الواحدة"><button class="xbtn" data-act="compDel" data-i="'+i+'" aria-label="احذف">×</button></div>';
+      '<input data-ci="'+i+'" data-cf="q" inputmode="decimal" placeholder="الكمية" value="'+esc(c.q)+'" aria-label="الكمية للوجبة الواحدة">'+uSel+'<button class="xbtn" data-act="compDel" data-i="'+i+'" aria-label="احذف">×</button></div>';
   }).join('');
   return '<div class="fld"><span class="sec-l">وصفات فرعية من مخزن الإنتاج ('+(F.comps||[]).length+')</span><div class="meta">وصفات جاهزة بتتسحب من مخزن الإنتاج، زي كيك الفراولة جوه كيك الراسبيري. اكتب الكمية اللي الوجبة الواحدة بتاخدها بوحدة الصنف (قطع أو جرام أو كجم).</div><div class="stack">'+rows+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="compAdd">'+svg('plus')+'وصفة فرعية</button></div>';
 }
@@ -1827,7 +1847,13 @@ function saveProd(F){
     if(!isFinite(q)||q<=0){bad=bad||'كمية الوصفة الفرعية لازم تكون أكبر من صفر';return;}
     if(c.p===F.edit){bad=bad||'الوصفة ما ينفعش تدخل في نفسها';return;}
     if(cseen[c.p]){bad=bad||'وصفة فرعية متكررة';return;}
-    cseen[c.p]=1;comps.push({p:c.p,q:q});
+    cseen[c.p]=1;
+    var cpp=P(c.p),entry={p:c.p,q:q};
+    if(cpp&&c.u&&c.u!==cpp.unit){
+      if(convFactor(c.u,cpp.unit)==null){bad=bad||'مفيش تحويلة بين '+c.u+' و '+cpp.unit+' في تبويب التحويلات، ضيفها الأول';return;}
+      entry.u=c.u;
+    }
+    comps.push(entry);
   });
   if(F.edit&&comps.length){
     var reach=function(from,seen){if(from===F.edit)return true;if(seen[from])return false;seen[from]=1;return compsOf(from).some(function(c){return reach(c.p,seen);});};
@@ -2629,14 +2655,14 @@ var ACT={
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
+    U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q),u:c.u||''};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
           ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.q),u:m?m.unit:'جرام'};}),
           steps:g.steps.length?g.steps.map(unesc):['']};
       })};
   },
-  compAdd:function(){U.form.comps.push({p:'',q:'1'});},
+  compAdd:function(){U.form.comps.push({p:'',q:'1',u:''});},
   compDel:function(d){U.form.comps.splice(Number(d.i),1);},
   stAdd:function(d){var F=U.form;F.stages.push(mkStage(d.k,''));U.focus='[data-gi="'+(F.stages.length-1)+'"]'+(d.k==='prep'?'[data-ii="0"][data-fd="n"]':'[data-gf="name"]');},
   stDel:function(d){U.form.stages.splice(Number(d.gi),1);},
@@ -3085,7 +3111,7 @@ function onField(e){
   if(U.osheet&&d.od!==undefined){var dv=t.value;if(dv&&/T\d\d:\d\d/.test(dv)&&!/T\d\d:00/.test(dv)){dv=dv.replace(/T(\d\d):\d\d/,'T$1:00');t.value=dv;}U.osheet.due=dv;return;}
   if(!F)return;
   if(d.f!==undefined){F[d.f]=t.value;return;}
-  if(d.ci!==undefined){var cr=(F.comps||[])[Number(d.ci)];if(cr){if(d.cf==='p')cr.p=t.value;else cr.q=t.value;}return;}
+  if(d.ci!==undefined){var cr=(F.comps||[])[Number(d.ci)];if(cr){if(d.cf==='p')cr.p=t.value;else if(d.cf==='u')cr.u=t.value;else cr.q=t.value;}return;}
   if(d.gi===undefined||!F.stages)return;
   var g=F.stages[Number(d.gi)];if(!g)return;
   if(d.gf==='name'){g.name=t.value;}
