@@ -1575,7 +1575,7 @@ function fillSuggest(F){
   var dup=PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===q;});
   var m=PRODUCTS.filter(function(p){return String(p.name||'').indexOf(q)>-1;}).slice(0,6);
   var out='';
-  if(dup)out+='<div class="meta" style="color:var(--bad);margin:-4px 0 8px">الصنف ده موجود قبل كده، غيّر الاسم</div>';
+  if(dup)out+='<div class="meta" style="color:var(--filling);margin:-4px 0 8px">الصنف ده موجود قبل كده، الإنتاج الجديد هيتضاف عليه وأكواده هتتدمج (القديمة الأول)</div>';
   if(m.length)out+='<div class="meta" style="margin:-4px 0 8px">وصفات موجودة بنفس الاسم أو قريبة منه، اختار واحدة عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="btns">'+
     m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(isFill(p)?'محشو':'وصفة')+'</button>';}).join('')+'</div>';
   return out;
@@ -1647,7 +1647,7 @@ function fillingView(){
     '<div class="fld"><label>الكمية الناتجة</label><input type="text" inputmode="decimal" data-fo="1" value="'+(F.out||'')+'" placeholder="مثلاً 3"></div>'+unitBtns+
     '<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
-    '<div class="btns"><button class="btn"'+((function(){var nm=String(F.name||'').trim();return nm&&PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===nm;});})()?' disabled':'')+' data-act="fillMake">اعمل الصنف</button></div></section>';
+    '<div class="btns"><button class="btn" data-act="fillMake">اعمل الصنف</button></div></section>';
   return head('حشو وفنش','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form+
     '<div class="grp" style="margin-top:18px">الأصناف المحشوة</div><div class="list">'+cards+'</div>';
 }
@@ -2900,7 +2900,7 @@ var ACT={
     var F=U.fill||{name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]};
     var name=String(F.name||'').trim();
     if(!name){toast('اكتب اسم الصنف');return false;}
-    if(PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===name;})){toast('الصنف ده موجود قبل كده، غيّر الاسم');return false;}
+    var ex=PRODUCTS.filter(function(x){return isFill(x)&&String(x.name||'').trim()===name;})[0];
     var out=num(F.out);
     if(!(isFinite(out)&&out>0)){toast('اكتب الكمية الناتجة');return false;}
     var src=PRODUCTS.filter(function(p){return !isFill(p)&&(F.q[p.id]||0)>0;});
@@ -2918,6 +2918,19 @@ var ACT={
     });
     var pulled=r3(src.reduce(function(a,p){return a+F.q[p.id];},0));
     src.forEach(function(p){S.ready[p.id]=r3((S.ready[p.id]||0)-F.q[p.id]);});
+    if(ex){
+      var prev=(ex.srcCodes||[]).slice();
+      codes.forEach(function(c){if(prev.indexOf(c)<0)prev.push(c);});
+      ex.srcCodes=prev;
+      S.ready[ex.id]=r3((S.ready[ex.id]||0)+out);
+      ex.from=(ex.from||[]).concat(src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}));
+      ex.fromTotal=r3((ex.fromTotal||0)+pulled);
+      if((F.grp||'').trim())ex.grp=(F.grp||'').trim();
+      allocReady(ex.id);
+      bind(S);U.fill=null;
+      toast('اتزودت '+name+' بكمية '+f(r3(out))+' '+ex.unit+' وأكوادها اتضافت');
+      return;
+    }
     var code=mergedCode();
     var np={id:'p'+Date.now().toString(36),name:name,code:code,srcCodes:codes,grp:(F.grp||'').trim(),unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),
       from:src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}),fromTotal:pulled};
