@@ -2047,9 +2047,11 @@ function stagesText(p,kind,qty){
 }
 
 /* ---------- printing ---------- */
+/* التحضيرات (أصناف التحضير أو اللي متعلّمة مخفية من الأوردرات) مش بتظهر في الفواتير والتقارير */
+function invoiceHidden(p){return !!p&&(!!p.noOrder||/^\s*تحضير/.test(unesc(p.name||'')));}
 function printOrderHTML(o){
   var h='<h1>طلبية '+o.id+'</h1><div class="pm">'+(o.cust?o.cust+' · ':'')+tstr(o.created)+(o.due?' · معاد التسليم: '+dueStr(o.due):'')+'</div>';
-  h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table>';
+  h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.filter(function(it){return !invoiceHidden(P(it.p));}).map(function(it,i){var p=P(it.p);return p?'<tr><td>'+(i+1)+'</td><td>'+p.name+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
 function printReport(title,html){
@@ -2268,10 +2270,10 @@ function printAllHTML(list){
   var h='<h1>الأوردرات المطلوبة</h1><div class="pm">عدد الأوردرات: '+sorted.length+' · طُبع '+tstr(Date.now())+'</div>';
   sorted.forEach(function(o){
     h+='<div class="pg"><h2>'+custName(o)+' — '+sid(o.id)+'</h2><div class="pm">تسجيل: '+tstr(o.created)+(o.due?' · معاد التسليم: '+dueStr(o.due):'')+'</div>'+
-      '<table class="pt"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.map(function(it){var p=P(it.p);return p?'<tr><td>'+p.name+(it.pack?' · '+it.pack:'')+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table></div>';
+      '<table class="pt"><thead><tr><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+o.items.filter(function(it){return !invoiceHidden(P(it.p));}).map(function(it){var p=P(it.p);return p?'<tr><td>'+p.name+(it.pack?' · '+it.pack:'')+'</td><td class="n">'+pieceQ(it.qty,p)+'</td></tr>':'';}).join('')+'</tbody></table></div>';
   });
   var prodTot={};
-  sorted.forEach(function(o){o.items.forEach(function(it){prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
+  sorted.forEach(function(o){o.items.forEach(function(it){if(invoiceHidden(P(it.p)))return;prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
   h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(k){var p=P(k);return p?'<tr><td>'+p.name+'</td><td class="n">'+pieceQ(prodTot[k],p)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
@@ -2282,7 +2284,7 @@ function monthReportHTML(k,kind){
   h+='<table class="pt"><thead><tr><th>#</th><th>الرقم</th><th>'+(kind==='shop'?'المحل':'العميل')+'</th><th>الأصناف</th><th>التسجيل</th><th>معاد التسليم</th><th>اتسلّم</th></tr></thead><tbody>'+
     list.map(function(o,i){return '<tr><td>'+(i+1)+'</td><td class="ltr">'+sid(o.id)+'</td><td>'+custName(o)+'</td><td>'+itemsText(o)+'</td><td>'+tstr(o.created)+'</td><td>'+(o.due?dueStr(o.due):'')+'</td><td>'+(o.deliveredAt?tstr(o.deliveredAt):'')+'</td></tr>';}).join('')+'</tbody></table>';
   var prodTot={};
-  list.forEach(function(o){o.items.forEach(function(it){prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
+  list.forEach(function(o){o.items.forEach(function(it){if(invoiceHidden(P(it.p)))return;prodTot[it.p]=(prodTot[it.p]||0)+it.qty;});});
   h+='<h2>إجمالي الأصناف</h2><table class="pt"><tbody>'+Object.keys(prodTot).map(function(p){var pr=P(p);return pr?'<tr><td>'+pr.name+'</td><td class="n">'+pieceQ(prodTot[p],pr)+'</td></tr>':'';}).join('')+'</tbody></table>';
   return h;
 }
