@@ -2376,7 +2376,13 @@ function ordSheetHTML(){
   var open='<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody">';
   var sel='style="width:100%;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 6px;font-size:14px;margin-top:6px"';
   if(s.step==='pick'){
-    var grid=groupedJoin(seasonP,function(p){
+    var gkeys=[];seasonP.forEach(function(p){var k=p.grp||'__none';if(gkeys.indexOf(k)<0)gkeys.push(k);});
+    var curTab=(U.oTab==='__all'||gkeys.indexOf(U.oTab)>-1)?U.oTab:'__all';
+    var tabs=[['__all','الكل']].concat(gkeys.map(function(k){return [k,k==='__none'?'بدون مجموعة':k];}));
+    var tabBar='<div class="seg" role="group" aria-label="أقسام الأصناف" style="overflow-x:auto;white-space:nowrap;max-width:100%">'+
+      tabs.map(function(t){return '<button class="'+(curTab===t[0]?'on':'')+'" data-act="oTab" data-v="'+esc(t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div>';
+    var shown=curTab==='__all'?seasonP:seasonP.filter(function(p){return (p.grp||'__none')===curTab;});
+    var grid=shown.map(function(p){
       var on=addedIds.indexOf(p.id)>=0;
       if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+(isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+'</button>';
       var q=s.items[p.id]||0;
@@ -2386,10 +2392,10 @@ function ordSheetHTML(){
         '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div>'+
         '<select data-opkp="'+p.id+'" aria-label="تعبئة الصنف" '+sel+'><option value="">تعبئة الصنف</option>'+
           PACKS.map(function(x){var cur=(s.packs&&s.packs[p.id])||s.pack||'';return '<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
-    });
+    }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
-      (seasonP.length?'<div class="pgrid">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+      (seasonP.length?tabBar+'<div class="pgrid" style="margin-top:10px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
   }
   var rows=addedP.map(function(p){
@@ -2782,12 +2788,14 @@ var ACT={
     os.step='form';
   },
   oBack:function(){var os=U.osheet;if(os)os.step='pick';},
+  oTab:function(d){U.oTab=d.v;},
   oPick:function(d){
     var os=U.osheet;if(!os)return false;
     os.added=os.added||[];
     var k=os.added.indexOf(d.p);
     if(k>-1){os.added.splice(k,1);delete os.items[d.p];return;}
     os.added.push(d.p);
+    U.focus='[data-oq="'+d.p+'"]';
   },
   oStep:function(d){
     var os=U.osheet;if(!os)return false;
