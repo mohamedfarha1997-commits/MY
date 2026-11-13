@@ -2166,7 +2166,14 @@ function okind(o){return o.kind||'cust';}
 function custName(o){return o.cust||'أوردر بدون اسم';}
 function monthKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function lockKey(kind,k){return kind+'|'+k;}
-function isLocked(o){var t=S.locks&&S.locks[lockKey(okind(o),monthKey(o.created))];return !!t&&(typeof t!=='number'||(o.created||0)<=t);}
+function isLocked(o){
+  var k=monthKey(o.created),t=S.locks&&S.locks[lockKey(okind(o),k)];
+  if(!t)return false;
+  if(typeof t==='number')return (o.created||0)<=t;
+  /* قفل قديم (بدون وقت): نعتمد على وقت آخر أرشيف للشهر */
+  var at=0;archEntries(k).forEach(function(a){if((a.at||0)>at)at=a.at||0;});
+  return at?(o.created||0)<=at:true;
+}
 function isFill(p){return !!(p&&p.fill);}
 function prodsOf(kind){return PRODUCTS.filter(function(p){return !isFill(p)&&(kind==='shop'?!!p.shop:!p.shop);});}
 function ordProdsOf(kind){return PRODUCTS.filter(function(p){return isFill(p)&&p.fill===kind;});}
