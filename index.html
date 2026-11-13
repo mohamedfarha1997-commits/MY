@@ -46,6 +46,10 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .arch>summary::after{content:'▾';color:var(--muted);font-size:14px;transition:transform .2s;margin-inline-start:6px;align-self:center}
 .arch:not([open])>summary::after{transform:rotate(-90deg)}
 .arch[open]>summary{margin-bottom:4px}
+.cv{display:flex;gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:6px 0 10px;margin:0 -2px}
+.cv::-webkit-scrollbar{display:none}
+.cv-c{flex:0 0 auto;scroll-snap-align:center;min-height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);font-family:inherit;font-size:15px;font-weight:700;white-space:nowrap;filter:grayscale(1);opacity:.7;transition:filter .3s,opacity .3s,background .3s,color .3s,transform .3s}
+.cv-c.mid{background:var(--orders);color:#fff;border-color:transparent;filter:none;opacity:1;transform:scale(1.05)}
 </style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1279,10 +1283,12 @@ function prepCard(b){
       prepGroupsHTML(b)+
       '<button class="btn block" data-act="toProd" data-id="'+b.id+'"'+(ck.length<tot?' disabled':'')+'>حوّل للإنتاج</button>';
   }
-  return '<article class="card"><div class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
-    '<span class="pill '+(b.withdrawn?'c':'low')+'">'+(b.withdrawn?'قيد التجهيز':'بانتظار السحب')+'</span></div>'+
-    '<div>'+rows+crows+'</div>'+perMealHTML(p)+act+
-    '<div class="foot"><span class="meta">'+p.mins+' دقيقة تشغيل</span><button class="btn quiet" data-act="cancel" data-id="'+b.id+'">'+(U.confirm===b.id?'اضغط تاني للتأكيد':'إلغاء الدفعة')+'</button></div></article>';
+  var fk='prep-'+b.id,isOpen=FOLD_OPEN[fk]===true;
+  return '<details class="card ordfold prepfold" data-fk="'+fk+'"'+(isOpen?' open':'')+' style="--c:var(--prep)">'+
+    '<summary class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
+    '<span class="pill '+(b.withdrawn?'c':'low')+'">'+(b.withdrawn?'قيد التجهيز':'بانتظار السحب')+'</span></summary>'+
+    '<div class="ordbody"><div>'+rows+crows+'</div>'+perMealHTML(p)+act+
+    '<div class="foot"><span class="meta">'+p.mins+' دقيقة تشغيل</span><button class="btn quiet" data-act="cancel" data-id="'+b.id+'">'+(U.confirm===b.id?'اضغط تاني للتأكيد':'إلغاء الدفعة')+'</button></div></div></details>';
 }
 /* السعة المعتادة للصنف = أكبر دفعة اتعملت له قبل كده (من السجل والدفعات الحالية) */
 function batchCapacity(pid){
@@ -2576,8 +2582,8 @@ function ordSheetHTML(){
     var gkeys=[];seasonP.forEach(function(p){var k=p.grp||'__none';if(gkeys.indexOf(k)<0)gkeys.push(k);});
     var curTab=(U.oTab==='__all'||gkeys.indexOf(U.oTab)>-1)?U.oTab:'__all';
     var tabs=[['__all','الكل']].concat(gkeys.map(function(k){return [k,k==='__none'?'بدون مجموعة':k];}));
-    var tabBar='<div role="tablist" aria-label="أقسام الأصناف" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:4px 2px 8px;margin:0 -2px;scrollbar-width:none">'+
-      tabs.map(function(t){var on=curTab===t[0];return '<button role="tab" aria-selected="'+on+'" data-act="oTab" data-v="'+esc(t[0])+'" style="flex:0 0 auto;scroll-snap-align:start;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid '+(on?'transparent':'var(--line)')+';background:'+(on?'var(--orders)':'var(--surface-2)')+';color:'+(on?'#fff':'var(--ink)')+';font-size:15px;font-weight:700;white-space:nowrap">'+esc(t[1])+'</button>';}).join('')+'</div>';
+    var tabBar='<div class="cv" role="tablist" aria-label="أقسام الأصناف">'+
+      tabs.map(function(t){var on=curTab===t[0];return '<button class="cv-c'+(on?' mid':'')+'" role="tab" aria-selected="'+on+'" data-act="oTab" data-v="'+esc(t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div>';
     var shown=curTab==='__all'?seasonP:seasonP.filter(function(p){return (p.grp||'__none')===curTab;});
     var grid=shown.map(function(p){
       var on=addedIds.indexOf(p.id)>=0;
@@ -3417,4 +3423,56 @@ restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finis
 })();
 </script>
 
+
+<script>
+(function(){
+  /* padding = half the viewport minus half the first/last chip, so the scroll range
+     stops exactly on the first and last tab (no empty space past them) */
+  function pad(c){
+    var ch=c.querySelectorAll('.cv-c');if(!ch.length)return;
+    var W=c.clientWidth;
+    c.style.paddingInlineStart=Math.max(0,W/2-ch[0].offsetWidth/2)+'px';
+    c.style.paddingInlineEnd=Math.max(0,W/2-ch[ch.length-1].offsetWidth/2)+'px';
+  }
+  function nearest(c){
+    var cr=c.getBoundingClientRect(),cc=cr.left+cr.width/2,best=null,bd=1e9;
+    c.querySelectorAll('.cv-c').forEach(function(b){
+      var r=b.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-cc);
+      if(d<bd){bd=d;best=b;}
+    });
+    return best;
+  }
+  function paint(c,b){
+    c.querySelectorAll('.cv-c').forEach(function(x){
+      x.classList.toggle('mid',x===b);
+      x.setAttribute('aria-selected',x===b?'true':'false');
+    });
+  }
+  function bind(c){
+    if(c.dataset.cvi)return;
+    c.dataset.cvi='1';
+    pad(c);
+    var t=null,raf=0;
+    function settle(){
+      var b=nearest(c);if(!b)return;
+      paint(c,b);
+      b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'});
+      if(b.dataset.v!==U.oTab){U.oTab=b.dataset.v;render();}
+    }
+    c.addEventListener('scroll',function(){
+      if(!raf)raf=requestAnimationFrame(function(){raf=0;var b=nearest(c);if(b)paint(c,b);});
+      clearTimeout(t);
+      t=setTimeout(settle,140);
+    },{passive:true});
+    c.addEventListener('scrollend',function(){clearTimeout(t);settle();});
+    var mid=c.querySelector('.cv-c.mid');
+    if(mid)mid.scrollIntoView({inline:'center',block:'nearest'});
+  }
+  function scan(){document.querySelectorAll('.cv').forEach(bind);}
+  var app=document.getElementById('app');
+  if(app)new MutationObserver(scan).observe(app,{childList:true,subtree:true});
+  window.addEventListener('resize',function(){document.querySelectorAll('.cv').forEach(pad);});
+  scan();
+})();
+</script>
 </body></html>
