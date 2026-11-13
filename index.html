@@ -1574,10 +1574,20 @@ function prepReqView(){
   var cards=ids.map(function(pid){
     var p=P(pid);if(!p)return '';
     var sh=short[pid],y=yieldOf(pid),meals=sh/y;
-    var comps=compsOf(pid).filter(function(c){var cp=P(c.p);return cp&&!cp.missing;}).map(function(c){
-      var cp=P(c.p),need=r3(c.q*meals),have=S.ready[c.p]||0,ok=have+1e-9>=need;
-      return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>محتاج '+f(need)+' '+cp.unit+' · متاح '+f(have)+'</small></div><span class="pill '+(ok?'ok':'low')+'">'+(ok?'متاح':'ناقص '+f(r3(need-have)))+'</span></div>';
-    }).join('');
+    var comps;
+    if(isFill(p)){
+      var from=p.from||[],denom=p.fromTotal||from.reduce(function(a,x){return a+(x.t||x.q||0);},0)||1;
+      comps=from.map(function(x){
+        var sp=P(x.p);if(!sp)return '';
+        var need=r3((x.q||0)*sh/denom),have=S.ready[x.p]||0,ok=have+1e-9>=need;
+        return '<div class="rq"><div><b>'+esc(sp.name)+'</b><small>محتاج '+f(need)+' '+sp.unit+' · متاح '+f(have)+'</small></div><span class="pill '+(ok?'ok':'low')+'">'+(ok?'متاح':'ناقص '+f(r3(need-have)))+'</span></div>';
+      }).join('');
+    }else{
+      comps=compsOf(pid).filter(function(c){var cp=P(c.p);return cp&&!cp.missing;}).map(function(c){
+        var cp=P(c.p),need=r3(c.q*meals),have=S.ready[c.p]||0,ok=have+1e-9>=need;
+        return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>محتاج '+f(need)+' '+cp.unit+' · متاح '+f(have)+'</small></div><span class="pill '+(ok?'ok':'low')+'">'+(ok?'متاح':'ناقص '+f(r3(need-have)))+'</span></div>';
+      }).join('');
+    }
     var mats=Object.keys(p.recipe||{}).map(function(k){
       var m=M(k),need=r3(p.recipe[k]*sh/y);
       return '<div class="rq"><div><b>'+esc(m?m.name:k)+'</b><small>محتاج '+f(need)+' '+(m?m.unit:'')+' · في المخزن '+f(S.stock[k]||0)+'</small></div></div>';
@@ -2870,8 +2880,8 @@ var ACT={
     var sameSet=!!ex&&allCodes.length===prevCodes.length;
     var code=allCodes.length===0?(ex?ex.code:''):(allCodes.length===1?allCodes[0]:((sameSet&&ex.code)?ex.code:mergedCode()));
     src.forEach(function(p){S.ready[p.id]=r3((S.ready[p.id]||0)-F.q[p.id]);});
-    var np={id:'p'+Date.now().toString(36),name:name,code:code,srcCodes:allCodes,grp:(F.grp||'').trim(),unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})};
-    if(ex){S.ready[ex.id]=r3((S.ready[ex.id]||0)+total);ex.code=code;ex.srcCodes=allCodes;if((F.grp||'').trim())ex.grp=(F.grp||'').trim();allocReady(ex.id);}else{S.products.push(np);S.ready[np.id]=total;allocReady(np.id);}
+    var np={id:'p'+Date.now().toString(36),name:name,code:code,srcCodes:allCodes,grp:(F.grp||'').trim(),unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),from:src.map(function(p){var r=toTarget(p,F.q[p.id],unit,F);return {p:p.id,q:F.q[p.id],t:r.v||0};}),fromTotal:total};
+    if(ex){S.ready[ex.id]=r3((S.ready[ex.id]||0)+total);ex.code=code;ex.srcCodes=allCodes;ex.from=(ex.from||[]).concat(np.from||[]);ex.fromTotal=r3((ex.fromTotal||0)+total);if((F.grp||'').trim())ex.grp=(F.grp||'').trim();allocReady(ex.id);}else{S.products.push(np);S.ready[np.id]=total;allocReady(np.id);}
     bind(S);U.fill=null;
     toast((ex?'زودت ':'اتعمل ')+name+' بكمية '+f(total)+' '+unit+' واتحط في '+(F.kind==='shop'?'سحب أوردرات المحل':'سحب أوردرات'));
   },
