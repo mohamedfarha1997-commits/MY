@@ -561,7 +561,7 @@ async function checkPin(p){
   var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
   return hex===AUTH_HASH;
 }
-function authed(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
+function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
 var SEED_USERS=[
     {id:'U512',name:'كريم',code:'512',salt:'865b1776b6f7fcae1bf38a89e9f0b192',h:'5eaa94d61dd481fdca6e30fb7d0f4972160bc270c8a0a4d6801f91d564d5e0bd',iter:200000},
     {id:'U879',name:'عبدالله',code:'879',salt:'f0fe856c05b1ea0b60a59bef25762ad2',h:'053272f74ab7a7b97ba4a5e6f6954139c486ea5cf685c216c3f64125a88737a5',iter:200000}
@@ -572,7 +572,7 @@ function usersList(){
   return S.users;
 }
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
-function sessionCode(){try{var a=sessionStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
+function sessionCode(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
 function limited(){return !!sessionCode();}
 function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return STAFF_DEFAULT;}
 function actorCode(){var c=sessionCode();if(c)return c;return 'CHEF MYF';}
@@ -821,10 +821,10 @@ function fsStart(){baseline();gdStart();}
    Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
 var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
 var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
-function gdSaveCfg(){try{if(GD.on)sessionStorage.setItem('khat-gd',JSON.stringify({id:GD.id}));else sessionStorage.removeItem('khat-gd');}catch(e){}}
+function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id}));else localStorage.removeItem('khat-gd');}catch(e){}}
 function gdLoadCfg(){
-  try{var c=JSON.parse(sessionStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
-  try{var t=JSON.parse(sessionStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
+  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
+  try{var t=JSON.parse(localStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
 function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
@@ -856,7 +856,7 @@ function gdTokCb(r){
       GD.shown=null;gdPaint();return;
     }}catch(x){}
     GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;
-    try{sessionStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
+    try{localStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
     if(GD.pend){var p=GD.pend;GD.pend=null;p.res();}else gdSync();
   }else{
     GD.needTap=true;GD.ok=false;GD.err='تعذّر الربط بجوجل ('+((r&&r.error)||'خطأ')+')';
@@ -898,7 +898,7 @@ function gdApi(url,opt){
   opt.headers=Object.assign({Authorization:'Bearer '+GD.tok},opt.headers||{});
   opt.cache='no-store';
   return withTimeout(fetch(url,opt),20000).then(function(r){
-    if(r.status===401){GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
+    if(r.status===401){GD.tok=null;GD.exp=0;try{localStorage.removeItem('khat-gd-tok');}catch(e){}throw {code:401};}
     if(!r.ok)return r.text().then(function(t){
       var why='';try{var j=JSON.parse(t).error||{};why=(j.errors&&j.errors[0]&&j.errors[0].reason)||(j.details&&j.details[0]&&j.details[0].reason)||j.status||'';}catch(x){}
       throw {code:r.status,reason:why,msg:t.slice(0,160)};
@@ -944,7 +944,7 @@ function gdFail(e){
   else if(c===403){
     var rs=String((e&&e.reason)||'');
     if(/accessNotConfigured|SERVICE_DISABLED/i.test(rs))GD.err='Drive API مش مفعّل في مشروع الكونسول. فعّله من APIs & Services ثم Library ثم Google Drive API';
-    else if(/insufficient|scope/i.test(rs)){GD.err='صلاحية Drive ما اتأكدتش. افصل واربط تاني، وعلّم على مربع Drive في شاشة جوجل';GD.tok=null;GD.exp=0;try{sessionStorage.removeItem('khat-gd-tok');}catch(x){}}
+    else if(/insufficient|scope/i.test(rs)){GD.err='صلاحية Drive ما اتأكدتش. افصل واربط تاني، وعلّم على مربع Drive في شاشة جوجل';GD.tok=null;GD.exp=0;try{localStorage.removeItem('khat-gd-tok');}catch(x){}}
     else GD.err='جوجل رفض الطلب ('+(rs||'403')+')';
   }
   else if(e&&e.message==='timeout')GD.err='الاتصال بجوجل بطيء، هيحاول تاني';
@@ -2411,9 +2411,9 @@ var ACT={
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
     checkPin(p).then(function(ok){
-      if(ok){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
+      if(ok){lockSettings();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;render();return null;}
       return findUserByPw(p).then(function(u){
-        if(u){lockSettings();try{sessionStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';}
+        if(u){lockSettings();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';}
         else{U.loginErr='الباسورد غلط';}
         render();
       });
@@ -2431,12 +2431,12 @@ var ACT={
   },
   gdOff:function(){
     GD.on=false;GD.ok=false;GD.id=null;GD.tok=null;GD.exp=0;GD.ver=null;GD.err=null;GD.shown=null;
-    try{sessionStorage.removeItem('khat-gd-tok');}catch(e){}
+    try{localStorage.removeItem('khat-gd-tok');}catch(e){}
     gdSaveCfg();toast('اتفصل عن درايف');
   },
   exportBackup:function(){exportBackup();return false;},
   importBackup:function(){importBackup();return false;},
-  logout:function(){try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
+  logout:function(){try{localStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
