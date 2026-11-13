@@ -1572,10 +1572,13 @@ function groupNames(){
 function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
-  var m=PRODUCTS.filter(function(p){return isFill(p)&&p.name.indexOf(q)>-1;}).slice(0,5);
-  if(!m.length)return '';
-  return '<div class="meta" style="margin:-4px 0 8px">أصناف محشوة موجودة بنفس الاسم أو قريبة منه، لو اخترت واحد الكمية بتتزود عليه:</div><div class="btns">'+
-    m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(p.fill==='shop'?'أوردرات المحل':'أوردرات')+'</button>';}).join('')+'</div>';
+  var dup=PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===q;});
+  var m=PRODUCTS.filter(function(p){return String(p.name||'').indexOf(q)>-1;}).slice(0,6);
+  var out='';
+  if(dup)out+='<div class="meta" style="color:var(--bad);margin:-4px 0 8px">الصنف ده موجود قبل كده، غيّر الاسم</div>';
+  if(m.length)out+='<div class="meta" style="margin:-4px 0 8px">وصفات موجودة بنفس الاسم أو قريبة منه، اختار واحدة عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="btns">'+
+    m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(isFill(p)?'محشو':'وصفة')+'</button>';}).join('')+'</div>';
+  return out;
 }
 function prepReqIds(){
   var seen=[];fgShortRows().forEach(function(r){if(seen.indexOf(r.x.p)<0)seen.push(r.x.p);});return seen;
@@ -1636,7 +1639,7 @@ function fillingView(){
   var cards=mine.length?groupFillCards(mine):'<div class="empty"><b>مفيش أصناف محشوة لسه</b></div>';
   var form='<section class="card" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
     '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+
-    (function(){var nm=String(F.name||'').trim();var dp=nm&&PRODUCTS.filter(function(x){return isFill(x)&&String(x.name||'').trim()===nm;})[0];return dp?'<div class="meta" style="color:var(--bad);margin:-4px 0 8px">الصنف ده موجود قبل كده بكود '+esc(dp.code||'-')+'، غيّر الاسم</div>':'';})()+
+    '<div id="fillSug">'+fillSuggest(F)+'</div>'+
     '<div class="fld"><label>المجموعة (اختياري)</label><input type="text" data-fg="1" value="'+esc(F.grp||'')+'" placeholder="مثلاً: كيك، بسكويت"></div>'+
     (groupNames().length?'<div class="btns">'+groupNames().map(function(g){return '<button class="btn ghost sm" data-act="fillGrp" data-v="'+esc(g)+'">'+esc(g)+'</button>';}).join('')+'</div>':'')+
     '<div class="meta">1. اختار الخامات اللي هتتسحب من مخزن الإنتاج واكتب الكمية المسحوبة من كل واحد</div>'+pick+
@@ -2877,8 +2880,10 @@ var ACT={
   },
   fillPick:function(d){
     var p=PRODUCTS.filter(function(x){return x.id===d.id;})[0];
-    if(!p||!isFill(p))return false;
-    U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;U.fill.grp=p.grp||'';
+    if(!p)return false;
+    U.fill=U.fill||{name:'',kind:'cust',q:{}};
+    U.fill.name=p.name;U.fill.grp=p.grp||'';
+    if(isFill(p)){U.fill.kind=p.fill;U.fill.unit=p.unit;}
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
@@ -3009,7 +3014,7 @@ function onField(e){
   if(d.fn!==undefined){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;
     var nm=String(t.value||'').trim();
-    var mt=PRODUCTS.filter(function(x){return isFill(x)&&x.name===nm;})[0];
+    var mt=PRODUCTS.filter(function(x){return String(x.name||'').trim()===nm;})[0];
     if(mt){U.fill.grp=mt.grp||'';var gi=document.querySelector('[data-fg]');if(gi)gi.value=mt.grp||'';}
     var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);
     return;
