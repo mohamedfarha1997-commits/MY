@@ -1158,7 +1158,7 @@ function perMealHTML(p){
   if(!any)return '';
   g=r3(g);
   var parts=[];
-  if(g>0)parts.push('<b>'+(g>=1000?f(r3(g/1000))+' كجم</b> ('+f(g)+' جرام)':f(g)+' جرام</b>'));
+  if(g>0)parts.push('<b>'+f(g)+' جرام</b>');
   Object.keys(oth).forEach(function(u){parts.push(f(oth[u])+' '+u);});
   return '<div class="livec" style="--c:var(--prep)">إجمالي الوزنة للوجبة الواحدة: '+parts.join(' + ')+'</div>';
 }
