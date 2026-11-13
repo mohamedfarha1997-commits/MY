@@ -2430,8 +2430,8 @@ function reservedToday(){
 function reservedCard(o){
   var late=!!o.due&&new Date(o.due).getTime()<Date.now();
   var rows=ordShort(o).map(function(x,i){
-    var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';var it=(o.items||[]).filter(function(i2){return i2.p===x.p;})[0]||{};
-    return '<div class="rq"'+(x.short>0?'':' data-act="resTick" data-id="'+o.id+'" data-p="'+x.p+'" role="button" style="cursor:pointer;'+(it.ok?'background:#16a34a;color:#fff;border-radius:12px;':'')+'"')+'><div><b>'+esc(p.name)+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(it.pack?' · التعبئة: '+esc(it.pack):'')+'</small></div>'+
+    var p=P(x.p)||{name:'صنف محذوف',unit:''};var it=o.items[i]||{};var bt=boxTypeOf(o,it.box||1);
+    return '<div class="rq"'+(x.short>0?'':' data-act="resTick" data-id="'+o.id+'" data-p="'+x.p+'" role="button" style="cursor:pointer;'+(it.ok?'background:#16a34a;color:#fff;border-radius:12px;':'')+'"')+'><div><b>'+esc(p.name)+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(bt?' · التعبئة: '+esc(bt):'')+'</small></div>'+
       (x.short>0?'<span class="pill low">ناقص '+f(x.short)+'</span>':'<span class="pill'+(it.ok?' ok':'')+'">'+(it.ok?'✓ صح':'علّم')+'</span>')+'</div>';
   }).join('');
   return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(custName(o))+'</b>'+
