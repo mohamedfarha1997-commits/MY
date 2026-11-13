@@ -2166,7 +2166,7 @@ function okind(o){return o.kind||'cust';}
 function custName(o){return o.cust||'أوردر بدون اسم';}
 function monthKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function lockKey(kind,k){return kind+'|'+k;}
-function isLocked(o){return !!(S.locks&&S.locks[lockKey(okind(o),monthKey(o.created))]);}
+function isLocked(o){var t=S.locks&&S.locks[lockKey(okind(o),monthKey(o.created))];return !!t&&(typeof t!=='number'||(o.created||0)<=t);}
 function isFill(p){return !!(p&&p.fill);}
 function prodsOf(kind){return PRODUCTS.filter(function(p){return !isFill(p)&&(kind==='shop'?!!p.shop:!p.shop);});}
 function ordProdsOf(kind){return PRODUCTS.filter(function(p){return isFill(p)&&p.fill===kind;});}
@@ -2827,6 +2827,7 @@ var ACT={
   },
   lockMonth:function(d){
     var key=lockKey(d.kind,d.k);
+    if(S.orders.some(function(o){return !o.deliveredAt;})){toast('فيه أوردرات لسه مش متسلّمة، سلّمها الأول');return false;}
     if(U.confirm!=='lock:'+key){U.confirm='lock:'+key;setTimeout(function(){if(U.confirm==='lock:'+key){U.confirm=null;render();}},3000);return;}
     U.confirm=null;
     /* أرشفة: نسخة كاملة من كل بيانات التشغيل قبل ما تتمسح */
@@ -2839,7 +2840,7 @@ var ACT={
     S.done.forEach(function(x){tombAdd('done',x.id);});
     S.orders=[];S.batches=[];S.done=[];
     S.stock={};
-    S.locks=S.locks||{};S.locks[lockKey('cust',d.k)]=true;S.locks[lockKey('shop',d.k)]=true;
+    S.locks=S.locks||{};S.locks[lockKey('cust',d.k)]=Date.now();S.locks[lockKey('shop',d.k)]=Date.now();
     S.seq=100;S.oseq=0;
     U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
     bind(S);
