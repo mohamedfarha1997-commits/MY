@@ -37,7 +37,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
   --good:#4ADE80; --warn:#FBBF24; --bad:#F87171; --on-c:#0C141C;
   --shadow:none; color-scheme:dark;
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
 button,input{font-family:inherit}
@@ -455,7 +455,7 @@ button,input{font-family:inherit}
   .back.pop{animation:x-fade .25s both}
   .sheet.pop{animation:x-sheet .5s cubic-bezier(.2,.9,.25,1.04) both}
 }
-@media (hover:hover){
+@media (hover:hover) and (pointer:fine){
   .card:hover,.tile:hover,.rd:hover{transform:translateY(-2px);box-shadow:0 20px 38px -24px var(--glow)}
   .card:hover{border-color:color-mix(in srgb,var(--c,var(--b2)) 38%,var(--line))}
   .card:hover::before,.tile:hover::before,.rd:hover::before,.tab:hover::before{opacity:1}
@@ -1981,7 +1981,7 @@ var FX=(function(){
   function init(){
     inited=true;
     var app=document.getElementById('app');
-    if(rm||!window.matchMedia||!matchMedia('(hover:hover)').matches)return;
+    if(rm||!window.matchMedia||!matchMedia('(hover:hover) and (pointer:fine)').matches)return;
     app.addEventListener('pointermove',function(e){
       var el=e.target.closest&&e.target.closest('.card,.tab,.tile,.rd');if(!el)return;
       var r=el.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
