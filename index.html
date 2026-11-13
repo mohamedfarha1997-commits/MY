@@ -1634,7 +1634,7 @@ function prepReqView(){
   var short={},rows=fgShortRows(),ids=[];
   rows.forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);if(ids.indexOf(r.x.p)<0)ids.push(r.x.p);});
   if(!ids.length)return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+'<div class="empty"><b>مفيش تحضيرات مطلوبة</b><span>لا توجد نواقص في المنتجات النهائية المسجلة بالأوردرات.</span></div>';
-  var aggregate={},users={},legacyAny=false;
+  var legacyAny=false;
   var cards=ids.map(function(pid){
     var p=P(pid);if(!p)return '';
     var sh=short[pid],parts=[];
@@ -1647,16 +1647,12 @@ function prepReqView(){
     }
     var detail=parts.map(function(x){
       var cp=P(x.p);if(!cp)return '';
-      aggregate[x.p]=r3((aggregate[x.p]||0)+x.q);
-      users[x.p]=users[x.p]||[];if(users[x.p].indexOf(p.name)<0)users[x.p].push(p.name);
       var have=S.ready[x.p]||0,lack=Math.max(0,r3(x.q-have));
       return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>مطلوب '+f(x.q)+' '+esc(cp.unit||'')+' · متاح في مخزن الإنتاج '+f(have)+' '+esc(cp.unit||'')+'</small></div><span class="pill '+(lack>0?'low':'ok')+'">'+(lack>0?'يلزم تجهيز '+f(lack):'المتاح يكفي')+'</span></div>';
     }).join('');
     return '<article class="card" style="--c:var(--prepreq)"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><small class="meta">نقص نهائي '+f(sh)+' '+esc(p.unit||'')+'</small></div></div>'+(detail?'<div class="grp">المكونات الوسيطة المطلوبة لإعادة إنتاجه</div>'+detail:'<div class="meta">لا توجد مكونات وسيطة مسجلة لهذا الصنف.</div>')+'</article>';
   }).join('');
-  var all=Object.keys(aggregate).map(function(k){var cp=P(k),q=aggregate[k],have=S.ready[k]||0,lack=Math.max(0,r3(q-have));return '<div class="rq"><div><b>'+esc(cp?cp.name:k)+'</b><small>داخل في: '+esc((users[k]||[]).join('، '))+' · مطلوب '+f(q)+' '+esc(cp?cp.unit||'':'')+' · متاح '+f(have)+'</small></div><span class="pill '+(lack>0?'low':'ok')+'">'+(lack>0?'جهّز '+f(lack):'المتاح يكفي')+'</span></div>';}).join('');
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
-    '<section class="card"><h3>إجمالي المكونات المطلوبة</h3><p class="meta" style="margin:0 0 8px">كل مكوّن يظهر مرة واحدة بإجمالي احتياجه لكل الأصناف النهائية الناقصة.</p>'+(all||'<div class="meta">لا توجد مكونات وسيطة مسجلة.</div>')+'</section>'+ 
     '<div class="grp">تفصيل النواقص حسب الصنف النهائي</div><div class="list">'+cards+'</div>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو وفنش القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
@@ -1874,7 +1870,6 @@ function saveProd(F){
     if(comps.some(function(c){return reach(c.p,{});}))bad=bad||'الوصفة الفرعية دي بتعتمد على الوصفة دي (دايرة)';
   }
   if(bad){toast(bad);return false;}
-  if(!stages.some(function(g){return g.ings.length;})&&!comps.length){toast('ضيف مكوّن أو وصفة فرعية على الأقل');return false;}
   var dup=PRODUCTS.some(function(p){return p.id!==F.edit&&unesc(p.name).trim().toLowerCase()===name.toLowerCase();});
   if(dup){toast('الاسم ده موجود قبل كده');return false;}
   stages=stages.filter(function(g){return g.kind==='prep';});
@@ -2484,7 +2479,7 @@ function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}
 function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;U.rsearch='';try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
 function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);return a;}
 function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
-function mkStage(kind,name){return {kind:kind,name:name||'',ings:kind==='prep'?[blankIng()]:[],steps:['']};}
+function mkStage(kind,name){return {kind:kind,name:name||'',ings:[],steps:['']};}
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
 function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return false;return hiddenTabs().indexOf(k)>-1;}
