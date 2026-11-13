@@ -2378,8 +2378,14 @@ function ordSheetHTML(){
   if(s.step==='pick'){
     var grid=groupedJoin(seasonP,function(p){
       var on=addedIds.indexOf(p.id)>=0;
-      return '<button class="pk'+(on?' on':'')+'" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+
-        (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+(on?'<small>✓ مختار</small>':'')+'</button>';
+      if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+(isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+'</button>';
+      var q=s.items[p.id]||0;
+      return '<div class="pk on" style="--c:var(--orders);cursor:default">'+
+        '<div class="opk-h"><b>'+esc(p.name)+'</b><button class="ox" data-act="oPick" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
+        (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+
+        '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div>'+
+        '<select data-opkp="'+p.id+'" aria-label="تعبئة الصنف" '+sel+'><option value="">تعبئة الصنف</option>'+
+          PACKS.map(function(x){var cur=(s.packs&&s.packs[p.id])||s.pack||'';return '<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
     });
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
@@ -2387,12 +2393,8 @@ function ordSheetHTML(){
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
   }
   var rows=addedP.map(function(p){
-    var q=s.items[p.id]||0;
-    return '<div class="card" style="padding:10px;margin:0 0 8px;--c:var(--orders)">'+
-      '<div class="opk-h"><b>'+esc(p.name)+'</b><button class="ox" data-act="oRemove" data-id="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
-      '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="الكمية" aria-label="الكمية"><span>'+p.unit+'</span></div>'+
-      '<select data-opkp="'+p.id+'" aria-label="تعبئة الصنف" '+sel+'><option value="">تعبئة الصنف</option>'+
-        PACKS.map(function(x){var cur=(s.packs&&s.packs[p.id])||s.pack||'';return '<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
+    var q=s.items[p.id]||0,pk=(s.packs&&s.packs[p.id])||s.pack||'';
+    return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b> <span class="meta">· '+(q>0?f(q)+' '+p.unit:'بدون كمية')+(pk?' · '+esc(pk):'')+'</span></span></div>';
   }).join('');
   return open+'<h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
