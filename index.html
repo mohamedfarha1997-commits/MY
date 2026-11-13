@@ -1727,7 +1727,7 @@ function prodFormHTML(){
   PRODUCTS.forEach(function(p){(p.stages||[]).forEach(function(g){sn[unesc(g.name)]=1;});});
   return '<h3>'+(edit?'تعديل وصفة':'وصفة جديدة')+'</h3>'+
     seasonSeg(F.season||'normal','prodSeason')+'<div class="seg" style="align-self:flex-start"><button class="'+(F.shop?'':'on')+'" data-act="prodKind" data-v="reg">وصفة عادية</button><button class="'+(F.shop?'on':'')+'" data-act="prodKind" data-v="shop">وصفة المحل</button></div>'+
-    '<div class="fld"><span class="sec-l">ظهور الصنف في الأوردرات</span><div class="seg" style="align-self:flex-start"><button class="'+(F.noOrder?'':'on')+'" data-act="prodOrd" data-v="show">يظهر</button><button class="'+(F.noOrder?'on':'')+'" data-act="prodOrd" data-v="hide">مش يظهر</button></div><div class="meta">لو مش يظهر، الصنف مش هيتضاف في الطلبيات الجديدة، والطلبيات اللي فيها بالفعل مش هتتأثر.</div></div>'+
+    
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
@@ -2351,7 +2351,7 @@ function ordSheetHTML(){
   var any=items.length>0;
   var seasonP=ordProdsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');});
   var addedIds=(s.added||[]).filter(function(id){return seasonP.some(function(p){return p.id===id;});});
-  var tiles=seasonP.filter(function(p){return !p.noOrder||addedIds.indexOf(p.id)>=0;});
+  var tiles=seasonP;
   var addedP=addedIds.map(function(id){return seasonP.filter(function(p){return p.id===id;})[0];});
   var grid=groupedJoin(tiles,function(p){
     var on=addedIds.indexOf(p.id)>=0;
