@@ -1545,11 +1545,18 @@ function fillingView(){
   var src=PRODUCTS.filter(function(p){return !isFill(p)&&(S.ready[p.id]||0)>0;});
   var exF=PRODUCTS.filter(function(x){return isFill(x)&&x.fill===F.kind&&x.name===String(F.name||'').trim();})[0];
   var tgt=exF?exF.unit:(F.unit||(src[0]&&src[0].unit)||'قطعة');
-  var rows=src.map(function(p){
+  var sel=F.sel||[];
+  var rows='<div class="meta" style="margin-bottom:6px">اختار الأصناف اللي هتسحب منها، وبعدين اكتب الكمية في المربع بتاعه</div><div class="pgrid">'+src.map(function(p){
+    var on=sel.indexOf(p.id)>-1;
     var mix=isWeightU(p.unit)!==isWeightU(tgt);
-    return '<div class="rq"><div><b>'+p.name+'</b><small>المتاح '+f(S.ready[p.id]||0)+' '+p.unit+'</small></div><span><input type="text" inputmode="decimal" data-fq="'+p.id+'" value="'+(F.q[p.id]||'')+'" placeholder="0" style="width:90px;min-height:38px;text-align:center"> <span class="meta">'+p.unit+'</span></span>'+
-      (mix?'<div class="meta" style="width:100%;margin-top:6px">وزن القطعة بالجرام: <input type="text" inputmode="decimal" data-fw="'+p.id+'" value="'+((F.w&&F.w[p.id])||'')+'" placeholder="مثلاً 50" style="width:90px;min-height:34px;text-align:center"></div>':'')+'</div>';
-  }).join('');
+    if(!on)return '<button class="pk" data-act="fillSel" data-p="'+p.id+'">'+esc(p.name)+'<small>المتاح '+f(S.ready[p.id]||0)+' '+p.unit+'</small></button>';
+    return '<div class="pk on" style="--c:var(--filling);cursor:default">'+
+      '<div class="opk-h"><b>'+esc(p.name)+'</b><button class="ox" data-act="fillSel" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
+      '<small>المتاح '+f(S.ready[p.id]||0)+' '+p.unit+'</small>'+
+      '<div class="opk-q"><input type="text" inputmode="decimal" data-fq="'+p.id+'" value="'+(F.q[p.id]||'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div>'+
+      (mix?'<div class="meta" style="margin-top:6px">وزن القطعة بالجرام: <input type="text" inputmode="decimal" data-fw="'+p.id+'" value="'+((F.w&&F.w[p.id])||'')+'" placeholder="مثلاً 50" style="width:90px;min-height:34px;text-align:center"></div>':'')+
+      '</div>';
+  }).join('')+'</div>';
   var unitBtns=exF?'<div class="meta" style="margin-top:8px">الوحدة هتكون زي الصنف الموجود: '+exF.unit+'</div>':
     '<div class="meta" style="margin-top:8px">الوحدة اللي هيتسجل بيها الصنف</div><div class="btns">'+['قطعة','جرام','كجم','صاج','كادر'].map(function(u){return '<button class="btn '+(tgt===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
   var kindBtns='<div class="btns">'+[['cust','سحب أوردرات'],['shop','سحب أوردرات المحل']].map(function(x){
@@ -2777,6 +2784,12 @@ var ACT={
     var p=PRODUCTS.filter(function(x){return x.id===d.id;})[0];
     if(!p||!isFill(p))return false;
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;
+  },
+  fillSel:function(d){
+    U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
+    var k=U.fill.sel.indexOf(d.p);
+    if(k>-1){U.fill.sel.splice(k,1);if(U.fill.q)delete U.fill.q[d.p];}
+    else U.fill.sel.push(d.p);
   },
   fillGrp:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.grp=d.v;},
   fillUnit:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.unit=d.v;},
