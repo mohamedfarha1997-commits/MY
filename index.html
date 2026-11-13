@@ -2372,24 +2372,35 @@ function ordSheetHTML(){
   var any=items.length>0;
   var seasonP=ordProdsOf(s.kind).filter(function(p){return seasonOf(p)===(s.season||'normal');});
   var addedIds=(s.added||[]).filter(function(id){return seasonP.some(function(p){return p.id===id;});});
-  var tiles=seasonP;
   var addedP=addedIds.map(function(id){return seasonP.filter(function(p){return p.id===id;})[0];});
-  var grid=groupedJoin(tiles,function(p){
-    var on=addedIds.indexOf(p.id)>=0;
-    if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+p.name+(isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+'</button>';
+  var open='<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody">';
+  var sel='style="width:100%;height:40px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 6px;font-size:14px;margin-top:6px"';
+  if(s.step==='pick'){
+    var grid=groupedJoin(seasonP,function(p){
+      var on=addedIds.indexOf(p.id)>=0;
+      return '<button class="pk'+(on?' on':'')+'" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+
+        (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+(on?'<small>✓ مختار</small>':'')+'</button>';
+    });
+    return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
+      '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
+      (seasonP.length?'<div class="pgrid">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+      '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
+  }
+  var rows=addedP.map(function(p){
     var q=s.items[p.id]||0;
-    return '<div class="pk on" style="--c:var(--orders);cursor:default">'+
-      '<div class="opk-h"><b>'+p.name+'</b><button class="ox" data-act="oPick" data-p="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
-      (isFill(p)?'':'<small>'+p.mins+' دقيقة تشغيل</small>')+
-      '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+p.unit+'</span></div>'+'<select data-opkp="'+p.id+'" aria-label="تعبئة الصنف" style="width:100%;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 6px;font-size:13px;margin-top:6px"><option value="">تعبئة الصنف</option>'+PACKS.map(function(x){var cur=(s.packs&&s.packs[p.id])||s.pack||'';return '<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
-  });
-  return '<button class="back" data-act="oClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--orders)" role="dialog" aria-label="طلبية جديدة"><div class="sbody"><h3>طلبية جديدة</h3>'+
+    return '<div class="card" style="padding:10px;margin:0 0 8px;--c:var(--orders)">'+
+      '<div class="opk-h"><b>'+esc(p.name)+'</b><button class="ox" data-act="oRemove" data-id="'+p.id+'" aria-label="شيل الصنف">×</button></div>'+
+      '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="الكمية" aria-label="الكمية"><span>'+p.unit+'</span></div>'+
+      '<select data-opkp="'+p.id+'" aria-label="تعبئة الصنف" '+sel+'><option value="">تعبئة الصنف</option>'+
+        PACKS.map(function(x){var cur=(s.packs&&s.packs[p.id])||s.pack||'';return '<option value="'+x+'"'+(cur===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select></div>';
+  }).join('');
+  return open+'<h3>طلبية جديدة</h3>'+
     '<div class="fld"><label for="oc">'+(s.kind==='shop'?'اسم المحل':'اسم العميل')+'</label><input id="oc" data-oc="1" value="'+esc(s.cust)+'" placeholder="اسم العميل" autocomplete="off"></div>'+
     '<div class="fld"><label for="od">معاد التسليم (تاريخ وساعة)</label><input id="od" data-od="1" type="datetime-local" step="3600" value="'+esc(s.due||'')+'"></div>'+
     '<div class="fld"><span class="sec-l">نوع التعبئة للطلبية</span><div style="display:flex;gap:8px;align-items:center"><select data-opk="1" aria-label="نوع التعبئة" style="flex:1;min-width:0;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px"><option value="">نوع التعبئة</option>'+PACKS.map(function(x){return '<option value="'+x+'"'+(s.pack===x?' selected':'')+'>'+x+'</option>';}).join('')+'</select><b style="white-space:nowrap">'+(totUnitsTxt(items)||'0')+'</b></div></div>'+
-    '<div class="fld"><span class="sec-l">اختار الأصناف للطلبية'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
-    (tiles.length?'<div class="pgrid">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
-
+    '<div class="fld"><span class="sec-l">الأصناف المختارة'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
+      (rows||'<div class="meta">مفيش أصناف مختارة</div>')+
+      '<div class="btns"><button class="btn ghost sm" data-act="oBack">تعديل الأصناف</button></div></div>'+
     '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
 }
 
@@ -2759,10 +2770,16 @@ var ACT={
   },
   newOrder:function(){
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
-    U.sheet=null;U.form=null;U.osheet={cust:'',items:{},added:[],due:'',season:ordSeason(),kind:U.view==='shopOrders'?'shop':'cust'};
+    U.sheet=null;U.form=null;U.osheet={cust:'',items:{},added:[],due:'',season:ordSeason(),kind:U.view==='shopOrders'?'shop':'cust',step:'pick'};
   },
 
   oClose:function(){U.osheet=null;},
+  oDone:function(){
+    var os=U.osheet;if(!os)return false;
+    if(!(os.added||[]).length){toast('اختار صنف واحد على الأقل');return false;}
+    os.step='form';
+  },
+  oBack:function(){var os=U.osheet;if(os)os.step='pick';},
   oPick:function(d){
     var os=U.osheet;if(!os)return false;
     os.added=os.added||[];
