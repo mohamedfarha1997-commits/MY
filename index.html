@@ -658,9 +658,9 @@ function fix(o){
   bind(o);return o;
 }
 var UNITS_M=['جرام','علبة','كيس','بيضة','غطا','حبة'];
-var PROD_UNITS=['قطعة','جرام','صاج','كادر']; /* وحدة إنتاج الصنف: قطع أو وزن */
+var PROD_UNITS=['قطعة','جرام','صاج','كادر','تورته']; /* وحدة إنتاج الصنف: قطع أو وزن */
 function isPiece(p){return !p||!p.unit||isPieceU(p.unit);}
-function isPieceU(u){return !u||u==='قطعة'||u==='صاج'||u==='كادر';}
+function isPieceU(u){return !u||u==='قطعة'||u==='صاج'||u==='كادر'||u==='تورته';}
 function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
 /* k = الكمية الجديدة لكل وحدة قديمة */
 function convK(ou,nu){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;return 1;}
@@ -1616,7 +1616,7 @@ function fillingView(){
       '</div>';
   }).join('')+'</div>';
   var unitBtns=exF?'<div class="meta" style="margin-top:8px">الوحدة هتكون زي الصنف الموجود: '+exF.unit+'</div>':
-    '<div class="meta" style="margin-top:8px">الوحدة اللي هيتسجل بيها الصنف</div><div class="btns">'+['قطعة','جرام','كجم','صاج','كادر'].map(function(u){return '<button class="btn '+(tgt===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
+    '<div class="meta" style="margin-top:8px">الوحدة اللي هيتسجل بيها الصنف</div><div class="btns">'+['قطعة','جرام','صاج','كادر','تورته'].map(function(u){return '<button class="btn '+(tgt===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
   var kindBtns='<div class="btns">'+[['cust','سحب أوردرات'],['shop','سحب أوردرات المحل']].map(function(x){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>';
