@@ -1586,6 +1586,29 @@ function fillSuggest(F){
 function prepReqIds(){
   var seen=[];fgShortRows().forEach(function(r){if(seen.indexOf(r.x.p)<0)seen.push(r.x.p);});return seen;
 }
+/* التحضيرات الناقصة لكل مكوّن وسيط: المطلوب - المتاح - اللي في دفعات شغالة بالفعل */
+function prepLackTotals(){
+  var short={},rows=fgShortRows(),ids=[];
+  rows.forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);if(ids.indexOf(r.x.p)<0)ids.push(r.x.p);});
+  var tot={};
+  ids.forEach(function(pid){
+    var p=P(pid);if(!p)return;var sh=short[pid],parts;
+    if(isFill(p)){parts=fillNeedParts(p,sh);}
+    else{var meals=sh/yieldOf(pid);parts=compsOf(pid).filter(function(c){return P(c.p);}).map(function(c){return {p:c.p,q:r3(c.q*meals)};});}
+    parts.forEach(function(x){if(!P(x.p))return;tot[x.p]=r3((tot[x.p]||0)+x.q);});
+  });
+  var out={};
+  Object.keys(tot).forEach(function(k){
+    var pending=0;S.batches.forEach(function(b){if(b.p===k)pending+=pc(b);});
+    var lack=r3(tot[k]-(S.ready[k]||0)-pending);
+    if(lack>0)out[k]=lack;
+  });
+  return out;
+}
+function prepBatchBtn(){
+  var n=Object.keys(prepLackTotals()).length;
+  return n?'<div class="btns" style="margin-bottom:10px"><button class="btn" data-act="prepBatches">'+svg('plus')+'اعمل دفعات للتحضيرات المطلوبة ('+n+')</button></div>':'';
+}
 function fillNeedParts(p,shortQty){
   var totals={},outTotal=0,legacy=false;
   function add(arr){(arr||[]).forEach(function(x){if(!x||!x.p)return;totals[x.p]=r3((totals[x.p]||0)+(x.q||x.t||0));});}
@@ -1621,6 +1644,7 @@ function prepReqView(){
     return '<article class="card" style="--c:var(--prepreq)"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><small class="meta">نقص نهائي '+f(sh)+' '+esc(p.unit||'')+'</small></div></div>'+(detail?'<div class="grp">المكونات الوسيطة المطلوبة لإعادة إنتاجه</div>'+detail:'<div class="meta">لا توجد مكونات وسيطة مسجلة لهذا الصنف.</div>')+'</article>';
   }).join('');
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
+    prepBatchBtn()+
     '<div class="grp">تفصيل النواقص حسب الصنف النهائي</div><div class="list">'+cards+'</div>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو وفنش القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
@@ -3035,6 +3059,17 @@ var READ_ACTS={tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
+ACT.prepBatches=function(){
+  var lk=prepLackTotals(),ks=Object.keys(lk);
+  if(!ks.length){toast('مفيش تحضيرات ناقصة');return false;}
+  ks.forEach(function(pid){
+    S.seq++;var id='B-'+S.seq+'-'+devId();
+    var qty=Math.max(1,Math.ceil(lk[pid]/yieldOf(pid)));
+    S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
+  });
+  toast('تم إنشاء '+ks.length+' دفعة للتحضيرات المطلوبة');
+  go('prep');
+};
 ACT.plToggle=function(d){
   U.plSel=U.plSel||[];var i=U.plSel.indexOf(d.id);
   if(i>-1)U.plSel.splice(i,1);else U.plSel.push(d.id);
