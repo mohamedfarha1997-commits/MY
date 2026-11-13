@@ -1546,11 +1546,14 @@ function groupedJoin(list,fn){
   return out;
 }
 function groupFillCards(fl){
-  var of={},order=[];
+  var of={},order=[],openMap=U.fGrpOpen||{};
   fl.forEach(function(p){var g=p.grp||'';if(!of[g]){of[g]=[];order.push(g);}of[g].push(p);});
   return order.map(function(g){
-    var list=of[g];
-    return (g?grpTitle(esc(g),list.length):'')+'<div class="fgcards">'+list.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
+    var list=of[g],isOpen=!!openMap[g];
+    var lbl=g||'بدون مجموعة';
+    return '<button class="btn ghost sm" data-act="fgGrpOpen" data-g="'+esc(g)+'" aria-expanded="'+(isOpen?'true':'false')+'" style="width:100%;justify-content:space-between;margin-top:8px">'+
+      '<span>'+(isOpen?'▾ ':'▸ ')+esc(lbl)+' ('+list.length+')</span></button>'+
+      (isOpen?'<div class="fgcards">'+list.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>':'');
   }).join('');
 }
 function groupNames(){
@@ -2863,6 +2866,7 @@ var ACT={
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;U.fill.grp=p.grp||'';
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
+  fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
   fillSel:function(d){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
     var k=U.fill.sel.indexOf(d.p);
