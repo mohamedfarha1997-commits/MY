@@ -15,11 +15,17 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .fgbar .r{background:var(--warn)}
 .fgc.sel{border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,var(--surface))}.fgzbar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
 @media (max-width:360px){.fgcards{grid-template-columns:1fr}}
+.pkg{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.pkh{font-size:13px;font-weight:700;color:var(--ink);padding:8px 2px 4px;border-bottom:2px solid var(--line)}
+.rq.tap{cursor:pointer;border-radius:12px;padding:10px 8px;transition:background .15s}
+.rq.tap:active{background:var(--surface-2)}
+.rq.okrow{background:#16a34a;border-radius:12px;border-top-color:transparent}
+.rq.okrow b{color:#fff}
+.rq.okrow small{color:#e8fff0}
+.rq.okrow .pill{background:#fff;color:#15803d}
 .ordfold>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .ordfold>summary::-webkit-details-marker{display:none}
-.ordfold>summary::after{content:'▾';color:var(--muted);font-size:14px;transition:transform .2s;margin-inline-start:4px}
-.ordfold:not([open])>summary::after{transform:rotate(-90deg)}
-.ordfold:not([open])>summary{padding-bottom:0}
+.ordpills{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .ordbody{display:flex;flex-direction:column;gap:12px}
 </style></head><body>
 <title>RMY Pro</title>
@@ -2437,15 +2443,31 @@ var RC_OPEN={};
 document.addEventListener('toggle',function(e){var d=e.target;if(d&&d.classList&&d.classList.contains('ordfold')&&d.dataset.oid){RC_OPEN[d.dataset.oid]=d.open;}},true);
 function reservedCard(o){
   var late=!!o.due&&new Date(o.due).getTime()<Date.now();
-  var rows=ordShort(o).map(function(x,i){
-    var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';var it=(o.items||[]).filter(function(i2){return i2.p===x.p;})[0]||{};
-    return '<div class="rq"'+(x.short>0?'':' data-act="resTick" data-id="'+o.id+'" data-p="'+x.p+'" role="button" style="cursor:pointer;'+(it.ok?'background:#16a34a;color:#fff;border-radius:12px;':'')+'"')+'><div><b>'+esc(p.name)+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(it.pack?' · التعبئة: '+esc(it.pack):'')+'</small></div>'+
-      (x.short>0?'<span class="pill low">ناقص '+f(x.short)+'</span>':'<span class="pill'+(it.ok?' ok':'')+'">'+(it.ok?'✓ صح':'علّم')+'</span>')+'</div>';
+  var tmrw=!!o.due&&o.due.slice(0,10)===ymd(new Date(Date.now()+86400000));
+  var xs=ordShort(o),grp={},ord=[];
+  xs.forEach(function(x,i){
+    var it=o.items[i]||{},n=it.box||1;
+    if(!grp[n]){grp[n]={n:n,bt:boxTypeOf(o,n),rows:[]};ord.push(n);}
+    grp[n].rows.push({x:x,it:it});
+  });
+  ord.sort(function(a,c){return a-c;});
+  var rows=ord.map(function(n){
+    var g=grp[n];
+    var head='<div class="pkh">تعبئة '+n+(g.bt?' · '+esc(g.bt):'')+'</div>';
+    var items=g.rows.map(function(r){
+      var x=r.x,it=r.it,p=P(x.p)||{name:'صنف محذوف',unit:''};
+      var tap=x.short>0?'':' data-act="resTick" data-id="'+o.id+'" data-p="'+x.p+'" role="button"';
+      var cls='rq'+(x.short>0?'':' tap')+(it.ok?' okrow':'');
+      return '<div class="'+cls+'"'+tap+'><div><b>'+esc(p.name)+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+'</small></div>'+
+        (x.short>0?'<span class="pill low">ناقص '+f(x.short)+'</span>':'<span class="pill'+(it.ok?' ok':'')+'">'+(it.ok?'✓ صح':'علّم')+'</span>')+'</div>';
+    }).join('');
+    return '<div class="pkg">'+head+items+'</div>';
   }).join('');
   return '<details class="card ordfold" data-oid="'+o.id+'" style="--c:var(--orders)"'+(RC_OPEN[o.id]===false?'':' open')+'>'+
     '<summary class="mtop"><div><b>'+esc(custName(o))+'</b>'+
     '<small>طلبية '+o.id+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+'</small></div>'+
-    '<span class="pill '+(late?'bad':'low')+'">'+(o.due?(late?'متأخر · ':'')+dueStr(o.due):'بدون معاد')+'</span></summary>'+
+    '<span class="ordpills">'+(tmrw?'<span class="pill" style="background:color-mix(in srgb,var(--warn) 18%,var(--surface));color:var(--warn)">خارج بكرا</span>':'')+
+    '<span class="pill '+(late?'bad':'low')+'">'+(o.due?(late?'متأخر · ':'')+dueStr(o.due):'بدون معاد')+'</span></span></summary>'+
     '<div class="ordbody">'+rows+'</div></details>';
 }
 function reservedView(){
