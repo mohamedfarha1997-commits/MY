@@ -1516,9 +1516,19 @@ function toTarget(p,q,target,F){
 }
 function groupedJoin(list,fn){
   var key=function(p){return isFill(p)&&p.grp?p.grp:'';};
-  var sorted=list.slice().sort(function(a,b){var ka=key(a),kb=key(b);if(ka===kb)return 0;if(!ka)return 1;if(!kb)return -1;return ka<kb?-1:1;});
-  var out='',last=null;
-  sorted.forEach(function(p){var k=key(p);if(k&&k!==last)out+='<div class="grp" style="grid-column:1/-1">'+esc(k)+'</div>';last=k;out+=fn(p);});
+  var order=[],buckets={};
+  list.forEach(function(p){var k=key(p);if(!buckets[k]){buckets[k]=[];order.push(k);}buckets[k].push(p);});
+  order.sort(function(a,b){if(a===b)return 0;if(!a)return 1;if(!b)return -1;return a<b?-1:1;});
+  var openMap=U.oGrp||{},selIds=(U.osheet&&U.osheet.added)||[],out='';
+  order.forEach(function(k){
+    var items=buckets[k];
+    if(!k){items.forEach(function(p){out+=fn(p);});return;}
+    var isOpen=!!openMap[k];
+    var n=items.filter(function(p){return selIds.indexOf(p.id)>-1;}).length;
+    out+='<button class="btn ghost sm" data-act="grpOpen" data-g="'+esc(k)+'" aria-expanded="'+(isOpen?'true':'false')+'" style="grid-column:1/-1;justify-content:space-between">'+
+      '<span>'+(isOpen?'▾ ':'▸ ')+esc(k)+' ('+items.length+')</span>'+(n?'<span class="pill c">مختار '+n+'</span>':'')+'</button>';
+    if(isOpen)items.forEach(function(p){out+=fn(p);});
+  });
   return out;
 }
 function groupFillCards(fl){
@@ -2785,6 +2795,7 @@ var ACT={
     if(!p||!isFill(p))return false;
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=p.name;U.fill.kind=p.fill;
   },
+  grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fillSel:function(d){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
     var k=U.fill.sel.indexOf(d.p);
