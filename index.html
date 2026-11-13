@@ -1755,7 +1755,7 @@ function foldable(part){
   return head+'<button class="fold-h" data-act="foldToggle" data-k="'+esc(h[1])+'" aria-expanded="'+(isOpen?'true':'false')+'"><h3>'+h[1]+'</h3><span class="chev" aria-hidden="true"></span></button><div class="fold-b">'+before+after+'</div></section>'+part.slice(end+'</section>'.length);
 }
 function footHTML(){
-  return backupCardHTML()+gdCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على الجهاز.</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
+  return backupCardHTML()+gdCardHTML()+installHTML()+'<div class="fine"><span>الحفظ تلقائي على جوجل درايف · نسخة 13/11 (الاتصال محفوظ)</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>'+
     '<div class="acts"><button class="btn ghost sm" data-act="toggleTrack">'+(TRACK()?'إخفاء المخزن':'إظهار المخزن')+'</button></div>';
 }
 
