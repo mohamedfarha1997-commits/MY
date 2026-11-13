@@ -1065,7 +1065,7 @@ function restoreLocal(){
   }).catch(function(){}).then(function(){LOCAL_READY=true;});
 }
 function load(){return seed();}
-function save(){S.savedAt=Date.now();markEdits();saveSoon();persistLocal();}
+function save(){PRODUCTS.forEach(function(p){allocReady(p.id);});S.savedAt=Date.now();markEdits();saveSoon();persistLocal();}
 
 var tt;
 function toast(m){var el=document.getElementById('toast');el.textContent=unesc(m);el.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){el.classList.remove('show');},2600);}
@@ -2735,7 +2735,7 @@ var ACT={
     if(!os.due){toast('اكتب معاد التسليم');return false;}
     S.oseq++;var id='O-'+S.oseq+'-'+devId(),now=Date.now(),lacks=0;
     var items=list.map(function(p){
-      var qty=os.items[p.id],avail=S.ready[p.id]||0,fs=qty<=avail?qty:0;
+      var qty=os.items[p.id],avail=S.ready[p.id]||0,fs=Math.min(qty,avail);
       if(fs>0)S.ready[p.id]=r3(avail-fs);
       if(qty-fs>0)lacks++;
       return {p:p.id,qty:qty,fs:fs,got:0,pack:(os.packs&&os.packs[p.id])||os.pack||''};
