@@ -20,7 +20,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap"></noscript>
 <style>
-/* Layout: sticky four-stage pipeline (تحضير ← إنتاج ← مخزن ← فنش) over one working view. Each stage owns one hue; --c carries it into the view. */
+/* Layout: sticky three-stage pipeline (تحضير ← إنتاج ← مخزن) over one working view. Each stage owns one hue; --c carries it into the view. */
 :root{
   --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#DAE0E6;
   --ink:#101C28; --ink-2:#3A4959; --muted:#5F6E7F;
@@ -595,7 +595,7 @@ function markBy(b){
   if(e.by.indexOf(c)<0)e.by.push(c);
   S.plog[b.id]=e;
 }
-var STAFF_DEFAULT=['prep','prod','finish'];
+var STAFF_DEFAULT=['prep','prod'];
 var DEV=Math.random().toString(36).slice(2,8);
 function devId(){return DEV;}
 function tombAdd(kind,id){S.tomb=S.tomb||{};S.tomb[kind]=S.tomb[kind]||{};S.tomb[kind][id]=Date.now();}
@@ -624,7 +624,6 @@ var IC={
   prep:'<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h4.5"/>',
   prod:'<path d="M12 3c.6 3.2 4.6 5.2 4.6 9.6A4.6 4.6 0 0 1 12 17.2a4.6 4.6 0 0 1-4.6-4.6c0-1.9.9-3.1 2-4.1.1 1.6.9 2.5 1.9 2.8C11.1 8.6 10.9 5.6 12 3z"/><path d="M7 21h10"/>',
   stock:'<path d="M3.5 8.2L12 3.5l8.5 4.7v7.6L12 20.5l-8.5-4.7z"/><path d="M3.5 8.2L12 13l8.5-4.8M12 13v7.5"/>',
-  finish:'<circle cx="12" cy="12" r="8.5"/><path d="M8 12.4l2.8 2.8L16.2 9.5"/>',
   settings:'<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
   recipes:'<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M8 8.5h6M8 12h6"/>',
   orders:'<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>',
@@ -637,7 +636,6 @@ var IC={
 };
 function svg(k,cls){return '<svg viewBox="0 0 24 24" aria-hidden="true"'+(cls?' class="'+cls+'"':'')+'>'+IC[k]+'</svg>';}
 
-var QC=['الطعم','درجة الحرارة','شكل التقديم','التغليف'];
 var MATERIALS=[],PRODUCTS=[];
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
@@ -707,7 +705,7 @@ function num(s){
 var S=load();
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
-if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling','prepreq'].indexOf(h)>-1)U.view=h;
+if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq'].indexOf(h)>-1)U.view=h;
 
 function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
 function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
@@ -1117,7 +1115,7 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',finish:'الفنش',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
@@ -1132,7 +1130,7 @@ function navItems(){
     {k:'prep',l:'تحضير',n:by('prep').length,u:'دفعة'},
     {k:'prod',l:'إنتاج',n:by('prod').length,u:'دفعة',live:running},
     {k:'stock',l:'مكوّنات',n:MATERIALS.length,u:'مكوّن'},
-    {k:'finish',l:'فنش',n:by('finish').length,u:'للفحص'},{k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
+    {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
   st.push({k:'filling',l:'حشو وفنش',n:PRODUCTS.filter(isFill).length,u:'صنف'});
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
@@ -1155,7 +1153,7 @@ function cdRingHTML(b){
 }
 function cdText(){var b=prodCountdown();return b?mmss(dur(b)-elapsed(b)):'0:00';}
 function navTab(s){
-  return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='finish'||s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+((s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
+  return '<button class="tab'+(U.view===s.k?' on':'')+(s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+((s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k)+')" data-act="tab" data-v="'+s.k+'"'+(U.view===s.k?' aria-current="page"':'')+'>'+
     (s.live&&U.view==='home'&&s.k==='prod'?cdRingHTML(prodCountdown()):(s.live?'<i class="live" title="قيد التشغيل"></i>':''))+svg(s.k)+'<span class="tl">'+s.l+'</span>'+
     (s.live&&U.view==='home'&&s.k==='prod'?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'<small>'+s.u+'</small></button>';
 }
@@ -1269,14 +1267,13 @@ function rOptions(shown,sel){
   return '<option value="">'+(shown.length?'اختار وصفة...':'مفيش نتيجة')+'</option>'+shown.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+p.name+'</option>';}).join('');
 }
 function tempTxt(p){return (p.temp!==''&&p.temp!=null)?f(p.temp)+'°م':'';}
-function finHasContent(p){return (p.stages||[]).some(function(g){return g.kind==='finish'&&((g.steps||[]).some(Boolean)||(g.ings||[]).length);});}
 function compText(p,q){
   var c=(p.comps||[]).filter(function(x){return !P(x.p).missing;});
   if(!c.length)return '';
   return '<div class="livec" style="--c:var(--prep)">من مخزن الإنتاج: '+c.map(function(x){var cp=P(x.p);return cp.name+' '+f(r3(x.q*(q||1)))+' '+cp.unit;}).join(' · ')+'</div>';
 }
 function recipeCardHTML(p,q){
-  var full=stagesText(p,'prep',q)+(finHasContent(p)?stagesText(p,'finish',q):'');
+  var full=stagesText(p,'prep',q);
   var meta=[p.mins+' دقيقة'].concat(tempTxt(p)?['درجة الحرارة '+tempTxt(p)]:[]).join(' · ');
   return '<article class="card"><div class="bh"><div><h3 class="bn">'+p.name+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button><button class="btn ghost sm" data-act="copyProd" data-id="'+p.id+'">نسخ</button></div>'+
     (p.notes?'<div class="meta">'+p.notes+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
@@ -1324,7 +1321,7 @@ function prodCard(b){
   var label=fin?svg('check'):(run?mmss(dur(b)-elapsed(b)):p.mins+' د');
   var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">على النار</span>':'<span class="pill">بانتظار البدء</span>');
   var act;
-  if(fin)act='<button class="btn block" data-act="toFinish" data-id="'+b.id+'">حوّل للفنش</button>';
+  if(fin)act=approveBox(b,p);
   else if(run)act='<button class="btn ghost sm" data-act="skipTimer" data-id="'+b.id+'">أنهِ المؤقت الآن</button>';
   else act='<button class="btn block" data-act="startRun" data-id="'+b.id+'">ابدأ التشغيل · '+p.mins+' دقيقة</button>';
   return '<article class="card"><div class="prow"><div class="ring" data-ring="'+b.id+'" data-fin="'+(fin?1:0)+'">'+
@@ -1375,41 +1372,12 @@ function pieceQ(qty,p){return f(qty)+' '+(p?p.unit:'');}
 function totUnitsTxt(items){var m={},ord=[];items.forEach(function(x){var u=P(x.p).unit||'';if(!(u in m)){m[u]=0;ord.push(u);}m[u]=r3(m[u]+x.qty);});return ord.map(function(u){return f(m[u])+' '+u;}).join(' · ');}
 function pc(b){return b.qty*yieldOf(b.p);}
 function stkQty(b){return b.stk==null?pc(b)-(b.rej||0):b.stk;}
-var IN='';
-function finCard(b){
-  var p=P(b.p),total=pc(b),rej=b.rej||0,good=total-rej,items=finItems(p,b.qty);
-  if(!b.fdef){b.fdef=1;b.fchecks=items.map(function(x,i){return i;});}
-  var ck=b.fchecks||[];
-  return '<article class="card"><div class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+p.name+' · '+f(total)+' '+p.unit+'</h3>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div><span class="pill c">فحص الجودة</span></div>'+
-    '<div class="prog"><span>الفحص '+ck.length+'/'+items.length+'</span><div class="bar"><i style="width:'+(ck.length/items.length*100)+'%"></i></div></div>'+
-    chipGroups(items,ck,'fcheck',b.id)+
-    '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">مرفوض (هالك)</b></div><input type="text" inputmode="numeric" data-rej="'+b.id+'" value="'+rej+'" aria-label="المرفوض" style="width:110px;flex:none" '+IN+'></div>'+
-    '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">يدخل مخزن الإنتاج</b></div><input type="text" inputmode="numeric" data-stk="'+b.id+'" value="'+stkQty(b)+'" aria-label="الكمية اللي تدخل مخزن الإنتاج" style="width:110px;flex:none" '+IN+'></div>'+
-    '<button class="btn block" data-act="approve" data-id="'+b.id+'"'+(ck.length<items.length?' disabled':'')+'>اعتمد '+f(good)+' '+p.unit+' · '+f(stkQty(b))+' للمخزن</button></article>';
+function approveBox(b,p){
+  var total=pc(b),rej=b.rej||0,good=total-rej;
+  return '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">مرفوض (هالك)</b></div><input type="text" inputmode="numeric" data-rej="'+b.id+'" value="'+rej+'" aria-label="المرفوض" style="width:110px;flex:none"></div>'+
+    '<div class="foot"><div><b style="font-size:14px;white-space:nowrap">يدخل مخزن الإنتاج</b></div><input type="text" inputmode="numeric" data-stk="'+b.id+'" value="'+stkQty(b)+'" aria-label="الكمية اللي تدخل مخزن الإنتاج" style="width:110px;flex:none"></div>'+
+    '<button class="btn block" data-act="approve" data-id="'+b.id+'">اعتمد '+f(good)+' '+p.unit+' · '+f(stkQty(b))+' للمخزن</button>';
 }
-function finishView(){
-  var list=S.batches.filter(function(b){return b.stage==='finish'&&P(b.p);});
-  var body=list.length?'<div class="list">'+list.map(finCard).join('')+'</div>':'<div class="empty"><b>مفيش دفعات للفحص</b><span>الدفعات اللي خلصت إنتاج بتوصل هنا للفحص النهائي.</span></div>';
-  var good=0,tot=0,rejT=0,byP={};
-  S.done.forEach(function(d){
-    good+=d.good;tot+=d.qty;rejT+=d.rej;
-    (byP[d.p]=byP[d.p]||{g:0,r:0});byP[d.p].g+=d.good;byP[d.p].r+=d.rej;
-  });
-  var max=0;Object.keys(byP).forEach(function(k){max=Math.max(max,byP[k].g+byP[k].r);});
-  var bars=Object.keys(byP).map(function(k){
-    var v=byP[k];
-    return '<div class="hb"><span>'+(P(k)?P(k).name:'منتج محذوف')+'</span><div class="track"><i class="g" style="width:'+(v.g/max*100)+'%"></i><i class="r" style="width:'+(v.r/max*100)+'%"></i></div><em>'+v.g+(v.r?' + '+v.r+' مرفوض':'')+'</em></div>';
-  }).join('');
-  var hist=S.done.slice(-4).reverse().map(function(d){
-    return '<div class="hist"><span><span class="ltr">'+sid(d.id)+'</span> · '+(P(d.p)?P(d.p).name:'منتج محذوف')+'</span><span class="meta">'+d.good+'/'+d.qty+' · '+ago(d.at)+'</span></div>';
-  }).join('');
-  var rep='<section class="card"><h3>تقرير اليوم</h3>'+(tot?
-    '<div class="kpis"><div class="tile"><b>'+f(good)+'</b><span>إجمالي الجاهز</span></div><div class="tile"><b>'+Math.round(good/tot*100)+'%</b><span>نسبة الجودة</span></div><div class="tile"><b>'+S.done.length+'</b><span>دفعات معتمدة</span></div><div class="tile"><b style="color:'+(rejT?'var(--bad)':'inherit')+'">'+rejT+'</b><span>مرفوض</span></div></div>'+
-    '<div class="lg"><span><i style="background:var(--finish)"></i>جاهز</span><span><i style="background:var(--bad)"></i>مرفوض</span></div>'+bars+'<div>'+hist+'</div>'
-    :'<div class="meta">لسه ما فيش دفعات معتمدة النهاردة.</div>')+'</section>';
-  return head('فنش','فحص نهائي واعتماد قبل ما الأكل يطلع','')+'<div style="height:12px"></div>'+body+'<div style="height:12px"></div>'+rep;
-}
-
 /* ---------- finished stock (مخزن الإنتاج) ---------- */
 function ordShort(o){
   return o.items.map(function(it){
@@ -1774,7 +1742,7 @@ function stageForm(g,gi,n,cnt){
   var steps=g.steps.map(function(t,ti){
     return '<div class="sline"><input data-gi="'+gi+'" data-ti="'+ti+'" value="'+esc(t)+'" placeholder="خطوة '+(ti+1)+'" aria-label="خطوة '+(ti+1)+'"><button class="xbtn" data-act="stepDel" data-gi="'+gi+'" data-ti="'+ti+'" aria-label="احذف الخطوة">×</button></div>';
   }).join('');
-  return '<div class="sgf"><span class="sec-l">'+(g.kind==='finish'?'مرحلة فنش':'مرحلة تحضير')+' '+(n+1)+'</span><div class="sgt">'+(g.kind==='finish'?'<input data-gi="'+gi+'" data-gf="name" list="stagel" placeholder="اسم المرحلة، مثال: فنش" value="'+esc(g.name)+'" aria-label="اسم المرحلة">':'<span class="meta">بتتسمّى تلقائي: مرحلة '+(n+1)+'</span>')+
+  return '<div class="sgf"><span class="sec-l">'+'مرحلة تحضير'+' '+(n+1)+'</span><div class="sgt">'+('<span class="meta">بتتسمّى تلقائي: مرحلة '+(n+1)+'</span>')+
     '<button class="xbtn" style="color:var(--ink)" data-act="stMove" data-gi="'+gi+'" data-d="-1"'+(n<=0?' disabled':'')+' aria-label="للأعلى">↑</button><button class="xbtn" style="color:var(--ink)" data-act="stMove" data-gi="'+gi+'" data-d="1"'+(n>=cnt-1?' disabled':'')+' aria-label="للأسفل">↓</button><button class="xbtn" data-act="stDel" data-gi="'+gi+'" aria-label="احذف المرحلة">×</button></div>'+
     '<span class="sec-l">المكوّنات</span><div class="stack">'+ings+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="ingAdd" data-gi="'+gi+'">'+svg('plus')+'مكوّن</button>'+
     '<span class="sec-l">الخطوات</span><div class="stack">'+steps+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="stepAdd" data-gi="'+gi+'">'+svg('plus')+'خطوة</button></div>';
@@ -1794,7 +1762,7 @@ function prodFormHTML(){
     var idx=[];F.stages.forEach(function(g,gi){if(g.kind===kind)idx.push(gi);});
     return '<div class="fld"><span class="sec-l">'+title+' ('+idx.length+')</span><div class="stack">'+idx.map(function(gi,n){return stageForm(F.stages[gi],gi,n,idx.length);}).join('')+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="stAdd" data-k="'+kind+'">'+svg('plus')+add+'</button></div>';
   }
-  var sn={'وزن الصنف':1,'حمام بخار':1,'ضرب في المكنة':1,'خلط':1,'تسوية':1,'تبريد':1,'فنش':1,'تقديم':1};
+  var sn={'وزن الصنف':1,'حمام بخار':1,'ضرب في المكنة':1,'خلط':1,'تسوية':1,'تبريد':1,'تقديم':1};
   PRODUCTS.forEach(function(p){(p.stages||[]).forEach(function(g){sn[unesc(g.name)]=1;});});
   return '<h3>'+(edit?'تعديل وصفة':'وصفة جديدة')+'</h3>'+
     seasonSeg(F.season||'normal','prodSeason')+'<div class="seg" style="align-self:flex-start"><button class="'+(F.shop?'':'on')+'" data-act="prodKind" data-v="reg">وصفة عادية</button><button class="'+(F.shop?'on':'')+'" data-act="prodKind" data-v="shop">وصفة المحل</button></div>'+
@@ -1987,7 +1955,7 @@ function render(){
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -2017,9 +1985,6 @@ function stageItems(p,kind,qty){
 function prepItems(p,qty){
   var a=stageItems(p,'prep',qty);
   return a.length?a:[{k:'p-1',g:'',sub:'',t:'تجهيز المواد'}];
-}
-function finItems(p,qty){
-  return stageItems(p,'finish',qty).concat(QC.map(function(t){return {k:'qc',g:'فحص الجودة',sub:'',t:t};}));
 }
 function syncProd(p){
   var rec={};
@@ -2200,7 +2165,7 @@ function matRows(tot,rem){
 function orderCard(o){
   var bs=orderBatches(o),open=U.oexp===o.id,rows=ordShort(o),total=rows.length;
   var doneN=rows.filter(function(x){return x.have>=x.qty;}).length;
-  var cnt={prep:0,prod:0,finish:0};bs.forEach(function(b){cnt[b.stage]++;});
+  var cnt={prep:0,prod:0};bs.forEach(function(b){cnt[b.stage]++;});
   var tot=orderNeed(ordRemain(o));
   var rem=orderNeed(rows.filter(function(x){return x.short+x.unw>0;}).map(function(x){return {p:x.p,qty:x.short+x.unw};}));
   var lack=TRACK()?Object.keys(rem).filter(function(k){return (S.stock[k]||0)+1e-9<rem[k];}).length:0;
@@ -2208,7 +2173,7 @@ function orderCard(o){
   var hd='<div class="bh"><div><span class="bid ltr">'+sid(o.id)+'</span><h3 class="bn">'+custName(o)+'</h3></div><span class="pill c">'+ago(o.created)+'</span></div>';
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
     '<div class="prog"><span>خلص '+doneN+'/'+total+'</span><div class="bar"><i style="width:'+(total?doneN/total*100:0)+'%"></i></div></div>'+
-    '<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">تحضير '+cnt.prep+'</span><span class="pill">إنتاج '+cnt.prod+'</span><span class="pill">فنش '+cnt.finish+'</span>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">تحضير '+cnt.prep+'</span><span class="pill">إنتاج '+cnt.prod+'</span>'+
     (nShort?'<span class="pill bad">ناقص '+nShort+(nShort>1?' أصناف':' صنف')+'</span>':'')+
     (lack?'<span class="pill bad">خامات ناقصة '+lack+'</span>':'')+'</div>'+
     '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
@@ -2225,14 +2190,9 @@ function orderCard(o){
       } else st=from+'ناقص '+f(x.short)+' · محتاج دفعة من النواقص';
       return '<div class="mrow"><div class="mtop"><div><b>'+p.name+'</b><small>'+st+'</small></div><div class="mq"><b>'+f(x.qty)+'</b> <span>'+p.unit+'</span></div></div>'+(left>0?stagesText(p,'prep',r3(left/yieldOf(p.id))):'')+'</div>';
     }).join('');
-    var fin=rows.map(function(x){
-      var p=P(x.p),left=x.qty-x.have;if(!p||left<=0)return '';
-      return '<div class="mrow"><div class="mtop"><div><b>'+p.name+'</b><small>فحص: '+QC.join(' · ')+'</small></div><div class="mq"><b>'+f(left)+'</b> <span>'+p.unit+'</span></div></div>'+stagesText(p,'finish',left)+'</div>';
-    }).join('');
     body='<div class="grp">التحضير المطلوب</div><div>'+prep+'</div>'+
       '<div class="grp">الخامات المطلوبة للطلبية</div><div>'+matRows(tot,rem)+'</div>'+
-      '<div class="grp">الفنش المطلوب</div><div>'+fin+'</div>'+
-      '<div class="foot"><button class="btn ghost sm" data-act="tab" data-v="fgstock">مخزن الإنتاج والنواقص</button><button class="btn quiet" data-act="oCancel" data-id="'+o.id+'">'+(U.confirm==='o'+o.id?'اضغط تاني للتأكيد':'إلغاء الطلبية')+'</button></div>';
+            '<div class="foot"><button class="btn ghost sm" data-act="tab" data-v="fgstock">مخزن الإنتاج والنواقص</button><button class="btn quiet" data-act="oCancel" data-id="'+o.id+'">'+(U.confirm==='o'+o.id?'اضغط تاني للتأكيد':'إلغاء الطلبية')+'</button></div>';
   }
   return '<article class="card" style="--c:var(--orders)">'+hd+(open?detail+body:'')+'<button class="btn ghost sm block" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button></article>';
 }
@@ -2764,7 +2724,6 @@ var ACT={
   },
   startRun:function(d){markBy(batch(d.id));var b=batch(d.id);b.startedAt=Date.now();b.notified=false;b.ringing=false;ensureNotifPerm();scheduleNotif(b);toast('بدأ تشغيل '+P(b.p).name);},
   skipTimer:function(d){markBy(batch(d.id));var b=batch(d.id);b.startedAt=Date.now()-dur(b);},
-  toFinish:function(d){markBy(batch(d.id));var b=batch(d.id);b.stage='finish';b.ringing=false;b.fdef=1;b.fchecks=finItems(P(b.p),b.qty).map(function(x,i){return i;});b.rej=0;b.stk=null;toast(b.id+' وصلت للفنش');go('finish');},
   recv:function(d){U.recv={id:d.id,mode:d.m};},
   recvClose:function(){U.recv=null;},
   recvOk:function(){
@@ -2774,7 +2733,6 @@ var ACT={
     S.stock[m.id]=r3(U.recv.mode==='add'?(S.stock[m.id]||0)+v:v);
     toast((U.recv.mode==='add'?'تم استلام ':'تم تسجيل ')+f(v)+' '+m.unit+' '+m.name);U.recv=null;
   },
-  fcheck:function(d){markBy(batch(d.id));var b=batch(d.id);b.fchecks=toggle(b.fchecks,Number(d.i));},
   approve:function(d){markBy(batch(d.id));
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
@@ -3164,7 +3122,7 @@ document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset
   if(ds&&ds.oadd!==undefined){var v=e.target.value;if(v&&U.osheet){U.osheet.added=U.osheet.added||[];if(U.osheet.added.indexOf(v)<0)U.osheet.added.push(v);if(U.osheet.items[v]===undefined)U.osheet.items[v]=0;}render();return;}if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.sq!==undefined){onField(e);render();return;}if(ds&&ds.f==='unit'&&U.form&&U.form.kind==='prod'){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){if(!canWrite()){toast('مش مسموح بالتعديل في القسم ده');return;}onField(e);save();render();}});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
-  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','finish','fgstock','reserved','filling','prepreq'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
+  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
 });
 
 /* ---------- live timers ---------- */
@@ -3205,7 +3163,7 @@ document.addEventListener('focusin',function(e){
 vvSync();
 
 render();
-restoreLocal().then(function(){PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();});
+restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();});
 })();
 </script>
 
