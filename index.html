@@ -2268,7 +2268,8 @@ function readyCard(o){
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
     '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
   return '<article class="card" style="--c:var(--orders)">'+head+(open?detail:'')+
-    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn"'+(allOk(o)?'':' disabled')+' data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div></article>';
+    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn"'+(allOk(o)?'':' disabled')+' data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div>'+
+    '<div class="btns"><button class="btn quiet sm" data-act="oDelete" data-id="'+o.id+'" style="color:var(--bad)">'+(U.confirm==='del'+o.id?'اضغط تاني للتأكيد':'حذف الأوردر')+'</button></div></article>';
 }
 function lockedMonthsHTML(kind){
   var months=[];archEntries().forEach(function(a){if(a.month&&months.indexOf(a.month)<0&&closedMonth(a.month,kind))months.push(a.month);});
@@ -2923,6 +2924,18 @@ var ACT={
     S.batches=S.batches.filter(function(b){return b.o!==d.id;});
     S.orders=S.orders.filter(function(o){return o.id!==d.id;});
     U.confirm=null;toast('اتلغت الطلبية');
+  },
+  oDelete:function(d){
+    var lo=S.orders.filter(function(x){return x.id===d.id;})[0];
+    if(!lo)return false;
+    if(isLocked(lo)){toast('الشهر ده اتقفل، الأوردر مش ينفع يتحذف');return false;}
+    var key='del'+d.id,bs=S.batches.filter(function(b){return b.o===d.id;});
+    if(bs.length){toast('الأوردر فيه دفعات في الإنتاج، ما ينفعش يتحذف');return false;}
+    if(U.confirm!==key){U.confirm=key;setTimeout(function(){if(U.confirm===key){U.confirm=null;render();}},3000);return;}
+    (lo.items||[]).forEach(function(it){var back=(it.fs||0)+(it.got||0);if(back>0)S.ready[it.p]=r3((S.ready[it.p]||0)+back);});
+    tombAdd('orders',d.id);
+    S.orders=S.orders.filter(function(o){return o.id!==d.id;});
+    U.confirm=null;toast('اتحذف الأوردر والكميات رجعت للمخزن');
   },
   stopAlarm:function(){S.batches.forEach(function(b){b.ringing=false;});stopAlarmLoop();},
   testAlarm:function(){unlockAudio();beep();buzz();ensureNotifPerm();showSysNotif('تجربة التنبيه','لو وصلك الإشعار بصوت واهتزاز يبقى شغال','test');toast('لو سمعت الصوت وحسيت الاهتزاز يبقى التنبيه شغال');return false;},
