@@ -1931,11 +1931,13 @@ function render(){
   if(!authed()){document.getElementById('app').innerHTML=loginHTML();FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
+  var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,finish:finishView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
+  var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
   var r=document.getElementById('recvIn');if(r)r.focus();
   FX.after({key:U.view,hadSheet:hadSheet});
@@ -2379,8 +2381,8 @@ function ordSheetHTML(){
     var gkeys=[];seasonP.forEach(function(p){var k=p.grp||'__none';if(gkeys.indexOf(k)<0)gkeys.push(k);});
     var curTab=(U.oTab==='__all'||gkeys.indexOf(U.oTab)>-1)?U.oTab:'__all';
     var tabs=[['__all','الكل']].concat(gkeys.map(function(k){return [k,k==='__none'?'بدون مجموعة':k];}));
-    var tabBar='<div class="seg" role="group" aria-label="أقسام الأصناف" style="overflow-x:auto;white-space:nowrap;max-width:100%">'+
-      tabs.map(function(t){return '<button class="'+(curTab===t[0]?'on':'')+'" data-act="oTab" data-v="'+esc(t[0])+'">'+esc(t[1])+'</button>';}).join('')+'</div>';
+    var tabBar='<div role="tablist" aria-label="أقسام الأصناف" style="display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:4px 2px 8px;margin:0 -2px;scrollbar-width:none">'+
+      tabs.map(function(t){var on=curTab===t[0];return '<button role="tab" aria-selected="'+on+'" data-act="oTab" data-v="'+esc(t[0])+'" style="flex:0 0 auto;scroll-snap-align:start;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid '+(on?'transparent':'var(--line)')+';background:'+(on?'var(--orders)':'var(--surface-2)')+';color:'+(on?'#fff':'var(--ink)')+';font-size:15px;font-weight:700;white-space:nowrap">'+esc(t[1])+'</button>';}).join('')+'</div>';
     var shown=curTab==='__all'?seasonP:seasonP.filter(function(p){return (p.grp||'__none')===curTab;});
     var grid=shown.map(function(p){
       var on=addedIds.indexOf(p.id)>=0;
@@ -2395,7 +2397,7 @@ function ordSheetHTML(){
     }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
-      (seasonP.length?tabBar+'<div class="pgrid" style="margin-top:10px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+      (seasonP.length?tabBar+'<div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
   }
   var rows=addedP.map(function(p){
