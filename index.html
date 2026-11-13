@@ -2047,13 +2047,9 @@ function orderCard(o){
   var rem=orderNeed(rows.filter(function(x){return x.short+x.unw>0;}).map(function(x){return {p:x.p,qty:x.short+x.unw};}));
   var lack=TRACK()?Object.keys(rem).filter(function(k){return (S.stock[k]||0)+1e-9<rem[k];}).length:0;
   var nShort=rows.filter(function(x){return x.short>0;}).length;
-  var chk='<div class="grp" style="margin:8px 0 4px">علّم كل صنف لما يخلص</div><div class="btns">'+(o.items||[]).map(function(it){
-    var p=P(it.p);if(!p)return '';
-    return '<button class="btn '+(it.ok?'':'ghost ')+'sm" data-act="oItemOk" data-id="'+o.id+'" data-p="'+it.p+'"'+(it.ok?' style="background:#16a34a;border-color:#16a34a;color:#fff"':'')+'>'+(it.ok?'✓ ':'')+esc(p.name)+' · '+f(it.qty)+' '+p.unit+'</button>';
-  }).join('')+'</div>';
   var hd='<div class="bh"><div><span class="bid ltr">'+sid(o.id)+'</span><h3 class="bn">'+custName(o)+'</h3></div><span class="pill c">'+ago(o.created)+'</span></div>';
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
-    '<div class="prog"><span>خلص '+doneN+'/'+total+'</span><div class="bar"><i style="width:'+(total?doneN/total*100:0)+'%"></i></div></div>'+chk+
+    '<div class="prog"><span>خلص '+doneN+'/'+total+'</span><div class="bar"><i style="width:'+(total?doneN/total*100:0)+'%"></i></div></div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill">تحضير '+cnt.prep+'</span><span class="pill">إنتاج '+cnt.prod+'</span><span class="pill">فنش '+cnt.finish+'</span>'+
     (nShort?'<span class="pill bad">ناقص '+nShort+(nShort>1?' أصناف':' صنف')+'</span>':'')+
     (lack?'<span class="pill bad">خامات ناقصة '+lack+'</span>':'')+'</div>'+
@@ -2170,13 +2166,14 @@ function monthsHTML(){
       }).join('')+'</section>';
   }).join('');
 }
+function allOk(o){return (o.items||[]).every(function(it){return !!it.ok;});}
 function readyCard(o){
   var open=U.oexp===o.id;
   var head='<div class="bh"><div><span class="bid ltr">'+sid(o.id)+'</span><h3 class="bn">'+custName(o)+'</h3></div><span class="pill ok">جاهزة</span></div>';
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
     '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
   return '<article class="card" style="--c:var(--orders)">'+head+(open?detail:'')+
-    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn" data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div></article>';
+    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn"'+(allOk(o)?'':' disabled')+' data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div></article>';
 }
 function lockedMonthsHTML(kind){
   var months=[];archEntries().forEach(function(a){if(a.month&&months.indexOf(a.month)<0&&closedMonth(a.month,kind))months.push(a.month);});
@@ -2227,9 +2224,9 @@ function reservedToday(){
 function reservedCard(o){
   var late=!!o.due&&new Date(o.due).getTime()<Date.now();
   var rows=ordShort(o).map(function(x,i){
-    var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';
+    var p=P(x.p)||{name:'صنف محذوف',unit:''},pk=(o.items[i]&&o.items[i].pack)||'';var it=(o.items||[]).filter(function(i2){return i2.p===x.p;})[0]||{};
     return '<div class="rq"><div><b>'+p.name+'</b><small>مطلوب '+pieceQ(x.qty,p)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+(pk?' · تعبئة: '+esc(pk):'')+'</small></div>'+
-      '<span class="pill '+(x.short>0?'low':'ok')+'">'+(x.short>0?'ناقص '+f(x.short):'جاهز')+'</span></div>';
+      (x.short>0?'<span class="pill low">ناقص '+f(x.short)+'</span>':'<button class="btn '+(it.ok?'':'ghost ')+'sm" data-act="resTick" data-id="'+o.id+'" data-p="'+x.p+'"'+(it.ok?' style="background:#16a34a;border-color:#16a34a;color:#fff"':'')+'>'+(it.ok?'✓ صح':'علّم')+'</button>')+'</div>';
   }).join('');
   return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(custName(o))+'</b>'+
     '<small>طلبية '+o.id+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+'</small></div>'+
@@ -2709,11 +2706,6 @@ var ACT={
     toast('تم تسجيل الطلبية '+id+(lacks?' · فيه '+lacks+' صنف ناقص، شوفه في مخزن الإنتاج':' · كلها من المخزن'));
   },
   oToggle:function(d){U.oexp=U.oexp===d.id?null:d.id;},
-  oItemOk:function(d){
-    var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(!o)return false;
-    var it=(o.items||[]).filter(function(i){return i.p===d.p;})[0];if(!it)return false;
-    it.ok=!it.ok;
-  },
   printAllOrders:function(d){
     var list=ordersOf(d.k||'cust').filter(function(o){return !o.deliveredAt;});
     if(!list.length){toast('مفيش أوردرات تتطبع');return false;}
@@ -2730,10 +2722,17 @@ var ACT={
     var old=document.title;document.title='تقرير '+(d.kind==='shop'?'أوردرات المحل':'الأوردرات')+' شهر '+d.k;
     try{printReport(document.title,monthReportHTML(d.k,d.kind));}catch(e){toast('حصلت مشكلة في التقرير');}document.title=old;return false;
   },
+  resTick:function(d){
+    var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(!o)return false;
+    var it=(o.items||[]).filter(function(i){return i.p===d.p;})[0];if(!it)return false;
+    var x=ordShort(o).filter(function(r){return r.p===d.p;})[0];
+    if(x&&x.short>0){toast('الصنف ده لسه ناقص، مينفعش تعلّمه');return false;}
+    it.ok=!it.ok;
+  },
   oDeliver:function(d){
     var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(!o)return false;
     if(orderBatches(o).length||!ordComplete(o)){toast('الأوردر لسه ناقص أصناف، شوف النواقص');return false;}
-    if(!(o.items||[]).every(function(it){return it.ok;})){toast('علّم كل صنف لما يخلص الأول');return false;}
+    if(!allOk(o)){toast('علّم كل الأصناف في صفحة الأوردرات المحجوزة الأول');return false;}
     o.deliveredAt=Date.now();toast('تم تسليم '+o.id+' وأرشفته');
   },
   lockMonth:function(d){
