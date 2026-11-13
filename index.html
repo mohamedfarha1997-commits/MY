@@ -2482,7 +2482,7 @@ function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
 function mkStage(kind,name){return {kind:kind,name:name||'',ings:[],steps:['']};}
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
-function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;if(k==='stock')return false;return hiddenTabs().indexOf(k)>-1;}
+function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;return hiddenTabs().indexOf(k)>-1;}
 var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
 function sPwStored(){return pref('pw',SET_DEFAULT);}
 function sUnlocked(){try{return sessionStorage.getItem('khat-set-ok')==='1';}catch(e){return false;}}
