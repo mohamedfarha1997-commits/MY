@@ -1247,7 +1247,7 @@ function compText(p,q){
 function recipeCardHTML(p,q){
   var full=stagesText(p,'prep',q)+(finHasContent(p)?stagesText(p,'finish',q):'');
   var meta=[p.mins+' دقيقة'].concat(tempTxt(p)?['درجة الحرارة '+tempTxt(p)]:[]).join(' · ');
-  return '<article class="card"><div class="bh"><div><h3 class="bn">'+p.name+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button></div>'+
+  return '<article class="card"><div class="bh"><div><h3 class="bn">'+p.name+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button><button class="btn ghost sm" data-act="copyProd" data-id="'+p.id+'">نسخ</button></div>'+
     (p.notes?'<div class="meta">'+p.notes+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
 }
 function rCardInner(){
@@ -2580,6 +2580,11 @@ var ACT={
   newProd:function(d){
     U.sheet=null;U.osheet=null;U.confirm=null;
     U.form={kind:'prod',edit:null,noOrder:false,shop:!!(d&&d.shop),season:curSeason(),name:'',cat:'',unit:'قطعة',mins:'',temp:'',yield:'1',stages:[mkStage('prep','وزن الصنف')],comps:[],notes:''};
+  },
+  copyProd:function(d){
+    var p=P(d.id);if(!p)return false;
+    ACT.editProd(d);
+    if(U.form){U.form.edit=null;U.form.name=unesc(p.name)+' (نسخة)';}
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
