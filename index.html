@@ -1433,7 +1433,8 @@ function prodCard(b){
     '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle class="rp" cx="38" cy="38" r="30" fill="none" stroke="'+(fin?'var(--good)':'var(--c)')+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'"/></svg><b class="rt">'+label+'</b></div>'+
     '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+'</h3><div class="meta">'+batchQ(b,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
 }
-function prodView(){
+function prodView(){return prodBoard()+prodLogHTML();}
+function prodBoard(){
   var all=S.batches.filter(function(b){return b.stage==='prod';});
   var ready=all.filter(timerDone),running=all.filter(function(b){return b.startedAt&&!timerDone(b);}),queued=all.filter(function(b){return !b.startedAt;});
   var out=head('إنتاج','شغّل الدفعات وتابع المؤقت لحد ما تخلص','<button class="btn ghost sm" data-act="testAlarm">جرّب الصوت</button>');
@@ -1441,6 +1442,38 @@ function prodView(){
   function grp(t,a){return a.length?'<div class="grp">'+t+' ('+a.length+')</div><div class="list">'+a.map(prodCard).join('')+'</div>':'';}
   return out+'<div class="list">'+grp('انتهى وقتها',ready)+grp('على النار الآن',running)+grp('بانتظار البدء',queued)+'</div>';
 }
+
+/* ---------- سجل إنتاج الأصناف: كل صنف معتمد بكوده واسمه. الشهر بيتقفل مع قفل الأوردرات والأرشفة ---------- */
+function plRows(){
+  var rows=[],seen={};
+  archEntries().forEach(function(a){(a.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:true});}});});
+  (S.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:false});}});
+  return rows;
+}
+function plInfo(d){var p=P(d.p);return {code:d.code||(p&&p.code)||'—',name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+monthKey(r.d.at||0)+'</span></span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+function plSearchHTML(){
+  var q=String(U.plq||'').trim().toLowerCase();
+  if(!q)return '';
+  var hits=plRows().filter(function(r){var i=plInfo(r.d);return String(i.code).toLowerCase().indexOf(q)>-1||i.name.toLowerCase().indexOf(q)>-1;})
+    .sort(function(a,b){return (b.d.at||0)-(a.d.at||0);});
+  return '<div class="grp">نتايج البحث ('+hits.length+')</div>'+(hits.length?'<div class="card">'+hits.slice(0,60).map(plLine).join('')+'</div>':'<div class="meta">مفيش نتايج</div>');
+}
+function prodLogHTML(){
+  var cur=monthKey(Date.now()),months={};
+  plRows().forEach(function(r){var k=monthKey(r.d.at||0);var m=months[k]=months[k]||{open:0,list:[]};m.list.push(r);if(!r.closed)m.open++;});
+  var keys=Object.keys(months).sort().reverse();
+  var body=!keys.length?'<div class="empty"><b>السجل فاضي</b><span>كل صنف يتعتمد في الإنتاج بيتسجل هنا بكوده واسمه.</span></div>':keys.map(function(k){
+    var m=months[k],list=m.list.slice().sort(function(a,b){return (b.d.at||0)-(a.d.at||0);});
+    var locked=m.open===0;
+    var isOpen=FOLD_OPEN['plog-'+k]!==undefined?FOLD_OPEN['plog-'+k]===true:k===cur;
+    return '<details class="card arch" data-fk="plog-'+k+'" style="margin-top:10px;--c:var(--prod)"'+(isOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' صنف معتمد</span></div><span class="pill '+(locked?'ok':'low')+'">'+(locked?'مقفول':'مفتوح')+'</span></summary>'+list.map(plLine).join('')+'</details>';
+  }).join('');
+  return '<div class="grp" style="margin-top:22px">سجل إنتاج الأصناف</div>'+
+    '<input type="text" data-plq value="'+esc(U.plq||'')+'" placeholder="ابحث بالكود أو اسم الصنف" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
+    '<div id="plqRes">'+plSearchHTML()+'</div>'+body;
+}
+document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.plq!==undefined){U.plq=t.value;var el=document.getElementById('plqRes');if(el)el.innerHTML=plSearchHTML();}});
 
 function stockView(){
   if(!TRACK()){
@@ -3028,7 +3061,7 @@ var ACT={
   approve:function(d){markBy(batch(d.id),'approve');
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
-    S.done.push({id:b.id,p:b.p,qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o});
+    S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o});
     var ordA=b.o?S.orders.filter(function(x){return x.id===b.o;})[0]:null,itA=ordA?ordA.items.filter(function(x){return x.p===b.p;})[0]:null;
     if(itA){
       var toOrd=Math.min(stk,Math.max(0,r3(itA.qty-(itA.fs||0)-(itA.got||0))));
