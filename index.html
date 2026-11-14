@@ -661,6 +661,8 @@ function canWrite(){
   var v=U.view||'home';
   return tabsFor().indexOf(v)>-1;
 }
+/* اعتماد الإنتاج بعد انتهاء الوقت: المالك دايمًا، والمستخدم بيعتمد لو التبويب "اعتماد الإنتاج" ظاهر له */
+function canApprove(){if(!limited())return true;return tabsFor().indexOf('approve')>-1;}
 function offNote(){
   if(typeof LOCAL_ERR!=='undefined'&&LOCAL_ERR)return '<div class="note" role="status">تعذّر حفظ نسخة الجهاز: '+esc(LOCAL_ERR)+'</div>'+(navigator.onLine?'':'<div class="note">لا يوجد اتصال بالإنترنت؛ ستتم المزامنة عند عودة الاتصال.</div>');
   return navigator.onLine?'':'<div class="note">لا يوجد اتصال بالإنترنت؛ ستتم المزامنة عند عودة الاتصال.</div>';
@@ -1449,7 +1451,7 @@ function prodCard(b){
   var label=fin?svg('check'):(run?mmss(dur(b)-elapsed(b)):p.mins+' د');
   var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">على النار</span>':'<span class="pill">بانتظار البدء</span>');
   var act;
-  if(fin)act=approveBox(b,p);
+  if(fin)act=canApprove()?approveBox(b,p):'<div class="meta">خلص الوقت · الاعتماد عند المسؤول</div>';
   else if(run)act='<button class="btn ghost sm" data-act="skipTimer" data-id="'+b.id+'">أنهِ المؤقت الآن</button>';
   else act='<button class="btn block" data-act="startRun" data-id="'+b.id+'">ابدأ التشغيل · '+p.mins+' دقيقة</button>';
   return '<article class="card"><div class="prow"><div class="ring" data-ring="'+b.id+'" data-fin="'+(fin?1:0)+'">'+
@@ -2808,6 +2810,8 @@ function tabsCardHTML(){
     var userCells=users.map(function(u){var on=userTabs(u.code).indexOf(t.k)>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="'+t.k+'">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('');
     return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td>'+userCells+'</tr>';
   }).join('');
+  rows+='<tr><td>اعتماد الإنتاج (بعد انتهاء الوقت)</td><td><span class="meta">دايمًا ظاهر</span></td>'+
+    users.map(function(u){var on=userTabs(u.code).indexOf('approve')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="approve">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
   rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
   var hd='<tr><th>التبويب</th><th>المالك</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
@@ -3100,7 +3104,7 @@ var ACT={
     S.stock[m.id]=r3(U.recv.mode==='add'?(S.stock[m.id]||0)+v:v);
     toast((U.recv.mode==='add'?'تم استلام ':'تم تسجيل ')+f(v)+' '+m.unit+' '+m.name);U.recv=null;
   },
-  approve:function(d){markBy(batch(d.id),'approve');
+  approve:function(d){if(!canApprove()){toast('مش مسموح لك تعتمد الإنتاج');return false;}markBy(batch(d.id),'approve');
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
     S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o});
