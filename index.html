@@ -1435,11 +1435,16 @@ function batchSuggestHTML(){
     '<div class="btns"><button class="btn" data-act="batchSuggestApply">أنشئ '+tot+' '+(tot>1?'دفعات':'دفعة')+' مقترحة</button></div></section>';
 }
 function prepView(){
-  var list=S.batches.filter(function(b){return b.stage==='prep';});
-  var btn='<div class="btns"><button class="btn ghost sm" data-act="exportBatchMats">تصدير الخامات PDF</button><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
+  var shopTab=U.prepTab==='shop';
+  var isShop=function(b){var p=P(b.p);return !!(p&&p.shop);};
+  var list=S.batches.filter(function(b){return b.stage==='prep'&&isShop(b)===shopTab;});
+  var seg='<div class="seg">'+
+    '<button class="'+(shopTab?'':'on')+'" data-act="prepTabSet" data-v="cust">الأوردرات</button>'+
+    '<button class="'+(shopTab?'on':'')+'" data-act="prepTabSet" data-v="shop">المحل</button></div>';
+  var btn='<div class="btns">'+seg+'<button class="btn ghost sm" data-act="exportBatchMats">تصدير الخامات PDF</button><button class="btn" data-act="newBatch"'+(shopTab?' data-shop="1"':'')+'>'+svg('plus')+(shopTab?'دفعة للمحل':'دفعة جديدة')+'</button></div>';
   var body=list.length?'<div class="list">'+list.map(prepCard).join('')+'</div>':
-    '<div class="empty"><b>مفيش دفعات في التحضير</b><span>ابدأ دفعة جديدة والبرنامج يحسب لك المواد المطلوبة.</span><button class="btn" data-act="newBatch">'+svg('plus')+'دفعة جديدة</button></div>';
-  return head('تحضير','حدد الكمية، اسحب المواد، وخلّص خطوات التجهيز',btn)+batchSuggestHTML()+body;
+    '<div class="empty"><b>'+(shopTab?'مفيش دفعات للمحل':'مفيش دفعات في التحضير')+'</b><span>'+(shopTab?'الدفعات اللي للمحل بتظهر هنا.':'ابدأ دفعة جديدة والبرنامج يحسب لك المواد المطلوبة.')+'</span></div>';
+  return head('تحضير','حدد الكمية، اسحب المواد، وخلّص خطوات التجهيز',btn)+(shopTab?'':batchSuggestHTML())+body;
 }
 
 var SEASONS=[['normal','عادي'],['ramadan','رمضان'],['mawlid','مولد النبي'],['christmas','الكريسماس'],['halloween','الهالوين']];
@@ -2065,7 +2070,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
-    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived;}).map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
+    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived&&!!x.shop===!!s.shop;}).map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
     (qrows?'<div class="stack">'+qrows+'</div>':'')+
     (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length||cshort.length?'<div class="note">في نقص في '+(sh.length+cshort.length)+((sh.length+cshort.length)>2?' أصناف':' صنف')+(cshort.length?' (منها وصفات من مخزن الإنتاج)':'')+'. تقدر تنشئ الدفعة وتكمّل النقص قبل السحب.</div>':'')+
@@ -2722,12 +2727,17 @@ function archiveHTML(arch,kind){
       }).join('')+'</details>';
   }).join('');
 }
+function shopBatchesHTML(){
+  var list=S.batches.filter(function(b){var p=P(b.p);return p&&p.shop;});
+  if(!list.length)return '<div class="empty"><b>مفيش دفعات للمحل</b><span>اعمل دفعة للمحل من الزرار اللي فوق، وهتظهر هنا وفي التحضير.</span></div>';
+  var lab={prep:'تحضير',prod:'إنتاج',finish:'جاهزة'};
+  return '<div class="list">'+list.map(function(b){var p=P(b.p);return '<div class="card" style="--c:var(--recipes)"><div class="mtop"><div><b>'+esc(p.name)+'</b><small>'+f(b.qty)+' '+esc(p.unit||'')+'</small></div><span class="pill">'+(lab[b.stage]||'')+'</span></div></div>';}).join('')+'</div>';
+}
 function shopProductsHTML(){
   var btn='<div class="btns"><button class="btn" data-act="newProd" data-shop="1">'+svg('plus')+'وصفة محل جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="shop">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="shop">استيراد</button></div>';
   if(!prodsOf('shop').length)return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+'<div class="empty"><b>مفيش وصفات محل</b><span>ضيف وصفة وحدّدها كوصفة محل عشان تظهر في أوردرات المحل.</span></div>';
   return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+recipePanel();
 }
-/* ---------- تحت التشغيل (عرض فقط) ---------- */
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function reservedList(){
   var now=Date.now();
@@ -3138,9 +3148,9 @@ var ACT={
   prodOrd:function(d){U.form.noOrder=d.v==='hide';render();return false;},
   shopTab:function(d){U.shopTab=d.v;render();return false;},
   matsToggle:function(){U.matsOpen=!U.matsOpen;render();return false;},
-  newBatch:function(){
+  newBatch:function(d){
     if(!PRODUCTS.length){toast('ضيف منتج الأول');return ACT.newProd();}
-    U.form=null;U.sheet={sel:[],q:{}};
+    U.form=null;U.sheet={sel:[],q:{},shop:!!(d&&d.shop)};
   },
   newMat:function(){U.sheet=null;U.confirm=null;U.form={kind:'mat',edit:null,name:'',cat:'',unit:'جرام',min:'',qty:'',storage:'مخزن جاف',exp:'',supplier:'',notes:'',alts:[]};},
   editMat:function(d){
@@ -3183,6 +3193,7 @@ var ACT={
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
+  prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){
     var p=P(d.p);if(!p||!p.archived)return false;
