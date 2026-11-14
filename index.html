@@ -2783,8 +2783,7 @@ function ordSheetHTML(){
     var loopT=tabs.length>1;var chipsT='';
     (loopT?[0,1,2,3,4]:[2]).forEach(function(cp){tabs.forEach(function(t){var on=curTab===t[0];chipsT+='<button class="cv-c'+(on&&cp===2?' mid':'')+'" role="tab" aria-selected="'+on+'" data-act="oTab" data-v="'+esc(t[0])+'">'+esc(t[1])+'</button>';});});
     var tabBar='<div class="cv'+(loopT?' cv-loop':'')+'" role="tablist" aria-label="أقسام الأصناف">'+chipsT+'</div>';
-    var shown=curTab==='__all'?seasonP:seasonP.filter(function(p){return (p.grp||'__none')===curTab;});
-    var grid=shown.map(function(p){
+    var cardOf=function(p){
       var on=addedIds.indexOf(p.id)>=0;
       var stkTxt='<small>المتاح: '+f(S.ready[p.id]||0)+' '+esc(p.unit)+'</small>';
       if(!on)return '<button class="pk" data-act="oPick" data-p="'+p.id+'">'+esc(p.name)+stkTxt+'</button>';
@@ -2794,10 +2793,15 @@ function ordSheetHTML(){
         stkTxt+
         '<div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-oq="'+p.id+'" value="'+(q>0?q:'')+'" placeholder="0" aria-label="الكمية"><span>'+esc(p.unit)+'</span></div>'+
         '</div>';
+    };
+    var grid=gkeys.map(function(k){
+      var list=seasonP.filter(function(p){return (p.grp||'__none')===k;});
+      return '<div class="grp" style="margin-top:12px">'+(k==='__none'?'بدون مجموعة':esc(k))+' ('+list.length+')</div>'+
+        '<div class="pkgrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+list.map(cardOf).join('')+'</div>';
     }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
-      (seasonP.length?tabBar+'<div class="pkgrid" style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+grid+'</div>':'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
+      (seasonP.length?grid:'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
   }
   var rows=addedP.map(function(p){
