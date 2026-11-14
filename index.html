@@ -1231,7 +1231,7 @@ function navItems(){
     {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
   st.push({k:'waste',l:'هالك',n:(S.waste||[]).length,u:'عملية'});
-  st.push({k:'filling',l:'تحضير حشو',n:PRODUCTS.filter(isFill).length,u:'صنف'});
+  st.push({k:'filling',l:'تحضير حشو',n:PRODUCTS.filter(function(p){return isFill(p)&&!p.archived;}).length,u:'صنف'});
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
   st.push({k:'shopProducts',l:'وصفات المحل',n:prodsOf('shop').length,u:'وصفة',g:'recipes'});
@@ -1661,7 +1661,7 @@ function fgCardHTML(p,q,res){
 function fgVisIds(F){
   if(F==='short')return fgShortRows().map(function(r){return r.x.p;}).filter(function(v,i,a){return a.indexOf(v)===i;});
   if(F==='fillcust'||F==='fillshop')return PRODUCTS.filter(function(p){return isFill(p)&&p.fill===F.slice(4);}).map(function(p){return p.id;});
-  return PRODUCTS.map(function(p){return p.id;});
+  return PRODUCTS.filter(function(p){return !p.archived;}).map(function(p){return p.id;});
 }
 function fgZeroBar(){
   var F=U.fgf||'all',vis=fgVisIds(F),sel=U.fgSel||[],n=sel.length;
@@ -1756,8 +1756,8 @@ function groupNames(){
 function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
-  var dup=PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===q;});
-  var m=PRODUCTS.filter(function(p){return isFill(p)&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
+  var dup=PRODUCTS.some(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===q;});
+  var m=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
   var out='';
   if(dup)out+='<div class="meta" style="color:var(--filling);margin:-4px 0 8px">الصنف ده موجود قبل كده، الإنتاج الجديد هيتضاف عليه وأكواده هتتدمج (القديمة الأول)</div>';
   if(m.length)out+='<div class="meta" style="margin:-4px 0 6px">أصناف حشو بتبدأ بنفس الحروف، اختار واحد عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="fdrop">'+
@@ -1850,7 +1850,7 @@ function fillingView(){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>';
   var nextCode='F-'+String(nextFillNo()).padStart(3,'0');
-  var mine=PRODUCTS.filter(isFill);
+  var mine=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived;});
   var cards=mine.length?groupFillCards(mine):'<div class="empty"><b>مفيش أصناف محشوة لسه</b></div>';
   var form='<section class="card fillform" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
     '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+
@@ -1921,6 +1921,7 @@ function wasteView(){
     '<div class="tile"><b>'+thisM.length+'</b><span>عملية هالك الشهر</span></div>'+
     '<div class="tile"><b>'+Object.keys(thisP).length+'</b><span>صنف اتهلك الشهر</span></div></div>';
   var vis=PRODUCTS.filter(function(p){
+    if(p.archived)return false;
     if(F==='zero')return (S.ready[p.id]||0)===0;
     if(F==='fill')return isFill(p);
     if(F==='main')return !isFill(p);
@@ -1976,7 +1977,7 @@ function fgStockView(){
     body=fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اعمل صنف من تبويب تحضير حشو.</span></div>';
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
-  else body=(nS?'<div class="grp">النواقص اللي محتاجة دفعات ('+nS+')</div>'+fgShortHTML(rows,raw):'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
+  else body=(nS?'<div class="grp">النواقص اللي محتاجة دفعات ('+nS+')</div>'+fgShortHTML(rows,raw):'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>'+archSection();
   var zb=fgZeroBar();
   return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+zb+body;
 }
@@ -2000,7 +2001,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
-    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x);}).map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
+    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived;}).map(function(x){return '<button class="pk'+(s.sel.indexOf(x.id)>-1?' on':'')+'" data-act="sheetProd" data-p="'+x.id+'">'+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></button>';}).join('')+'</div>'+
     (qrows?'<div class="stack">'+qrows+'</div>':'')+
     (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length||cshort.length?'<div class="note">في نقص في '+(sh.length+cshort.length)+((sh.length+cshort.length)>2?' أصناف':' صنف')+(cshort.length?' (منها وصفات من مخزن الإنتاج)':'')+'. تقدر تنشئ الدفعة وتكمّل النقص قبل السحب.</div>':'')+
@@ -2047,7 +2048,7 @@ function compsFormHTML(F){
   var st='height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font-size:15px;min-width:0;width:100%';
   var rows=(F.comps||[]).map(function(c,i){
     return '<div class="sline" style="grid-template-columns:minmax(0,1fr) 76px 36px"><select data-ci="'+i+'" data-cf="p" style="'+st+'" aria-label="الوصفة الفرعية"><option value="">اختار وصفة...</option>'+
-      PRODUCTS.filter(function(x){return x.id!==F.edit;}).map(function(x){return '<option value="'+x.id+'"'+(c.p===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select>'+
+      PRODUCTS.filter(function(x){return x.id!==F.edit&&!x.archived;}).map(function(x){return '<option value="'+x.id+'"'+(c.p===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('')+'</select>'+
       '<input data-ci="'+i+'" data-cf="q" inputmode="decimal" placeholder="الكمية" value="'+esc(c.q)+'" aria-label="الكمية للوجبة الواحدة"><button class="xbtn" data-act="compDel" data-i="'+i+'" aria-label="احذف">×</button></div>';
   }).join('');
   return '<div class="fld"><span class="sec-l">وصفات فرعية من مخزن الإنتاج ('+(F.comps||[]).length+')</span><div class="meta">وصفات جاهزة بتتسحب من مخزن الإنتاج، زي كيك الفراولة جوه كيك الراسبيري. اكتب الكمية اللي الوجبة الواحدة بتاخدها بوحدة الصنف (قطع أو جرام أو كجم).</div><div class="stack">'+rows+'</div><button class="btn ghost sm" style="align-self:flex-start" data-act="compAdd">'+svg('plus')+'وصفة فرعية</button></div>';
@@ -2074,7 +2075,24 @@ fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
 function formHTML(){
   if(!U.form)return '';
   var F=U.form,k=F.kind,edit=!!F.edit;
-  return '<button class="back" data-act="formClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--'+'recipes'+')" role="dialog" aria-label="نموذج"><div class="sbody">'+(k==='mat'?matFormHTML():prodFormHTML())+'</div><div class="sfoot"><button class="btn main" data-act="formSave">'+(edit?'احفظ التعديلات':(k==='mat'?'أضف الخامة':'أضف الوصفة'))+'</button>'+(edit?'<button class="btn ghost" data-act="formDelete">'+(U.confirm==='del'?'اضغط تاني':'حذف')+'</button>':'')+'<button class="btn ghost" data-act="formClose">إلغاء</button></div></section>';
+  return '<button class="back" data-act="formClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--'+'recipes'+')" role="dialog" aria-label="نموذج"><div class="sbody">'+(k==='mat'?matFormHTML():prodFormHTML())+'</div><div class="sfoot"><button class="btn main" data-act="formSave">'+(edit?'احفظ التعديلات':(k==='mat'?'أضف الخامة':'أضف الوصفة'))+'</button>'+(edit?'<button class="btn ghost" data-act="formDelete">'+(U.confirm==='del'?'اضغط تاني':((P(edit)||{}).archived?'حذف نهائي':'حذف'))+'</button>':'')+'<button class="btn ghost" data-act="formClose">إلغاء</button></div></section>';
+}
+/* حذف نهائي للصنف المؤرشف: بيتشال من كل القوايم، والسجلات القديمة بتفضل بالاسم والكود */
+function permDelete(p){
+  if((S.ready[p.id]||0)>0){toast('صفّر مخزون الصنف الأول');render();return false;}
+  if(S.batches.some(function(b){return b.p===p.id;})||(S.orders||[]).some(function(o){return !o.deliveredAt&&(o.items||[]).some(function(it){return it.p===p.id;});})){toast('فيه دفعات أو أوردرات مفتوحة على الصنف ده، خلّصها الأول');render();return false;}
+  if(PRODUCTS.some(function(x){return x!==p&&(x.comps||[]).some(function(c){return c.p===p.id;});})){toast('الصنف ده داخل كوصفة فرعية، شيله منها الأول');render();return false;}
+  p.gone=true;p.archived=true;p.stages=[];p.comps=[];p.recipe={};
+  delete S.ready[p.id];
+  bind(S);U.form=null;toast('اتحذف الصنف نهائياً، السجلات القديمة فضلت محفوظة');
+  return true;
+}
+function archSection(){
+  var a=PRODUCTS.filter(function(p){return p.archived&&!p.gone;});
+  if(!a.length)return '';
+  return '<div class="grp" style="margin-top:18px">الأصناف المؤرشفة ('+a.length+')</div>'+a.map(function(p){
+    return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b><br><span class="meta">'+esc(p.code||'')+'</span></span><button class="btn ghost sm" data-act="archDel" data-p="'+p.id+'">'+(U.confirm==='arch'+p.id?'اضغط تاني للتأكيد':'حذف نهائي')+'</button></div>';
+  }).join('');
 }
 function saveMat(F){
   var name=F.name.trim();
@@ -3085,6 +3103,12 @@ var ACT={
   printOrder:function(d){var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(o)doPrint(printOrderHTML(o));return false;},
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
+  archDel:function(d){
+    var p=P(d.p);if(!p||!p.archived)return false;
+    var key='arch'+p.id;
+    if(U.confirm!==key){U.confirm=key;setTimeout(function(){if(U.confirm===key){U.confirm=null;render();}},3000);return;}
+    U.confirm=null;return permDelete(p);
+  },
   formDelete:function(){
     var F=U.form;
     if(U.confirm!=='del'){U.confirm='del';setTimeout(function(){if(U.confirm==='del'){U.confirm=null;render();}},3000);return;}
@@ -3098,6 +3122,7 @@ var ACT={
       var pSel=P(F.edit);
       var inUse=S.batches.some(function(b){return b.p===F.edit;})||S.done.some(function(d){return d.p===F.edit;});
       if((S.ready[F.edit]||0)>0){toast('صفّر مخزون الصنف الأول عشان يتأرشف أو يتحذف');render();return false;}
+      if(pSel&&pSel.archived)return permDelete(pSel);
       if(inUse){if(pSel)pSel.archived=true;bind(S);U.form=null;toast('اتأرشف الصنف، سجلاته القديمة فضلت محفوظة');return;}
       S.products=S.products.filter(function(p){return p.id!==F.edit;});delete S.ready[F.edit];
     }
