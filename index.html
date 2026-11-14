@@ -685,7 +685,10 @@ function svg(k,cls){return '<svg viewBox="0 0 24 24" aria-hidden="true"'+(cls?' 
 var MATERIALS=[],PRODUCTS=[];
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
-function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;PRODUCTS.forEach(function(p){if(p.stages)syncProd(p);});}
+/* كود الصنف: الأصناف العادية بتاخد P-001 وهكذا، والمحشوة ليها F-xxx. مفيش تكرار */
+function nextProdNo(){var mx=0;PRODUCTS.forEach(function(p){var m=/^P-(\d+)$/.exec(String(p.code||''));if(m&&+m[1]>mx)mx=+m[1];});return mx+1;}
+function ensureProdCodes(){PRODUCTS.forEach(function(p){if(p.code)return;if(p.fill){p.code='F-'+String(nextFillNo()).padStart(3,'0');S.fseq=+p.code.slice(2);}else p.code='P-'+String(nextProdNo()).padStart(3,'0');});}
+function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;PRODUCTS.forEach(function(p){if(p.stages)syncProd(p);});ensureProdCodes();}
 function fix(o){
   if(!o.materials)o.materials=[];
   if(!o.products)o.products=[];
@@ -2097,7 +2100,7 @@ function saveProd(F){
   if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var kk=convK(ou,nu);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
   var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',comps:comps,noOrder:!!F.noOrder};
   if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
-  else{o.id='p'+Date.now().toString(36);syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name);}
+  else{o.id='p'+Date.now().toString(36);o.code='P-'+String(nextProdNo()).padStart(3,'0');syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name+' بكود '+o.code);}
   U.form=null;
 
 }
