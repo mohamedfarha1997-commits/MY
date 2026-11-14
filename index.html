@@ -54,6 +54,11 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .fgzbar>.meta{display:block;margin-bottom:8px}
 .fgzbar .acts{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}
 .fgzbar .acts .btn{width:100%;min-width:0;min-height:40px;padding:0 6px;font-size:13px;white-space:normal;line-height:1.2;text-align:center}
+.fdrop{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 0 10px;background:#fff}
+.fdrop button{display:block;width:100%;text-align:start;padding:11px 14px;border:0;border-bottom:1px solid var(--line);background:#fff;font:inherit;font-size:14px;font-weight:600;color:var(--ink)}
+.fdrop button:last-child{border-bottom:0}
+.fdrop button:active{background:var(--surface-2)}
+.fdrop small{color:var(--muted);font-weight:500}
 </style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1170,7 +1175,7 @@ function topHTML(){
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو وفنش',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'حشو',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
   return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
 }
 function bbarHTML(){
@@ -1187,7 +1192,7 @@ function navItems(){
     {k:'stock',l:'مكوّنات',n:MATERIALS.length,u:'مكوّن'},
     {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
-  st.push({k:'filling',l:'حشو وفنش',n:PRODUCTS.filter(isFill).length,u:'صنف'});
+  st.push({k:'filling',l:'حشو',n:PRODUCTS.filter(isFill).length,u:'صنف'});
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
   st.push({k:'shopProducts',l:'وصفات المحل',n:prodsOf('shop').length,u:'وصفة',g:'recipes'});
@@ -1472,7 +1477,7 @@ function approveBox(b,p){
 function ordShort(o){
   return o.items.map(function(it){
     var fs=it.fs||0,have=fs+(it.got||0);
-    /* الدفعات الوسيطة لا تغطي الأوردر؛ التغطية من المنتج النهائي الخارج من حشو وفنش فقط */
+    /* الدفعات الوسيطة لا تغطي الأوردر؛ التغطية من المنتج النهائي الخارج من حشو فقط */
     return {p:it.p,qty:it.qty,fs:fs,have:have,pend:0,unw:0,short:Math.max(0,r3(it.qty-have))};
   });
 }
@@ -1664,11 +1669,11 @@ function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
   var dup=PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===q;});
-  var m=PRODUCTS.filter(function(p){return String(p.name||'').indexOf(q)>-1;}).slice(0,6);
+  var m=PRODUCTS.filter(function(p){return isFill(p)&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
   var out='';
   if(dup)out+='<div class="meta" style="color:var(--filling);margin:-4px 0 8px">الصنف ده موجود قبل كده، الإنتاج الجديد هيتضاف عليه وأكواده هتتدمج (القديمة الأول)</div>';
-  if(m.length)out+='<div class="meta" style="margin:-4px 0 8px">وصفات موجودة بنفس الاسم أو قريبة منه، اختار واحدة عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="btns">'+
-    m.map(function(p){return '<button class="btn ghost sm" data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+' · '+(isFill(p)?'محشو':'وصفة')+'</button>';}).join('')+'</div>';
+  if(m.length)out+='<div class="meta" style="margin:-4px 0 6px">أصناف حشو بتبدأ بنفس الحروف، اختار واحد عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="fdrop">'+
+    m.map(function(p){return '<button data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
   return out;
 }
 function prepReqIds(){
@@ -1734,7 +1739,7 @@ function prepReqView(){
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
     prepBatchBtn()+
     '<div class="grp">تفصيل النواقص حسب الصنف النهائي</div><div class="list">'+cards+'</div>'+
-    (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو وفنش القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
+    (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]});
@@ -1751,7 +1756,7 @@ function fillingView(){
       '</div>';
   }).join('')+'</div>';
   if(!src.length)pick='<div class="empty"><b>مفيش خامات متاحة في مخزن الإنتاج</b></div>';
-  var units=['قطعة','جرام','كجم','صاج','كادر','تورته'];
+  var units=['قطعة','كادر','تورته'];
   var unitBtns='<div class="btns">'+units.map(function(u){return '<button class="btn '+((F.unit||'قطعة')===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
   var kindBtns='<div class="btns">'+[['cust','أوردرات'],['shop','أوردرات المحل']].map(function(x){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
@@ -1762,15 +1767,14 @@ function fillingView(){
   var form='<section class="card" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
     '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+
     '<div id="fillSug">'+fillSuggest(F)+'</div>'+
-    '<div class="fld"><label>المجموعة (اختياري)</label><input type="text" data-fg="1" value="'+esc(F.grp||'')+'" placeholder="مثلاً: كيك، بسكويت"></div>'+
-    (groupNames().length?'<div class="btns">'+groupNames().map(function(g){return '<button class="btn ghost sm" data-act="fillGrp" data-v="'+esc(g)+'">'+esc(g)+'</button>';}).join('')+'</div>':'')+
+    '<div class="fld"><label>المجموعة (اختياري)</label><input type="text" data-fg="1" list="fgList" autocomplete="off" value="'+esc(F.grp||'')+'" placeholder="اكتب أو اختار من القائمة"><datalist id="fgList">'+groupNames().map(function(g){return '<option value="'+esc(g)+'">';}).join('')+'</datalist></div>'+
     '<div class="meta">1. اختار الخامات اللي هتتسحب من مخزن الإنتاج واكتب الكمية المسحوبة من كل واحد</div>'+pick+
     '<div class="meta" style="margin-top:12px">2. الكمية الناتجة من الصنف الجديد ووحدته</div>'+
     '<div class="fld"><label>الكمية الناتجة</label><input type="text" inputmode="decimal" data-fo="1" value="'+(F.out||'')+'" placeholder="مثلاً 3"></div>'+unitBtns+
     '<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" data-act="fillMake">اعمل الصنف</button></div></section>';
-  return head('حشو وفنش','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form+
+  return head('حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form+
     '<div class="grp" style="margin-top:18px">الأصناف المحشوة</div><div class="list">'+cards+'</div>';
 }
 function fgStockView(){
@@ -1789,7 +1793,7 @@ function fgStockView(){
   if(F==='short') body=fgShortHTML(rows,raw);
   else if(F==='fillcust'||F==='fillshop'){
     var fl=PRODUCTS.filter(function(p){return isFill(p)&&p.fill===F.slice(4);});
-    body=fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اعمل صنف من تبويب حشو وفنش.</span></div>';
+    body=fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اعمل صنف من تبويب حشو.</span></div>';
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
   else body='<div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
@@ -2401,7 +2405,7 @@ function monthsHTML(){
     if(!keys.length)return '';
     var anyOpen=S.orders.some(function(o){return !o.deliveredAt;});
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل الشهور ('+(kind==='shop'?'أوردرات المحل':'الأوردرات')+')</h3></div>'+
-      '<p class="meta" style="margin:0">القفل بيلم كل بيانات التطبيق (الأوردرات والدفعات والإنتاج المنتهي والخامات) ويأرشفها ويمسحها من مكانها. مخزون الإنتاج الجاهز والوصفات والأصناف المحشوة (حشو وفنش) بيفضلوا زي ما هما. صدّر تقرير PDF قبل القفل لو محتاج.</p>'+
+      '<p class="meta" style="margin:0">القفل بيلم كل بيانات التطبيق (الأوردرات والدفعات والإنتاج المنتهي والخامات) ويأرشفها ويمسحها من مكانها. مخزون الإنتاج الجاهز والوصفات والأصناف المحشوة (حشو) بيفضلوا زي ما هما. صدّر تقرير PDF قبل القفل لو محتاج.</p>'+
       keys.map(function(k){
         var m=months[k],locked=closedMonth(k,kind),conf=U.confirm==='lock:'+lockKey(kind,k);
         var act=(locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':'')+
