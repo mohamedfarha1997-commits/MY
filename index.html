@@ -68,14 +68,23 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .fillform .empty{padding:14px 10px}
 .fillform .meta[style*="margin:-4px"]{margin-top:0!important}
 :root{--waste:#b91c1c}
-</style></head><body>
+</style>
+<style>
+/* حدود أوضح للمربعات والحقول في الشيتات والنماذج */
+:root{--field:#94A3B4}
+:root[data-theme="dark"]{--field:#41556B}
+.sheet .fld input,.sheet .fld select,.sheet .fld textarea,.sheet input:not([type=checkbox]):not([type=radio]),.sheet select,.sheet textarea{border:1.5px solid var(--field)!important;background:var(--surface)}
+.sheet .card,.sheet .sec,.sheet .ptile,.sheet .pk{border:1.5px solid var(--line)!important}
+.sheet .btn.ghost{border:1.5px solid var(--field)}
+</style>
+</head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap"></noscript>
 <style>
 /* Layout: sticky three-stage pipeline (تحضير ← إنتاج ← مخزن) over one working view. Each stage owns one hue; --c carries it into the view. */
 :root{
-  --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#DAE0E6;
+  --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#B7C1CC;
   --ink:#101C28; --ink-2:#3A4959; --muted:#5F6E7F;
   --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED;
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
@@ -457,7 +466,7 @@ button,input{font-family:inherit}
 
 /* ---- شاشة الدخول: هيرو داكن بنفس روح الموقع ---- */
 .login{position:fixed;inset:0;z-index:40;overflow:hidden auto;background:var(--bg);--c:#4F5DFF;
-  --surface:rgba(255,255,255,.88);--surface-2:#F4F6F8;--line:#DAE0E6;--ink:#101C28;--ink-2:#3A4959;--muted:#5F6E7F;color:var(--ink)}
+  --surface:rgba(255,255,255,.88);--surface-2:#F4F6F8;--line:#B7C1CC;--ink:#101C28;--ink-2:#3A4959;--muted:#5F6E7F;color:var(--ink)}
 .login::before{content:"";position:absolute;inset:-12%;pointer-events:none;will-change:transform;
   background:radial-gradient(42vmax 42vmax at 18% 14%,rgb(79 93 255 / .16),transparent 70%),radial-gradient(38vmax 38vmax at 86% 68%,rgb(28 139 214 / .12),transparent 70%),radial-gradient(34vmax 34vmax at 50% 104%,rgb(109 40 217 / .08),transparent 70%)}
 .login::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgb(41 51 148 / .09) 1px,transparent 1px),linear-gradient(90deg,rgb(41 51 148 / .09) 1px,transparent 1px);background-size:56px 56px;opacity:.7;
