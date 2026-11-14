@@ -1891,7 +1891,7 @@ function boxShort(b){return (b.items||[]).filter(function(i){return (S.ready[i.p
 function tplDraftUsed(pid){var u=0;((U.tpl&&U.tpl.items)||[]).forEach(function(i){if(i.p===pid)u+=i.q;});return u;}
 function boxSeasonHTML(){
   var T=U.tpl||(U.tpl={name:'',items:[]});
-  var K=T.kind||(U.view==='shopOrders'?'shop':'cust');
+  var K=screenKind();
   var fillP=PRODUCTS.filter(function(p){return isFill(p)&&(p.fill||'cust')===K;});
   var pick=fillP.length?fillP.map(function(p){return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b></span><span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" step="any" inputmode="decimal" data-tq="'+p.id+'" placeholder="الكمية" style="width:84px;height:38px;border:1.5px solid var(--field);border-radius:10px;padding:0 8px;font:inherit;background:var(--surface)"><button class="btn sm" data-act="tplAdd" data-p="'+p.id+'">أضف</button></span></div>';}).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
@@ -1900,7 +1900,7 @@ function boxSeasonHTML(){
   var tplList=tplAll.filter(function(t){return (t.kind||'cust')===SK;});
   var tplHTML=tplList.length?tplList.map(function(t){return '<div class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(t.name)+'</b><small>'+t.items.map(function(i){return esc(i.name)+' '+f(i.q)+' '+esc(i.unit||'');}).join(' · ')+'</small></div></div><div class="btns" style="margin-top:8px"><input type="number" min="1" step="1" inputmode="numeric" value="1" data-bcount="'+t.id+'" aria-label="عدد العلب" style="width:72px;height:40px;text-align:center;border:1.5px solid var(--field);border-radius:10px;font:inherit;background:var(--surface)"><button class="btn" data-act="boxOrder" data-id="'+t.id+'">اطلب كأوردر</button><button class="btn ghost sm" data-act="tplDel" data-id="'+t.id+'">حذف القالب</button></div></div>';}).join(''):'<div class="meta">مفيش قوالب علب لسه</div>';
   var newOpen=FOLD_OPEN['boxnew']!==undefined?FOLD_OPEN['boxnew']===true:!tplList.length;
-  var newForm='<details class="card ordfold" data-fk="boxnew" style="--c:var(--orders)"'+(newOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span></div></summary>'+'<div class="seg" style="align-self:flex-start;margin-bottom:10px"><button class="'+(K==='cust'?'on':'')+'" data-act="tplKind" data-v="cust">أوردرات</button><button class="'+(K==='shop'?'on':'')+'" data-act="tplKind" data-v="shop">أوردرات المحل</button></div>'+
+  var newForm='<details class="card ordfold" data-fk="boxnew" style="--c:var(--orders)"'+(newOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span></div></summary>'+
     '<div class="fld"><label>اسم القالب</label><input data-tname value="'+esc(T.name||'')+'" placeholder="مثال: علبة 6 قطع"></div>'+
     '<div class="list">'+pick+'</div><div class="grp" style="margin-top:12px">أصناف القالب</div><div class="list">'+draft+'</div>'+
     '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></details>';
@@ -3212,7 +3212,7 @@ var ACT={
     var T=U.tpl;var nm=((document.querySelector('[data-tname]')||{}).value||T&&T.name||'').trim();
     if(!nm||!T||!T.items.length){toast('اكتب اسم القالب وضيف أصناف');return false;}
     S.boxTpl=S.boxTpl||[];
-    S.boxTpl.push({id:'t'+Date.now().toString(36),name:nm,kind:(T.kind||(U.view==='shopOrders'?'shop':'cust')),items:T.items.map(function(i){return {p:i.p,name:i.name,unit:i.unit,q:i.q};})});
+    S.boxTpl.push({id:'t'+Date.now().toString(36),name:nm,kind:screenKind(),items:T.items.map(function(i){return {p:i.p,name:i.name,unit:i.unit,q:i.q};})});
     U.tpl={name:'',items:[]};toast('اتحفظ القالب');
   },
   tplDel:function(d){S.boxTpl=(S.boxTpl||[]).filter(function(t){return t.id!==d.id;});},
