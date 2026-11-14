@@ -774,6 +774,16 @@ function elapsed(b){return b.startedAt?Math.min(dur(b),Date.now()-b.startedAt):0
 function timerDone(b){return !!b.startedAt&&Date.now()-b.startedAt>=dur(b);}
 function mmss(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function ago(ts){var m=Math.round((Date.now()-ts)/60000);if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' د';return 'منذ '+Math.floor(m/60)+' س';}
+/* رقم الدفعة مش بيتكرر: بياخد أعلى رقم موجود في الدفعات والمنتهي والأرشيف */
+function nextBatchNo(){
+  var mx=S.seq||100;
+  var add=function(id){var n=parseInt(String(id||'').split('-')[1],10);if(isFinite(n)&&n>mx)mx=n;};
+  (S.batches||[]).forEach(function(b){add(b.id);});
+  (S.done||[]).forEach(function(d){add(d.id);});
+  archEntries().forEach(function(a){(a.batches||[]).concat(a.done||[]).forEach(function(x){add(x.id);});});
+  S.seq=mx+1;
+  return S.seq;
+}
 function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
 
 /* ---------- data file: the only place the app keeps data ----------
@@ -841,6 +851,7 @@ function mergeStates(a,b){
   });
   M.seq=Math.max(a.seq||0,b.seq||0);
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
+  M.fseq=Math.max(a.fseq||0,b.fseq||0);
   M.savedAt=Math.max(a.savedAt||0,b.savedAt||0);
   M.locks=Object.assign({},b.locks||{},a.locks||{});
   var newer=(a.prefsT||0)>=(b.prefsT||0)?a:b;
@@ -1651,7 +1662,13 @@ function allocReady(pid){
   });
   S.ready[pid]=avail;
 }
-function mergedCode(){S.fseq=(S.fseq||0)+1;return 'F-'+String(S.fseq).padStart(3,'0');}
+/* كود الحشو: أعلى رقم موجود في الأصناف المحشوة أو العداد، ومفيش تكرار */
+function nextFillNo(){
+  var mx=S.fseq||0;
+  PRODUCTS.forEach(function(p){var m=/^F-(\d+)$/.exec(String(p.code||''));if(m&&+m[1]>mx)mx=+m[1];});
+  return mx+1;
+}
+function mergedCode(){S.fseq=nextFillNo();return 'F-'+String(S.fseq).padStart(3,'0');}
 function takeLots(pid,q){
   var need=q,out=[];
   fgLots(pid).forEach(function(l){
@@ -1805,7 +1822,7 @@ function fillingView(){
   var kindBtns='<div class="btns">'+[['cust','أوردرات'],['shop','أوردرات المحل']].map(function(x){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>';
-  var nextCode='F-'+String((S.fseq||0)+1).padStart(3,'0');
+  var nextCode='F-'+String(nextFillNo()).padStart(3,'0');
   var mine=PRODUCTS.filter(isFill);
   var cards=mine.length?groupFillCards(mine):'<div class="empty"><b>مفيش أصناف محشوة لسه</b></div>';
   var form='<section class="card fillform" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
@@ -3032,7 +3049,7 @@ var ACT={
     if(!s.sel.length){toast('اختار صنف واحد على الأقل');return false;}
     var ids=[],held=0;
     s.sel.forEach(function(pid){
-      S.seq++;var id='B-'+S.seq+'-'+devId();
+      var id='B-'+nextBatchNo()+'-'+devId();
       var nb={id:id,p:pid,qty:s.q[pid]||1,stage:'prep',withdrawn:false,checks:[],created:Date.now()};
       var tgt=fgShortRows().filter(function(r){return r.x.p===pid&&!S.batches.some(function(b){return b.o===r.o.id&&b.p===pid;});}).sort(function(a,b){return String(a.o.due||'').localeCompare(String(b.o.due||''));})[0];
       if(tgt){nb.o=tgt.o.id;held++;}
@@ -3300,7 +3317,7 @@ var ACT={
     S.orders=[];S.batches=[];S.done=[];
     S.stock={};
     S.locks=S.locks||{};S.locks[lockKey('cust',d.k)]=Date.now();S.locks[lockKey('shop',d.k)]=Date.now();
-    S.seq=100;S.oseq=0;
+    S.oseq=0;
     U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
     bind(S);
     toast('اتقفل شهر '+d.k+' واتأرشفت وتمسحت كل البيانات؛ مخزون الإنتاج والوصفات والأصناف المحشوة محفوظين');
@@ -3429,7 +3446,7 @@ ACT.batchSuggestApply=function(){
   if(!sg.length){toast('مفيش نواقص تحتاج دفعات');return false;}
   sg.forEach(function(x){
     for(var i=0;i<x.n;i++){
-      S.seq++;var id='B-'+S.seq+'-'+devId();
+      var id='B-'+nextBatchNo()+'-'+devId();
       S.batches.push({id:id,p:x.pid,qty:x.per,stage:'prep',withdrawn:false,checks:[],created:Date.now()});made++;
     }
   });
@@ -3440,7 +3457,7 @@ ACT.prepBatches=function(){
   var lk=prepLackTotals(),ks=Object.keys(lk);
   if(!ks.length){toast('مفيش تحضيرات ناقصة');return false;}
   ks.forEach(function(pid){
-    S.seq++;var id='B-'+S.seq+'-'+devId();
+    var id='B-'+nextBatchNo()+'-'+devId();
     var qty=Math.max(1,Math.ceil(lk[pid]/yieldOf(pid)));
     S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
   });
