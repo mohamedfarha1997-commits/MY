@@ -2723,7 +2723,7 @@ function archiveHTML(arch,kind){
   }).join('');
 }
 function shopProductsHTML(){
-  var btn='<button class="btn" data-act="newProd" data-shop="1">'+svg('plus')+'وصفة محل جديدة</button>';
+  var btn='<div class="btns"><button class="btn" data-act="newProd" data-shop="1">'+svg('plus')+'وصفة محل جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="shop">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="shop">استيراد</button></div>';
   if(!prodsOf('shop').length)return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+'<div class="empty"><b>مفيش وصفات محل</b><span>ضيف وصفة وحدّدها كوصفة محل عشان تظهر في أوردرات المحل.</span></div>';
   return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+recipePanel();
 }
