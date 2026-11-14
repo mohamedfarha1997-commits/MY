@@ -2687,7 +2687,7 @@ function reservedCard(o){
   var xs=ordShort(o),grp={},ord=[];
   xs.forEach(function(x,i){
     var it=o.items[i]||{},n=it.box||1;
-    if(!grp[n]){grp[n]={n:n,bt:boxTypeOf(o,n),rows:[]};ord.push(n);}
+    if(!grp[n]){grp[n]={n:n,bt:boxTypeOf(o,n)||it.pack||'',rows:[]};ord.push(n);}
     grp[n].rows.push({x:x,it:it});
   });
   ord.sort(function(a,c){return a-c;});
