@@ -1381,12 +1381,17 @@ function prepView(){
 
 var SEASONS=[['normal','عادي'],['ramadan','رمضان'],['mawlid','مولد النبي'],['christmas','الكريسماس'],['halloween','الهالوين']];
 function seasonOf(p){return p.season||'normal';}
-function curSeason(){return U.season||'normal';}
+function rawSeason(){return U.season||'normal';}
+function curSeason(){var v=rawSeason();return v==='boxes'?'normal':v;}
 function inSeason(p){return seasonOf(p)===curSeason();}
 function hiddenSeasons(){return pref('seasonsHidden',[]);}
 function seasonHidden(k){return k!=='normal'&&hiddenSeasons().indexOf(k)>-1;}
 function visibleSeasons(){return SEASONS.filter(function(x){return !seasonHidden(x[0]);});}
-function ordSeason(){return seasonHidden(curSeason())?'normal':curSeason();}
+function screenKind(){return U.view==='shopOrders'?'shop':'cust';}
+function ordSeason(){
+  if(rawSeason()==='boxes'&&U.boxKind===screenKind())return 'boxes';
+  return seasonHidden(curSeason())?'normal':curSeason();
+}
 function seasonSeg(current,act,list){
   return '<div class="seg wrap" style="margin:0 0 12px">'+(list||SEASONS).map(function(x){
     return '<button class="'+(current===x[0]?'on':'')+'" data-act="'+act+'" data-v="'+x[0]+'">'+x[1]+'</button>';
@@ -1891,7 +1896,8 @@ function boxSeasonHTML(){
   var pick=fillP.length?fillP.map(function(p){return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b></span><span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" step="any" inputmode="decimal" data-tq="'+p.id+'" placeholder="الكمية" style="width:84px;height:38px;border:1.5px solid var(--field);border-radius:10px;padding:0 8px;font:inherit;background:var(--surface)"><button class="btn sm" data-act="tplAdd" data-p="'+p.id+'">أضف</button></span></div>';}).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
   var tplAll=S.boxTpl||[];
-  var tplList=tplAll.filter(function(t){return (t.kind||'cust')===K;});
+  var SK=screenKind();
+  var tplList=tplAll.filter(function(t){return (t.kind||'cust')===SK;});
   var tplHTML=tplList.length?tplList.map(function(t){return '<div class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(t.name)+'</b><small>'+t.items.map(function(i){return esc(i.name)+' '+f(i.q)+' '+esc(i.unit||'');}).join(' · ')+'</small></div></div><div class="btns" style="margin-top:8px"><input type="number" min="1" step="1" inputmode="numeric" value="1" data-bcount="'+t.id+'" aria-label="عدد العلب" style="width:72px;height:40px;text-align:center;border:1.5px solid var(--field);border-radius:10px;font:inherit;background:var(--surface)"><button class="btn" data-act="boxOrder" data-id="'+t.id+'">اطلب كأوردر</button><button class="btn ghost sm" data-act="tplDel" data-id="'+t.id+'">حذف القالب</button></div></div>';}).join(''):'<div class="meta">مفيش قوالب علب لسه</div>';
   var newOpen=FOLD_OPEN['boxnew']!==undefined?FOLD_OPEN['boxnew']===true:!tplList.length;
   var newForm='<details class="card ordfold" data-fk="boxnew" style="--c:var(--orders)"'+(newOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span></div></summary>'+'<div class="seg" style="align-self:flex-start;margin-bottom:10px"><button class="'+(K==='cust'?'on':'')+'" data-act="tplKind" data-v="cust">أوردرات</button><button class="'+(K==='shop'?'on':'')+'" data-act="tplKind" data-v="shop">أوردرات المحل</button></div>'+
@@ -3025,7 +3031,7 @@ var ACT={
     setPref('seasonsHidden',a);
     render();return false;
   },
-  setSeason:function(d){U.season=d.v;U.rsel=null;render();return false;},
+  setSeason:function(d){U.season=d.v;if(d.v==='boxes')U.boxKind=screenKind();U.rsel=null;render();return false;},
   prodSeason:function(d){U.form.season=d.v;render();return false;},
   prodKind:function(d){U.form.shop=d.v==='shop';render();return false;},
   prodOrd:function(d){U.form.noOrder=d.v==='hide';render();return false;},
