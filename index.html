@@ -1162,6 +1162,69 @@ function importFromInput(){
   inp.click();
 }
 function importBackup(){importFromInput();}
+/* تصدير واستيراد الوصفات: ملف JSON، الخامات بتتربط بالاسم والوحدة */
+function recipeRefs(p){
+  return {name:unesc(p.name),cat:unesc(p.cat||''),grp:p.grp||'',unit:p.unit||'',mins:p.mins,temp:p.temp,yield:p.yield,season:p.season||'normal',noOrder:!!p.noOrder,notes:unesc(p.notes||''),
+    stages:(p.stages||[]).map(function(g){return {kind:g.kind,name:g.name||'',steps:(g.steps||[]).slice(),ings:(g.ings||[]).map(function(i){var m=M(i.m);return {mn:m?unesc(m.name):'',mu:m?(m.unit||''):'',q:i.q};}).filter(function(i){return i.mn;})};}),
+    comps:(p.comps||[]).map(function(c){var q=P(c.p);return {pn:q?unesc(q.name):'',q:c.q};}).filter(function(c){return c.pn;})};
+}
+function recExport(d){
+  var kind=d.k==='shop'?'shop':'cust';
+  var list=prodsOf(kind).filter(function(p){return !isFill(p);}).map(recipeRefs);
+  if(!list.length){toast('مفيش وصفات تتصدر');return false;}
+  var body=JSON.stringify({app:'khat-entaj',type:'recipes',v:1,kind:kind,exportedAt:Date.now(),recipes:list},null,2);
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([body],{type:'application/json'}));
+  a.download='khat-wasfat-'+(kind==='shop'?'mahal':'orders')+'-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
+}
+function recImportText(t,kind){
+  var o=parseTolerant(t);
+  if(!o||o.app!=='khat-entaj'||o.type!=='recipes'||!Array.isArray(o.recipes))throw new Error('bad');
+  var shopFlag=kind==='shop',skipped=[],added=[];
+  function matFor(mn,mu){
+    var hit=MATERIALS.filter(function(m){return unesc(m.name).trim()===mn.trim()&&(m.unit||'')===(mu||'');})[0];
+    if(hit)return hit.id;
+    var id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    S.materials.push({id:id,name:esc(mn),cat:'عام',unit:mu||'جرام',min:0,storage:'مخزن جاف',exp:'',supplier:'',notes:'',alts:[]});
+    S.stock[id]=0;
+    return id;
+  }
+  var pending=[];
+  o.recipes.forEach(function(r){
+    var nm=String(r.name||'').trim();
+    if(!nm){skipped.push('(بدون اسم)');return;}
+    var exists=PRODUCTS.some(function(p){return !p.archived&&!isFill(p)&&!!p.shop===shopFlag&&unesc(p.name).trim()===nm;});
+    if(exists){skipped.push(nm);return;}
+    var np={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name:esc(nm),cat:esc(r.cat||'')||'عام',grp:r.grp||'',unit:r.unit||'قطعة',
+      mins:Number(r.mins)||0,temp:r.temp,yield:Number(r.yield)||1,season:r.season||'normal',noOrder:!!r.noOrder,notes:esc(r.notes||''),shop:shopFlag,comps:[],
+      stages:(r.stages||[]).map(function(g){return {kind:g.kind||'prep',name:g.name||'',steps:(g.steps||[]).slice(),ings:(g.ings||[]).map(function(i){return {m:matFor(String(i.mn||''),i.mu||''),q:Number(i.q)||0};}).filter(function(i){return i.m&&i.q>0;})};})};
+    PRODUCTS.push(np);added.push(nm);pending.push({p:np,r:r});
+  });
+  /* الوصفات الفرعية بتتربط بعد ما كل الأصناف تتضاف */
+  pending.forEach(function(x){
+    x.p.comps=(x.r.comps||[]).map(function(c){
+      var q=PRODUCTS.filter(function(y){return !y.archived&&unesc(y.name).trim()===String(c.pn||'').trim();})[0];
+      return q?{p:q.id,q:Number(c.q)||0}:null;
+    }).filter(function(c){return c&&c.q>0;});
+  });
+  S.products=PRODUCTS;
+  bind(S);save();render();
+  toast('اتضاف '+added.length+' وصفة'+(skipped.length?'، اتخطى '+skipped.length+' لأنها موجودة قبل كده':''));
+}
+function recImportFile(d){
+  var kind=d.k==='shop'?'shop':'cust';
+  var inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0];if(!f)return;
+    var rd=new FileReader();
+    rd.onload=function(){try{recImportText(rd.result,kind);}catch(e){toast('الملف ده مش ملف وصفات صالح');}};
+    rd.onerror=function(){toast('تعذّر قراءة الملف، جرّب تاني');};
+    rd.readAsText(f);
+  };
+  inp.click();
+}
 function backupCardHTML(){
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>نسخة احتياطية</h3></div>'+
     '<p class="meta" style="margin:0">تُحفظ نسخة محلية تلقائيًا، وتظل المزامنة بين الأجهزة عبر Google Drive. يمكنك تنزيل نسخة احتياطية أو استيراد نسخة سابقة.</p>'+
@@ -1437,7 +1500,8 @@ function recipePanel(){
     qrow+'<div id="rcard" style="margin-top:12px">'+rCardInner()+'</div>';
 }
 function recipesView(){
-  var btn='<button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button>';
+  var kind=U.view==='shopProducts'?'shop':'cust';
+  var btn='<div class="btns"><button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="'+kind+'">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="'+kind+'">استيراد</button></div>';
   if(!prodsOf('cust').length)return head('وصفات','اختار وصفة وشوف مراحلها ومقاديرها',btn)+'<div class="empty"><b>مفيش وصفات</b><span>ضيف وصفة من الزرار اللي فوق.</span><button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button></div>';
   return head('وصفات','اختار وصفة وهتظهر لك بس',btn)+recipePanel();
 }
@@ -3118,6 +3182,8 @@ var ACT={
   printOrder:function(d){var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(o)doPrint(printOrderHTML(o));return false;},
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
+  recExport:function(d){return recExport(d);},
+  recImport:function(d){return recImportFile(d);},
   archDel:function(d){
     var p=P(d.p);if(!p||!p.archived)return false;
     var key='arch'+p.id;
