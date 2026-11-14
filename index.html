@@ -1788,25 +1788,52 @@ function fillingView(){
     '<div class="grp" style="margin-top:18px">الأصناف المحشوة</div><div class="list">'+cards+'</div>';
 }
 function ymKey(t){var d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function wasteCardHTML(p){
+  var stk=S.ready[p.id]||0,open=U.wasteOpen===p.id;
+  var st=stk>0?'<span class="pill ok">متاح</span>':'<span class="pill bad">نافد</span>';
+  return '<div class="fgc'+(open?' sel':'')+'" aria-pressed="'+open+'">'+
+    '<div data-act="wasteToggle" data-p="'+p.id+'" role="button" style="cursor:pointer">'+
+      '<div class="mtop"><b>'+esc(p.name)+'</b>'+st+'</div>'+
+      '<div class="fgn">'+f(stk)+' <span class="meta">'+esc(p.unit||'قطعة')+'</span></div>'+
+    '</div>'+
+    (open?'<div class="btns" style="margin-top:8px">'+
+      '<input type="number" min="0" step="any" inputmode="decimal" data-wq="'+p.id+'" placeholder="كمية الهالك" style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:12px;font:inherit">'+
+      '<button class="btn sm" data-act="wasteAdd" data-p="'+p.id+'" style="background:var(--waste)">خصم</button></div>':'')+
+  '</div>';
+}
 function wasteView(){
-  var prods=PRODUCTS.slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name),'ar');});
-  var list=prods.map(function(p){
-    var stk=S.ready[p.id]||0,open=U.wasteOpen===p.id;
-    return '<div class="card" style="--c:var(--waste)">'+
-      '<div class="mtop" data-act="wasteToggle" data-p="'+p.id+'" role="button" style="cursor:pointer">'+
-        '<div><b>'+esc(p.name)+'</b><small>'+(isFill(p)?'تحضير حشو':'دفعات')+'</small></div>'+
-        '<span class="pill '+(stk>0?'ok':'low')+'">'+f(stk)+' '+esc(p.unit||'قطعة')+'</span></div>'+
-      (open?'<div class="btns" style="margin-top:8px">'+
-        '<input type="number" min="0" step="any" inputmode="decimal" data-wq="'+p.id+'" placeholder="كمية الهالك" style="flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:12px;font:inherit">'+
-        '<button class="btn sm" data-act="wasteAdd" data-p="'+p.id+'" style="background:var(--waste)">خصم كهالك</button>'+
-        '<button class="btn quiet sm" data-act="wasteClose">إلغاء</button></div>':'')+
-      '</div>';
-  }).join('');
-  var nowKey=ymKey(Date.now());
-  var groups={},order=[];
-  (S.waste||[]).forEach(function(w){var k=ymKey(w.at);if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(w);});
-  order.sort().reverse();
-  var logHTML=order.map(function(k){
+  var F=U.wf||'all',nowKey=ymKey(Date.now()),openG=U.wGrpOpen||{};
+  var logAll=S.waste||[];
+  var thisM=logAll.filter(function(w){return ymKey(w.at)===nowKey;});
+  var thisP={};thisM.forEach(function(w){thisP[w.p]=1;});
+  var inStock=0;PRODUCTS.forEach(function(p){inStock+=(S.ready[p.id]||0);});
+  var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['zero','نافد'],['fill','حشو'],['main','دفعات']].map(function(x){
+    return '<button class="'+(F===x[0]?'on':'')+'" data-act="wasteFilter" data-v="'+x[0]+'">'+x[1]+'</button>';
+  }).join('')+'</div>';
+  var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.length+'</b><span>صنف</span></div>'+
+    '<div class="tile"><b>'+f(inStock)+'</b><span>في المخزن</span></div>'+
+    '<div class="tile"><b>'+thisM.length+'</b><span>عملية هالك الشهر</span></div>'+
+    '<div class="tile"><b>'+Object.keys(thisP).length+'</b><span>صنف اتهلك الشهر</span></div></div>';
+  var vis=PRODUCTS.filter(function(p){
+    if(F==='zero')return (S.ready[p.id]||0)===0;
+    if(F==='fill')return isFill(p);
+    if(F==='main')return !isFill(p);
+    return true;
+  });
+  var of={},order=[];
+  vis.forEach(function(p){var g=p.grp||'';if(!of[g]){of[g]=[];order.push(g);}of[g].push(p);});
+  order.sort(function(x,y){return String(x).localeCompare(String(y),'ar');});
+  var body=!vis.length?'<div class="empty"><b>مفيش أصناف هنا</b><span>الأصناف اللي تتضاف لمخزن الإنتاج هتظهر هنا تلقائي.</span></div>':
+    order.map(function(g){
+      var list=of[g],isOpen=!!openG[g],lbl=g||'بدون مجموعة';
+      return '<button class="btn ghost sm" data-act="wasteGrpOpen" data-g="'+esc(g)+'" aria-expanded="'+(isOpen?'true':'false')+'" style="width:100%;justify-content:space-between;margin-top:8px"><span>'+(isOpen?'▾ ':'▸ ')+esc(lbl)+' ('+list.length+')</span></button>'+
+        (isOpen?'<div class="fgcards">'+list.map(wasteCardHTML).join('')+'</div>':'');
+    }).join('');
+  // monthly log (locks with the month)
+  var groups={},gorder=[];
+  logAll.forEach(function(w){var k=ymKey(w.at);if(!groups[k]){groups[k]=[];gorder.push(k);}groups[k].push(w);});
+  gorder.sort().reverse();
+  var logHTML=gorder.map(function(k){
     var arr=groups[k].slice().reverse(),cur=k===nowKey,key='waste-'+k;
     var isOpen=FOLD_OPEN[key]!==undefined?FOLD_OPEN[key]===true:cur;
     var label=new Date(arr[0].at).toLocaleString('ar-EG',{month:'long',year:'numeric'});
@@ -1819,8 +1846,8 @@ function wasteView(){
       '<span class="pill '+(cur?'ok':'')+'">'+(cur?'الشهر الحالي':'مقفول')+'</span></summary>'+
       '<div class="ordbody">'+rows+'</div></details>';
   }).join('');
-  return head('هالك','اختار أي خامة واكتب الكمية التالفة، وهتتخصم من المخزن وتتسجل','')+
-    '<div class="list">'+(list||'<div class="meta">مفيش أصناف في مخزن الإنتاج لسه</div>')+'</div>'+
+  return head('هالك','اختار الخامة واكتب الكمية التالفة، وتتخصم من المخزن وتتسجل في السجل','')+sum+
+    '<div style="margin:12px 0">'+seg+'</div>'+body+
     '<div class="grp" style="margin-top:18px">سجل الهالك</div>'+
     '<div class="list">'+(logHTML||'<div class="meta">مفيش هالك متسجل لسه</div>')+'</div>';
 }
@@ -3051,6 +3078,8 @@ var ACT={
   fgClear:function(){U.fgSel=[];U.confirm=null;},
   wasteToggle:function(d){U.wasteOpen=(U.wasteOpen===d.p)?null:d.p;},
   wasteClose:function(){U.wasteOpen=null;},
+  wasteFilter:function(d){U.wf=d.v;},
+  wasteGrpOpen:function(d){U.wGrpOpen=U.wGrpOpen||{};U.wGrpOpen[d.g]=!U.wGrpOpen[d.g];},
   wasteAdd:function(d){
     var p=PRODUCTS.filter(function(x){return x.id===d.p;})[0];if(!p)return false;
     var inp=document.querySelector('[data-wq="'+d.p+'"]');
@@ -3344,7 +3373,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={wasteToggle:1,wasteClose:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
   newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
