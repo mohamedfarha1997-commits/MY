@@ -2010,7 +2010,7 @@ function prodFormHTML(){
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
-    '<datalist id="matl">'+MATERIALS.map(function(m){return '<option value="'+esc(unesc(m.name))+'">';}).join('')+'</datalist>'+
+    '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
     '<datalist id="stagel">'+Object.keys(sn).map(function(k){return '<option value="'+esc(k)+'">';}).join('')+'</datalist>'+
     '<div class="meta">كل مرحلة ليها مكوّناتها وخطواتها، والترتيب اللي تحدده هو اللي يظهر. اكتب أي مكوّن جديد وهيتضاف تلقائي.</div>'+
     sect('prep','مراحل التحضير','مرحلة تحضير')+compsFormHTML(F)+area();
@@ -2020,16 +2020,6 @@ function formHTML(){
   var F=U.form,k=F.kind,edit=!!F.edit;
   return '<button class="back" data-act="formClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--'+'recipes'+')" role="dialog" aria-label="نموذج"><div class="sbody">'+(k==='mat'?matFormHTML():prodFormHTML())+'</div><div class="sfoot"><button class="btn main" data-act="formSave">'+(edit?'احفظ التعديلات':(k==='mat'?'أضف الخامة':'أضف الوصفة'))+'</button>'+(edit?'<button class="btn ghost" data-act="formDelete">'+(U.confirm==='del'?'اضغط تاني':'حذف')+'</button>':'')+'<button class="btn ghost" data-act="formClose">إلغاء</button></div></section>';
 }
-/* وحدة الخامة مش مقفولة: لو فيه وحدة إضافية بتربط القديمة بالجديدة بنحوّل الكميات، ولو مفيش بنسيبها زي ما هي */
-function matUnitConv(m,newU){
-  var na=(m.alts||[]).filter(function(a){return a.u===newU&&a.f>0;})[0];
-  if(!na)return null;
-  return {k:1/na.f,oldAlt:{u:m.unit,f:r3(1/na.f)}};
-}
-function applyMatFactor(mid,k){
-  PRODUCTS.forEach(function(p){(p.stages||[]).forEach(function(g){(g.ings||[]).forEach(function(i){if(i.m===mid)i.q=r3(Number(i.q)*k);});});});
-  if(S.stock&&S.stock[mid]!=null)S.stock[mid]=r3(S.stock[mid]*k);
-}
 function saveMat(F){
   var name=F.name.trim();
   if(!name){toast('اكتب اسم الصنف');return false;}
@@ -2037,12 +2027,10 @@ function saveMat(F){
   var qty=F.qty===''?0:num(F.qty);if(!isFinite(qty)||qty<0){toast('الكمية غير صحيحة');return false;}
   var alts=[],altBad=null;(F.alts||[]).forEach(function(a){if(!a.u||a.u===F.unit)return;var af=num(a.f);if(!isFinite(af)||af<=0){altBad=altBad||'اكتب كام '+F.unit+' في '+a.u+' الواحدة';return;}alts.push({u:a.u,f:r3(af)});});
   if(altBad){toast(altBad);return false;}
-  var dup=MATERIALS.some(function(m){return m.id!==F.edit&&unesc(m.name).trim().toLowerCase()===name.toLowerCase();});
+  var dup=MATERIALS.some(function(m){return m.id!==F.edit&&(m.unit||'')===(F.unit||'')&&unesc(m.name).trim().toLowerCase()===name.toLowerCase();});
   if(dup){toast('الاسم ده موجود قبل كده');return false;}
   var o={name:esc(name),cat:esc((F.cat||'').trim()||'عام'),unit:F.unit,min:min,storage:F.storage,exp:F.exp||'',supplier:esc((F.supplier||'').trim()),notes:esc((F.notes||'').trim()),alts:alts};
-  var unitChanged=false,convInfo=null;
-  if(F.edit){var mOld=M(F.edit);if(mOld&&(mOld.unit||'')!==F.unit){unitChanged=true;convInfo=matUnitConv(mOld,F.unit);if(convInfo){if(convInfo.oldAlt&&!o.alts.some(function(a){return a.u===convInfo.oldAlt.u;}))o.alts.push(convInfo.oldAlt);applyMatFactor(mOld.id,convInfo.k);}}}
-  if(F.edit){Object.assign(M(F.edit),o);toast(!unitChanged?'تم حفظ التعديلات':convInfo?'اتغيرت الوحدة والكميات اتحولت':'اتغيرت الوحدة؛ الكميات القديمة سابت بنفس الأرقام، راجعها');}
+  if(F.edit){Object.assign(M(F.edit),o);toast('تم حفظ التعديلات');}
   else{o.id='m'+Date.now().toString(36);S.materials.push(o);S.stock[o.id]=r3(qty);toast('تمت إضافة '+name);}
   U.form=null;
 
@@ -2220,7 +2208,16 @@ function render(){
 
 /* ---------- recipe stages ---------- */
 function norm(x){return String(x).trim().toLowerCase();}
-function findMat(name){var n=norm(name);return MATERIALS.filter(function(m){return norm(unesc(m.name))===n;})[0];}
+/* الخامة ممكن تتكرر بوحدات مختلفة: الاسم المكرر بيتعرض مع الوحدة (اسم · وحدة) */
+function matLabel(m){return unesc(m.name)+' · '+(m.unit||'');}
+function matDupNames(){var c={};MATERIALS.forEach(function(m){var k=norm(unesc(m.name));c[k]=(c[k]||0)+1;});return c;}
+function matOptLabel(m,dups){return dups[norm(unesc(m.name))]>1?matLabel(m):unesc(m.name);}
+function findMat(name){
+  var n=norm(name);
+  var hit=MATERIALS.filter(function(m){return norm(matLabel(m))===n;})[0];
+  if(hit)return hit;
+  return MATERIALS.filter(function(m){return norm(unesc(m.name))===n;})[0];
+}
 function stageIngText(g,qty){
   return (g.ings||[]).map(function(i){var m=M(i.m);return m?m.name+' '+f(r3(i.q*qty))+' '+m.unit:'';}).filter(Boolean).join(' · ');
 }
@@ -2985,7 +2982,7 @@ var ACT={
   newMat:function(){U.sheet=null;U.confirm=null;U.form={kind:'mat',edit:null,name:'',cat:'',unit:'جرام',min:'',qty:'',storage:'مخزن جاف',exp:'',supplier:'',notes:'',alts:[]};},
   editMat:function(d){
     var m=M(d.id);U.sheet=null;U.confirm=null;
-    U.form={kind:'mat',edit:m.id,name:unesc(m.name),cat:unesc(m.cat),unit:m.unit,min:String(m.min),qty:'',storage:m.storage||'مخزن جاف',exp:m.exp||'',supplier:unesc(m.supplier),notes:unesc(m.notes),alts:(m.alts||[]).map(function(a){return {u:a.u,f:String(a.f)};})};
+    U.form={kind:'mat',edit:m.id,origUnit:m.unit,name:unesc(m.name),cat:unesc(m.cat),unit:m.unit,min:String(m.min),qty:'',storage:m.storage||'مخزن جاف',exp:m.exp||'',supplier:unesc(m.supplier),notes:unesc(m.notes),alts:(m.alts||[]).map(function(a){return {u:a.u,f:String(a.f)};})};
   },
   newProd:function(d){
     U.sheet=null;U.osheet=null;U.confirm=null;
