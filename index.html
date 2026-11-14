@@ -59,6 +59,14 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .fdrop button:last-child{border-bottom:0}
 .fdrop button:active{background:var(--surface-2)}
 .fdrop small{color:var(--muted);font-weight:500}
+.fillform{gap:0}
+.fillform .fld{margin-bottom:8px}
+.fillform .fld label{margin-bottom:4px}
+.fillform .meta{margin-top:4px!important;margin-bottom:4px!important;line-height:1.5}
+.fillform .fdrop{margin:0 0 6px}
+.fillform .btns{margin:4px 0 4px}
+.fillform .empty{padding:14px 10px}
+.fillform .meta[style*="margin:-4px"]{margin-top:0!important}
 </style></head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -1764,7 +1772,7 @@ function fillingView(){
   var nextCode='F-'+String((S.fseq||0)+1).padStart(3,'0');
   var mine=PRODUCTS.filter(isFill);
   var cards=mine.length?groupFillCards(mine):'<div class="empty"><b>مفيش أصناف محشوة لسه</b></div>';
-  var form='<section class="card" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
+  var form='<section class="card fillform" style="--c:var(--filling)"><h3>صنف جديد</h3>'+
     '<div class="fld"><label>اسم الصنف</label><input type="text" data-fn="1" value="'+esc(F.name)+'" placeholder="اسم الصنف الجديد"></div>'+
     '<div id="fillSug">'+fillSuggest(F)+'</div>'+
     '<div class="fld"><label>المجموعة (اختياري)</label><input type="text" data-fg="1" list="fgList" autocomplete="off" value="'+esc(F.grp||'')+'" placeholder="اكتب أو اختار من القائمة"><datalist id="fgList">'+groupNames().map(function(g){return '<option value="'+esc(g)+'">';}).join('')+'</datalist></div>'+
