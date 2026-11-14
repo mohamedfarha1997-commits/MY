@@ -1456,7 +1456,7 @@ function prodCard(b){
     '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle class="rp" cx="38" cy="38" r="30" fill="none" stroke="'+(fin?'var(--good)':'var(--c)')+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'"/></svg><b class="rt">'+label+'</b></div>'+
     '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+'</h3><div class="meta">'+batchQ(b,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
 }
-function prodView(){return prodBoard()+prodLogHTML();}
+function prodView(){return prodBoard()+prodLogHTML('batch');}
 function prodBoard(){
   var all=S.batches.filter(function(b){return b.stage==='prod';});
   var ready=all.filter(timerDone),running=all.filter(function(b){return b.startedAt&&!timerDone(b);}),queued=all.filter(function(b){return !b.startedAt;});
@@ -1467,27 +1467,29 @@ function prodBoard(){
 }
 
 /* ---------- سجل إنتاج الأصناف: كل صنف معتمد بكود التشغيل واسمه. الشهر بيتقفل مع الأرشفة ---------- */
-function plRows(){
+function plRows(mode){
   var rows=[],seen={};
   archEntries().forEach(function(a){(a.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:true});}});});
   (S.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:false});}});
   /* إنتاج الحشو: كل تشغيل حشو بيتسجل بكود الصنف المحشو */
   PRODUCTS.forEach(function(p){if(!p.fill||!Array.isArray(p.fillRuns))return;p.fillRuns.forEach(function(r){var at=r.at||0;rows.push({d:{id:null,fill:true,p:p.id,code:p.code||'',name:p.name,unit:p.unit,good:r.out,qty:r.out,at:at,from:r.from||[]},closed:monthKey(at)<monthKey(Date.now())});});});
+  if(mode==='fill')return rows.filter(function(r){return r.d.fill;});
+  if(mode==='batch')return rows.filter(function(r){return !r.d.fill;});
   return rows;
 }
 function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
 function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span></span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
-function plSearchHTML(){
+function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
   var key=function(x){return String(x||'').toLowerCase().replace(/[\s-]/g,'');};
-  var hits=plRows().filter(function(r){var i=plInfo(r.d);return key(i.code).indexOf(q)>-1||key(i.pcode).indexOf(q)>-1||key(i.name).indexOf(q)>-1;})
+  var hits=plRows(mode).filter(function(r){var i=plInfo(r.d);return key(i.code).indexOf(q)>-1||key(i.pcode).indexOf(q)>-1||key(i.name).indexOf(q)>-1;})
     .sort(function(a,b){return (b.d.at||0)-(a.d.at||0);});
   return '<div class="grp">نتايج البحث ('+hits.length+')</div>'+(hits.length?'<div class="card">'+hits.slice(0,60).map(plLine).join('')+'</div>':'<div class="meta">مفيش نتايج</div>');
 }
-function prodLogHTML(){
+function prodLogHTML(mode){
   var cur=monthKey(Date.now()),months={};
-  plRows().forEach(function(r){var k=monthKey(r.d.at||0);var m=months[k]=months[k]||{open:0,list:[]};m.list.push(r);if(!r.closed)m.open++;});
+  plRows(mode).forEach(function(r){var k=monthKey(r.d.at||0);var m=months[k]=months[k]||{open:0,list:[]};m.list.push(r);if(!r.closed)m.open++;});
   var keys=Object.keys(months).sort().reverse();
   var body=!keys.length?'<div class="empty"><b>السجل فاضي</b><span>كل صنف يتعتمد في الإنتاج بيتسجل هنا بكود التشغيل واسمه.</span></div>':keys.map(function(k){
     var m=months[k],list=m.list.slice().sort(function(a,b){return (b.d.at||0)-(a.d.at||0);});
@@ -1495,11 +1497,11 @@ function prodLogHTML(){
     var isOpen=FOLD_OPEN['plog-'+k]!==undefined?FOLD_OPEN['plog-'+k]===true:k===cur;
     return '<details class="card arch" data-fk="plog-'+k+'" style="margin-top:10px;--c:var(--prod)"'+(isOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' صنف معتمد</span></div><span class="pill '+(locked?'ok':'low')+'">'+(locked?'مقفول':'مفتوح')+'</span></summary>'+list.map(plLine).join('')+'</details>';
   }).join('');
-  return '<div class="grp" style="margin-top:22px">سجل الإنتاج (تشغيل وحشو)</div>'+
-    '<input type="text" data-plq value="'+esc(U.plq||'')+'" placeholder="ابحث بكود التشغيل أو كود الحشو أو اسم الصنف" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
-    '<div id="plqRes">'+plSearchHTML()+'</div>'+body;
+  return '<div class="grp" style="margin-top:22px">'+(mode==='fill'?'سجل إنتاج الحشو':'سجل إنتاج الدفعات')+'</div>'+
+    '<input type="text" data-plq="'+(mode==='fill'?'fill':'batch')+'" value="'+esc(U.plq||'')+'" placeholder="'+(mode==='fill'?'ابحث بكود الحشو أو اسم الصنف':'ابحث بكود التشغيل أو اسم الصنف')+'" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
+    '<div id="plqRes">'+plSearchHTML(mode)+'</div>'+body;
 }
-document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.plq!==undefined){U.plq=t.value;var el=document.getElementById('plqRes');if(el)el.innerHTML=plSearchHTML();}});
+document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.plq!==undefined){U.plq=t.value;var el=document.getElementById('plqRes');if(el)el.innerHTML=plSearchHTML(t.dataset.plq==='fill'?'fill':'batch');}});
 
 function stockView(){
   if(!TRACK()){
@@ -1849,7 +1851,7 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" data-act="fillMake">اعمل الصنف</button></div></section>';
-  return head('تحضير حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form;
+  return head('تحضير حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form+prodLogHTML('fill');
 }
 function ymKey(t){var d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function wasteCardHTML(p){
