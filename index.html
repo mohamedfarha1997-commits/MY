@@ -1891,10 +1891,12 @@ function boxSeasonHTML(){
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
   var tplList=S.boxTpl||[];
   var tplHTML=tplList.length?tplList.map(function(t){return '<div class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(t.name)+'</b><small>'+t.items.map(function(i){return esc(i.name)+' '+f(i.q)+' '+esc(i.unit||'');}).join(' · ')+'</small></div></div><div class="btns" style="margin-top:8px"><input type="number" min="1" step="1" inputmode="numeric" value="1" data-bcount="'+t.id+'" aria-label="عدد العلب" style="width:72px;height:40px;text-align:center;border:1.5px solid var(--field);border-radius:10px;font:inherit;background:var(--surface)"><button class="btn" data-act="boxOrder" data-id="'+t.id+'">اطلب كأوردر</button><button class="btn ghost sm" data-act="tplDel" data-id="'+t.id+'">حذف القالب</button></div></div>';}).join(''):'<div class="meta">مفيش قوالب علب لسه</div>';
-  return '<div class="card" style="--c:var(--orders)"><div class="grp">قالب علبة جديد</div><div class="fld"><label>اسم القالب</label><input data-tname value="'+esc(T.name||'')+'" placeholder="مثال: علبة 6 قطع"></div>'+
+  var newOpen=FOLD_OPEN['boxnew']!==undefined?FOLD_OPEN['boxnew']===true:!tplList.length;
+  var newForm='<details class="card ordfold" data-fk="boxnew" style="--c:var(--orders)"'+(newOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span></div></summary>'+
+    '<div class="fld"><label>اسم القالب</label><input data-tname value="'+esc(T.name||'')+'" placeholder="مثال: علبة 6 قطع"></div>'+
     '<div class="list">'+pick+'</div><div class="grp" style="margin-top:12px">أصناف القالب</div><div class="list">'+draft+'</div>'+
-    '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></div>'+
-    '<div class="grp" style="margin-top:18px">القوالب المحفوظة ('+tplList.length+')</div>'+tplHTML;
+    '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></details>';
+  return '<div class="grp">علب محفوظة ('+tplList.length+')</div>'+tplHTML+'<div style="margin-top:14px">'+newForm+'</div>';
 }
 document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tname!==undefined&&U.tpl)U.tpl.name=t.value;});
 function wasteView(){
