@@ -1976,7 +1976,7 @@ function fgStockView(){
     body=fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اعمل صنف من تبويب تحضير حشو.</span></div>';
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
-  else body='<div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
+  else body=(nS?'<div class="grp">النواقص اللي محتاجة دفعات ('+nS+')</div>'+fgShortHTML(rows,raw):'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>';
   var zb=fgZeroBar();
   return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+zb+body;
 }
