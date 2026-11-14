@@ -1471,10 +1471,12 @@ function plRows(){
   var rows=[],seen={};
   archEntries().forEach(function(a){(a.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:true});}});});
   (S.done||[]).forEach(function(d){if(!seen[d.id]){seen[d.id]=1;rows.push({d:d,closed:false});}});
+  /* إنتاج الحشو: كل تشغيل حشو بيتسجل بكود الصنف المحشو */
+  PRODUCTS.forEach(function(p){if(!p.fill||!Array.isArray(p.fillRuns))return;p.fillRuns.forEach(function(r){var at=r.at||0;rows.push({d:{id:null,fill:true,p:p.id,code:p.code||'',name:p.name,unit:p.unit,good:r.out,qty:r.out,at:at,from:r.from||[]},closed:monthKey(at)<monthKey(Date.now())});});});
   return rows;
 }
-function plInfo(d){var p=P(d.p);return {code:sid(d.id)||'—',pcode:d.code||(p&&p.code)||'',name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+monthKey(r.d.at||0)+'</span></span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span></span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
@@ -1493,8 +1495,8 @@ function prodLogHTML(){
     var isOpen=FOLD_OPEN['plog-'+k]!==undefined?FOLD_OPEN['plog-'+k]===true:k===cur;
     return '<details class="card arch" data-fk="plog-'+k+'" style="margin-top:10px;--c:var(--prod)"'+(isOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' صنف معتمد</span></div><span class="pill '+(locked?'ok':'low')+'">'+(locked?'مقفول':'مفتوح')+'</span></summary>'+list.map(plLine).join('')+'</details>';
   }).join('');
-  return '<div class="grp" style="margin-top:22px">سجل إنتاج الأصناف</div>'+
-    '<input type="text" data-plq value="'+esc(U.plq||'')+'" placeholder="ابحث بكود التشغيل أو اسم الصنف" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
+  return '<div class="grp" style="margin-top:22px">سجل الإنتاج (تشغيل وحشو)</div>'+
+    '<input type="text" data-plq value="'+esc(U.plq||'')+'" placeholder="ابحث بكود التشغيل أو كود الحشو أو اسم الصنف" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
     '<div id="plqRes">'+plSearchHTML()+'</div>'+body;
 }
 document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.plq!==undefined){U.plq=t.value;var el=document.getElementById('plqRes');if(el)el.innerHTML=plSearchHTML();}});
