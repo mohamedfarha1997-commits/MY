@@ -3168,13 +3168,20 @@ function seasonsCardHTML(){
 function securityCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
+/* زرار البصمة لفتح الإعدادات للمالك بدل الـ PIN */
+function settingsBioBtn(){
+  if(limited()||!bioSupported())return '';
+  return localStorage.getItem(BIO_KEY)
+    ?'<button class="btn block" data-act="settingsBio" style="margin-bottom:8px">افتح الإعدادات بالبصمة أو الوجه</button>'
+    :'<button class="btn ghost block" data-act="bioEnableAct" style="margin-bottom:8px">فعّل البصمة بدل الـ PIN</button>';
+}
 function settingsGate(){
   if(sUnlocked()&&!U.sChange)return settingsView();
   var st=sPwStored(),err=U.sErr?'<div class="note">'+U.sErr+'</div>':'',mode=!st?'setup':(U.sChange?'change':'unlock');
   var title,body,btn,extra='';
   if(mode==='setup'){title='اختار PIN للإعدادات';body=pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN','new-password');btn='حفظ الـ PIN';}
   else if(mode==='change'){title='تغيير PIN الإعدادات';body=pwField('spwOld','الـ PIN الحالي','current-password')+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN الجديد','new-password');btn='حفظ الـ PIN الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
-  else{title='الإعدادات محمية';body=pwField('spw1','الـ PIN','current-password');btn='دخول';extra='<p class="meta" style="margin:0">لو نسيت الـ PIN مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
+  else{title='الإعدادات محمية';body=pwField('spw1','الـ PIN','current-password');btn='دخول';extra=settingsBioBtn()+'<p class="meta" style="margin:0">لو نسيت الـ PIN مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
   return '<section class="card" style="--c:var(--settings);max-width:420px;margin:24px auto"><h3>'+title+'</h3>'+err+body+'<button class="btn block" data-act="settingsSubmit">'+btn+'</button>'+extra+'</section>';
 }
 
@@ -3314,6 +3321,12 @@ var ACT={
   recExport:function(d){return recExport(d);},
   bioGo:function(){bioUnlock().then(function(){U.bioOk=true;render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
   bioSkipAct:function(){U.bioSkip=true;render();},
+  settingsBio:function(){
+    if(limited())return false;
+    bioUnlock().then(function(){try{sessionStorage.setItem('khat-set-ok','1');}catch(e){}U.sErr=null;U.sChange=false;render();})
+      .catch(function(){U.sErr='ما اتعرّفش عليك، جرّب تاني أو استخدم الـ PIN';render();});
+    return false;
+  },
   bioEnableAct:function(){bioEnable().then(function(){toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
@@ -3799,7 +3812,7 @@ var ACT={
 var READ_ACTS={wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,sChangeStart:1,sCancel:1,sLock:1};
+  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
 ACT.batchSuggestApply=function(){
