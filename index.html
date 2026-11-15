@@ -78,6 +78,11 @@ if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then
 .sheet .btn.ghost{border:1.5px solid var(--field)}
 /* تصغير عام للواجهة عشان تبقى مناسبة لشاشة الهاتف */
 #app{zoom:.9}
+#app{zoom:.9}
+/* شبكة الأصناف: عمودين متساويين وكروت بنفس الحجم، وتتقاس على عرض الهاتف */
+.pgrid,.pkgrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px;width:100%;box-sizing:border-box}
+.pgrid>*,.pkgrid>*{min-width:0}
+.pgrid .pk,.pkgrid .pk{box-sizing:border-box;width:100%;min-width:0;min-height:72px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;overflow:hidden;white-space:normal;word-break:break-word}
 </style>
 </head><body>
 <title>RMY Pro</title>
@@ -2367,6 +2372,7 @@ function render(){
   var hadSheet=!!document.querySelector('#app .sheet');
   if(!authed()){document.getElementById('app').innerHTML=loginHTML();FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
+  var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
@@ -2374,6 +2380,7 @@ function render(){
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
+  Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
   var r=document.getElementById('recvIn');if(r)r.focus();
@@ -2982,7 +2989,7 @@ function ordSheetHTML(){
     var grid=gkeys.map(function(k){
       var list=seasonP.filter(function(p){return (p.grp||'__none')===k;});
       return '<div class="grp" style="margin-top:12px">'+(k==='__none'?'بدون مجموعة':esc(k))+' ('+list.length+')</div>'+
-        '<div class="pkgrid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">'+list.map(cardOf).join('')+'</div>';
+        '<div class="pkgrid">'+list.map(cardOf).join('')+'</div>';
     }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
