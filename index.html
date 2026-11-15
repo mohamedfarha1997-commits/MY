@@ -2260,7 +2260,8 @@ function saveProd(F){
     if(comps.some(function(c){return reach(c.p,{});}))bad=bad||'الوصفة الفرعية دي بتعتمد على الوصفة دي (دايرة)';
   }
   if(bad){toast(bad);return false;}
-  var dup=PRODUCTS.some(function(p){return p.id!==F.edit&&unesc(p.name).trim().toLowerCase()===name.toLowerCase();});
+  /* الأصناف المؤرشفة أو المحذوفة نهائياً مش بتتحسب في تكرار الاسم */
+  var dup=PRODUCTS.some(function(p){return p.id!==F.edit&&!p.archived&&!p.gone&&unesc(p.name).trim().toLowerCase()===name.toLowerCase();});
   if(dup){toast('الاسم ده موجود قبل كده');return false;}
   stages=stages.filter(function(g){return g.kind==='prep';});
   stages.forEach(function(g){
