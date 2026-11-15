@@ -2373,7 +2373,10 @@ var FX=(function(){
 /* قفل فتح التطبيق بالبصمة أو الوجه على الجهاز ده (WebAuthn). بيشتغل من رابط https أو من المتصفح */
 var BIO_KEY='rmy-bio-cred';
 function bioSupported(){return !!(window.PublicKeyCredential&&navigator.credentials&&window.isSecureContext);}
-function bioLocked(){return !!localStorage.getItem(BIO_KEY)&&!U.bioOk&&!U.bioSkip;}
+/* القفل بيتطلب مرة واحدة لكل فتح للتطبيق: التحديث بتاع الصفحة مش بيقفله تاني (الحالة في sessionStorage) */
+function bioSessionSet(){try{sessionStorage.setItem('khat-bio-ok','1');}catch(e){}}
+function bioSessionOk(){try{return sessionStorage.getItem('khat-bio-ok')==='1';}catch(e){return false;}}
+function bioLocked(){return !!localStorage.getItem(BIO_KEY)&&!bioSessionOk()&&!U.bioSkip;}
 function bioEnable(){
   return navigator.credentials.create({publicKey:{
     challenge:crypto.getRandomValues(new Uint8Array(32)),
@@ -2393,9 +2396,13 @@ function bioUnlock(){
     allowCredentials:[{type:'public-key',id:raw}],
     userVerification:'required',timeout:60000}});
 }
+function bioAuto(){
+  bioUnlock().then(function(){U.bioOk=true;bioSessionSet();render();})
+    .catch(function(){toast('اضغط الزرار عشان تفتح بالبصمة');});
+}
 function bioHTML(){
   return '<section class="login" style="text-align:center;padding:40px 16px"><h2 style="margin-bottom:8px">التطبيق مقفول</h2>'+
-    '<p class="meta" style="margin-bottom:24px">افتح بالبصمة أو الوجه عشان تدخل</p>'+
+    '<p class="meta" style="margin-bottom:24px">جاري التحقق بالبصمة أو الوجه...</p>'+
     '<div class="btns" style="justify-content:center;flex-direction:column;gap:10px">'+
     '<button class="btn" data-act="bioGo">افتح بالبصمة أو الوجه</button>'+
     '<button class="btn ghost sm" data-act="bioSkipAct">استخدم كلمة السر</button></div></section>';
@@ -2403,7 +2410,7 @@ function bioHTML(){
 function render(){
   applyTheme();
   var hadSheet=!!document.querySelector('#app .sheet');
-  if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();return;}
+  if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
@@ -3319,8 +3326,8 @@ var ACT={
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
-  bioGo:function(){bioUnlock().then(function(){U.bioOk=true;render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
-  bioSkipAct:function(){U.bioSkip=true;render();},
+  bioGo:function(){bioUnlock().then(function(){U.bioOk=true;bioSessionSet();render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
+  bioSkipAct:function(){U.bioSkip=true;bioSessionSet();render();},
   settingsBio:function(){
     if(limited())return false;
     bioUnlock().then(function(){try{sessionStorage.setItem('khat-set-ok','1');}catch(e){}U.sErr=null;U.sChange=false;render();})
