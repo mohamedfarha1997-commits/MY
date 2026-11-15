@@ -2827,7 +2827,7 @@ function readyCard(o){
   var detail='<div><span class="meta">'+itemsText(o)+'</span><div class="meta">'+tstr(o.created)+(o.due?' · معاد التسليم <b>'+dueStr(o.due)+'</b>':'')+'</div></div>'+
     '<div class="btns"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة الطلبية</button></div>';
   return '<article class="card" style="--c:var(--orders)">'+head+(open?detail:'')+
-    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn"'+(allOk(o)?'':' disabled')+' data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div>'+
+    '<div class="btns"><button class="btn ghost sm" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn ghost sm" data-act="oEdit" data-id="'+o.id+'">تعديل الطلبية</button><button class="btn"'+(allOk(o)?'':' disabled')+' data-act="oDeliver" data-id="'+o.id+'">تسليم الأوردر</button></div>'+
     '<div class="btns"><button class="btn quiet sm" data-act="oDelete" data-id="'+o.id+'" style="color:var(--bad)">'+(U.confirm==='del'+o.id?'اضغط تاني للتأكيد':'حذف الأوردر')+'</button></div></article>';
 }
 function lockedMonthsHTML(kind){
@@ -3052,7 +3052,7 @@ function ordSheetHTML(){
     '<div class="fld"><span class="sec-l">الأصناف المختارة'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
       (rows||'<div class="meta">مفيش أصناف مختارة</div>')+
       '<div class="btns"><button class="btn ghost sm" data-act="oBack">تعديل الأصناف</button></div></div>'+
-    '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>أنشئ الطلبية</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
+    '<div class="sfoot"><button class="btn main" data-act="oCreate"'+(any?'':' disabled')+'>'+(s.edit?'احفظ التعديل':'أنشئ الطلبية')+'</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
 }
 
 function stamp(){return new Date().toISOString().slice(0,10);}
@@ -3640,7 +3640,11 @@ var ACT={
     var os=U.osheet,list=PRODUCTS.filter(function(p){return (os.items[p.id]||0)>0;});
     if(!list.length){toast('اختار منتج وكمية');return false;}
     if(!os.due){toast('اكتب معاد التسليم');return false;}
-    S.oseq++;var id='O-'+S.oseq+'-'+devId(),now=Date.now(),lacks=0;
+    var eo=os.edit?(S.orders||[]).filter(function(x){return x.id===os.edit&&!x.deliveredAt;})[0]:null;
+    if(os.edit&&!eo){toast('الأوردر ده اتسلّم أو اتلغى، مينفعش يتعدّل');return false;}
+    if(eo)(eo.items||[]).forEach(function(it){S.ready[it.p]=r3((S.ready[it.p]||0)+(Number(it.fs)||0));});
+    if(!eo)S.oseq++;
+    var id=eo?eo.id:('O-'+S.oseq+'-'+devId()),now=Date.now(),lacks=0;
     var items=[];
     list.forEach(function(p){
       var avail=S.ready[p.id]||0,short=false;
@@ -3652,11 +3656,33 @@ var ACT={
       S.ready[p.id]=r3(avail);
       if(short)lacks++;
     });
+    if(eo){
+      eo.items=items;eo.cust=esc((os.cust||'').trim());eo.due=os.due;eo.season=os.season||'normal';
+      U.osheet=null;U.oexp=null;
+      toast('اتعدّلت الطلبية '+id+(lacks?' · فيه '+lacks+' صنف ناقص':' · كلها من المخزن'));
+      return;
+    }
     S.orders.push({id:id,kind:os.kind||'cust',cust:esc((os.cust||'').trim()),items:items,created:now,due:os.due,season:os.season||'normal'});
     U.osheet=null;U.oexp=null;
     toast('تم تسجيل الطلبية '+id+(lacks?' · فيه '+lacks+' صنف ناقص، شوفه في مخزن الإنتاج':' · كلها من المخزن'));
   },
   oToggle:function(d){U.oexp=U.oexp===d.id?null:d.id;},
+  oEdit:function(d){
+    var o=(S.orders||[]).filter(function(x){return x.id===d.id&&!x.deliveredAt;})[0];
+    if(!o){toast('مينفعش تعدّل أوردر اتسلّم');return false;}
+    var items={},added=[],split={},boxes=[];
+    (o.items||[]).forEach(function(it){
+      items[it.p]=r3((items[it.p]||0)+(Number(it.qty)||0));
+      if(added.indexOf(it.p)<0)added.push(it.p);
+      var bn=it.box||1;
+      split[it.p]=split[it.p]||{};split[it.p][bn]=r3((split[it.p][bn]||0)+(Number(it.qty)||0));
+      if(!boxes.some(function(b){return b.n===bn;}))boxes.push({n:bn,type:it.pack||''});
+    });
+    boxes.sort(function(a,b){return a.n-b.n;});
+    U.sheet=null;U.form=null;
+    U.osheet={cust:unesc(o.cust||''),items:items,added:added,boxes:boxes,box:{},split:split,due:o.due||'',season:o.season||'normal',kind:o.kind||'cust',step:'pick',edit:o.id};
+    toast('عدّل التفاصيل واحفظ');
+  },
   printAllOrders:function(d){
     var list=ordersOf(d.k||'cust').filter(function(o){return !o.deliveredAt;});
     if(!list.length){toast('مفيش أوردرات تتطبع');return false;}
@@ -3819,7 +3845,7 @@ var ACT={
 var READ_ACTS={wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
-  newOrder:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
+  newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
 ACT.batchSuggestApply=function(){
