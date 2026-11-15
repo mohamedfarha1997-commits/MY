@@ -2723,7 +2723,7 @@ function orderCard(o){
       '<div class="grp">الخامات المطلوبة للطلبية</div><div>'+matRows(tot,rem)+'</div>'+
             '<div class="foot"><button class="btn ghost sm" data-act="tab" data-v="fgstock">مخزن الإنتاج والنواقص</button><button class="btn quiet" data-act="oCancel" data-id="'+o.id+'">'+(U.confirm==='o'+o.id?'اضغط تاني للتأكيد':'إلغاء الطلبية')+'</button></div>';
   }
-  return '<article class="card" style="--c:var(--orders)">'+hd+(open?detail+body:'')+'<button class="btn ghost sm block" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button></article>';
+  return '<article class="card" style="--c:var(--orders)">'+hd+(open?detail+body:'')+'<button class="btn ghost sm block" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn ghost sm block" data-act="oEdit" data-id="'+o.id+'">تعديل الطلبية</button></article>';
 }
 function dueStr(s){return String(s||'').replace('T',' ');}
 function okind(o){return o.kind||'cust';}
