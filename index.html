@@ -3752,12 +3752,17 @@ ACT.batchSuggestApply=function(){
 ACT.prepBatches=function(){
   var lk=prepLackTotals(),ks=Object.keys(lk);
   if(!ks.length){toast('مفيش تحضيرات ناقصة');return false;}
+  var made=0;
   ks.forEach(function(pid){
+    /* الدفعة بتتعمل كاملة: لو فيه نقص أقل من وجبة كاملة بتتعمل وجبة كاملة واحدة، ولو أكتر بتتعمل بالعدد الكامل اللي يكفي */
+    var qty=Math.ceil(r3(lk[pid]/yieldOf(pid)));
+    if(!(qty>0))return;
     var id='B-'+nextBatchNo()+'-'+devId();
-    var qty=Math.max(1,Math.ceil(lk[pid]/yieldOf(pid)));
     S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
+    made++;
   });
-  toast('تم إنشاء '+ks.length+' دفعة للتحضيرات المطلوبة');
+  if(!made){toast('مفيش تحضيرات ناقصة');return false;}
+  toast('تم إنشاء '+made+' دفعة كاملة للتحضيرات الناقصة');
   go('prep');
 };
 ACT.plToggle=function(d){
