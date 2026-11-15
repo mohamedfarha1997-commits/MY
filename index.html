@@ -1882,6 +1882,27 @@ function fillNeedParts(p,shortQty){
   if(outTotal<=0)outTotal=Number(p.fromTotal)||1;
   return Object.keys(totals).map(function(k){return {p:k,q:r3(totals[k]*shortQty/outTotal),legacy:legacy};});
 }
+/* الإجمالي المطلوب لكل تحضير عبر كل الأصناف النهائية (مجمّع) */
+function prepTotalsHTML(){
+  var short={},rows=fgShortRows();
+  rows.forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);});
+  var tot={};
+  Object.keys(short).forEach(function(pid){
+    var p=P(pid);if(!p)return;var sh=short[pid],parts;
+    if(isFill(p))parts=fillNeedParts(p,sh);
+    else{var meals=sh/yieldOf(pid);parts=compsOf(pid).filter(function(c){return P(c.p);}).map(function(c){return {p:c.p,q:r3(c.q*meals)};});}
+    parts.forEach(function(x){if(P(x.p))tot[x.p]=r3((tot[x.p]||0)+x.q);});
+  });
+  var keys=Object.keys(tot);
+  if(!keys.length)return '';
+  return '<div class="grp">الإجمالي المطلوب لكل تحضير (مجمّع)</div><div class="list">'+keys.map(function(k){
+    var cp=P(k),have=S.ready[k]||0,pend=0;
+    S.batches.forEach(function(b){if(b.p===k)pend+=pc(b);});
+    var lack=Math.max(0,r3(tot[k]-have-pend)),bt=lack>0?Math.ceil(r3(lack/yieldOf(k))):0;
+    return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>مطلوب '+f(tot[k])+' '+esc(cp.unit||'')+' · متاح '+f(have)+(pend?' · في دفعات '+f(pend):'')+'</small></div>'+
+      '<span class="pill '+(lack>0?'low':'ok')+'">'+(lack>0?'يلزم '+f(lack)+' ('+bt+' دفعة)':'المتاح يكفي')+'</span></div>';
+  }).join('')+'</div>';
+}
 function prepReqView(){
   var short={},rows=fgShortRows(),ids=[];
   rows.forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);if(ids.indexOf(r.x.p)<0)ids.push(r.x.p);});
@@ -1905,7 +1926,7 @@ function prepReqView(){
     return '<article class="card" style="--c:var(--prepreq)"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><small class="meta">نقص نهائي '+f(sh)+' '+esc(p.unit||'')+'</small></div></div>'+(detail?'<div class="grp">المكونات الوسيطة المطلوبة لإعادة إنتاجه</div>'+detail:'<div class="meta">لا توجد مكونات وسيطة مسجلة لهذا الصنف.</div>')+'</article>';
   }).join('');
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
-    prepBatchBtn()+
+    prepBatchBtn()+prepTotalsHTML()+
     '<div class="grp">تفصيل النواقص حسب الصنف النهائي</div><div class="list">'+cards+'</div>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
