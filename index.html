@@ -2462,7 +2462,7 @@ function doPrint(html){
   d.open();
   d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+css+
     '\nhtml,body{height:auto!important;overflow:visible!important;background:#fff!important;color:#000!important}'+
-    '#printArea{display:block!important}'+
+    '#printArea{display:flex!important;flex-direction:column;justify-content:center;min-height:262mm}'+
     '@page{size:A4;margin:10mm}'+
     '#printArea{font-size:12px;line-height:1.4;min-height:262mm;display:flex;flex-direction:column;justify-content:center}'+
     '#printArea>*{width:100%}'+
