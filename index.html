@@ -1927,7 +1927,7 @@ function prepReqView(){
   }).join('');
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
     prepBatchBtn()+prepTotalsHTML()+
-    '<div class="grp">تفصيل النواقص حسب الصنف النهائي</div><div class="list">'+cards+'</div>'+
+    '<details data-fk="prepDetail"'+(FOLD_OPEN['prepDetail']===true?' open':'')+' style="margin-bottom:10px"><summary class="grp" style="cursor:pointer">تفصيل النواقص حسب الصنف النهائي ('+ids.length+')</summary><div class="list">'+cards+'</div></details>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
 function fillingView(){
