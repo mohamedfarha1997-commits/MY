@@ -1271,11 +1271,13 @@ function dateStr(){
   try{return new Date().toLocaleDateString('ar-EG-u-nu-latn',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '';}
 }
 function topHTML(){
-  var total=S.done.reduce(function(a,d){return a+d.good;},0);
+  /* الأوردرات اللي هتتسلّم النهارده (معادها النهارده ولسه متسلّمتش) */
+  var todayKey=ymd(new Date());
+  var total=(S.orders||[]).filter(function(o){return !o.deliveredAt&&o.due&&String(o.due).slice(0,10)===todayKey;}).length;
   return '<header class="top">'+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<img class="hlogo" src="icons/icon-192.png" alt="RMY Pro" width="44" height="44">'+
-    '<div class="today"><b>'+f(total)+'</b><span>جاهز اليوم</span></div>'+
+    '<div class="today"><b>'+f(total)+'</b><span>أوردرات خارجة اليوم</span></div>'+
     '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
     '</header>';
 }
