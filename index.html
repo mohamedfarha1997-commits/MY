@@ -2370,10 +2370,41 @@ var FX=(function(){
   return {after:after};
 })();
 
+/* قفل فتح التطبيق بالبصمة أو الوجه على الجهاز ده (WebAuthn). بيشتغل من رابط https أو من المتصفح */
+var BIO_KEY='rmy-bio-cred';
+function bioSupported(){return !!(window.PublicKeyCredential&&navigator.credentials&&window.isSecureContext);}
+function bioLocked(){return !!localStorage.getItem(BIO_KEY)&&!U.bioOk&&!U.bioSkip;}
+function bioEnable(){
+  return navigator.credentials.create({publicKey:{
+    challenge:crypto.getRandomValues(new Uint8Array(32)),
+    rp:{name:'RMY Pro'},
+    user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'rmy-user',displayName:'RMY Pro'},
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+    timeout:60000}}).then(function(cred){
+      localStorage.setItem(BIO_KEY,btoa(String.fromCharCode.apply(null,new Uint8Array(cred.rawId))));
+    });
+}
+function bioUnlock(){
+  var id=localStorage.getItem(BIO_KEY);if(!id)return Promise.resolve();
+  var raw=Uint8Array.from(atob(id),function(c){return c.charCodeAt(0);});
+  return navigator.credentials.get({publicKey:{
+    challenge:crypto.getRandomValues(new Uint8Array(32)),
+    allowCredentials:[{type:'public-key',id:raw}],
+    userVerification:'required',timeout:60000}});
+}
+function bioHTML(){
+  return '<section class="login" style="text-align:center;padding:40px 16px"><h2 style="margin-bottom:8px">التطبيق مقفول</h2>'+
+    '<p class="meta" style="margin-bottom:24px">افتح بالبصمة أو الوجه عشان تدخل</p>'+
+    '<div class="btns" style="justify-content:center;flex-direction:column;gap:10px">'+
+    '<button class="btn" data-act="bioGo">افتح بالبصمة أو الوجه</button>'+
+    '<button class="btn ghost sm" data-act="bioSkipAct">استخدم كلمة السر</button></div></section>';
+}
 function render(){
   applyTheme();
   var hadSheet=!!document.querySelector('#app .sheet');
-  if(!authed()){document.getElementById('app').innerHTML=loginHTML();FX.after({key:'login',hadSheet:false});return;}
+  if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();return;}
+  if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
@@ -3281,6 +3312,9 @@ var ACT={
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
+  bioGo:function(){bioUnlock().then(function(){U.bioOk=true;render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
+  bioSkipAct:function(){U.bioSkip=true;render();},
+  bioEnableAct:function(){bioEnable().then(function(){toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){
