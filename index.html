@@ -2429,10 +2429,23 @@ function printReport(title,html){
   w.document.close();
   setTimeout(function(){try{w.focus();w.print();}catch(e){}},400);
 }
+/* الطباعة في إطار مخفي بنفس تنسيق الصفحة، عشان التصدير ميطلعش فاضي */
 function doPrint(html){
-  var pa=document.getElementById('printArea');if(!pa)return;
-  pa.innerHTML=html;
-  try{window.print();}catch(e){toast('الطباعة مش متاحة هنا، افتح الصفحة من المتصفح');}
+  var f=document.createElement('iframe');
+  f.setAttribute('aria-hidden','true');
+  f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';
+  document.body.appendChild(f);
+  var css=Array.prototype.map.call(document.querySelectorAll('style'),function(x){return x.textContent;}).join('\n');
+  var d=f.contentWindow.document;
+  d.open();
+  d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+css+
+    '\nhtml,body{height:auto!important;overflow:visible!important;background:#fff!important;color:#000!important}'+
+    '#printArea{display:block!important}</style></head><body><div id="printArea" dir="rtl" lang="ar">'+html+'</div></body></html>');
+  d.close();
+  setTimeout(function(){
+    try{f.contentWindow.focus();f.contentWindow.print();}catch(e){toast('الطباعة مش متاحة هنا، افتح الصفحة من المتصفح');}
+    setTimeout(function(){f.remove();},3000);
+  },500);
 }
 window.addEventListener('afterprint',function(){var pa=document.getElementById('printArea');if(pa)pa.innerHTML='';});
 
