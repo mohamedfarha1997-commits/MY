@@ -1669,15 +1669,26 @@ function rawShortList(){
   return out;
 }
 function fgShortCount(){return fgShortRows().length;}
+/* النواقص بتتجمع على الصنف: كل صنف في كارت واحد، والأوردرات اللي فيه بتتذكر تحته */
+function shortByProduct(rows){
+  var g={},ord=[];
+  rows.forEach(function(r){
+    var k=r.x.p;
+    if(!g[k]){g[k]={p:k,qty:0,have:0,short:0,pend:0,ords:[]};ord.push(k);}
+    var a=g[k];a.qty+=r.x.qty||0;a.have+=r.x.have||0;a.short+=r.x.short||0;a.pend+=r.x.pend||0;
+    if(a.ords.indexOf(r.o.id)<0)a.ords.push(r.o.id);
+  });
+  return ord.map(function(k){return g[k];});
+}
 function fgShortHTML(rows,raw){
   var h='';
   if(rows.length){
-    h+='<div class="grp">نواقص الأوردرات ('+rows.length+')</div><div class="list">'+rows.map(function(r){
-      var o=r.o,x=r.x,p=P(x.p)||{name:'صنف محذوف',unit:''};
+    var grouped=shortByProduct(rows);
+    h+='<div class="grp">نواقص الأوردرات ('+grouped.length+' صنف)</div><div class="list">'+grouped.map(function(a){
+      var p=P(a.p)||{name:'صنف محذوف',unit:''};
       return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(p.name)+'</b>'+
-        '<small>طلبية '+o.id+' · '+custName(o)+(o.due?' · معاد '+dueStr(o.due):'')+'</small>'+
-        '<small>مطلوب '+f(x.qty)+' · متاح '+f(x.have)+(x.pend?' · في التحضير '+f(x.pend):'')+'</small></div>'+
-        '<div class="mq"><b>'+f(x.short)+'</b> <span>'+esc(p.unit)+'</span></div></div>'+
+        '<small>في '+a.ords.length+' '+(a.ords.length>1?'أوردرات':'أوردر')+' · مطلوب '+f(a.qty)+' · متاح '+f(a.have)+(a.pend?' · في التحضير '+f(a.pend):'')+'</small></div>'+
+        '<div class="mq"><b>'+f(a.short)+'</b> <span>'+esc(p.unit)+'</span></div></div>'+
         '<div class="meta">هيتخصم تلقائي من أول دفعة إنتاج عادية تتعمل للصنف ده</div></article>';
     }).join('')+'</div>';
   }
@@ -2028,7 +2039,7 @@ function wasteView(){
     '<div class="list">'+(logHTML||'<div class="meta">مفيش هالك متسجل لسه</div>')+'</div>';
 }
 function fgStockView(){
-  var rows=fgShortRows(),raw=[],nS=rows.length,F=U.fgf||'all';
+  var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
   PRODUCTS.forEach(function(p){inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
   var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['short','نواقص ('+nS+')'],['fillcust','سحب أوردرات'],['fillshop','سحب أوردرات المحل']].map(function(x){
