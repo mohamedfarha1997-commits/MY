@@ -1726,6 +1726,10 @@ function fgLots(pid){
 function lotsHTML(p){
   if(isFill(p)){
     var cs=p.srcCodes||[];
+    if(Array.isArray(p.fillRuns)&&p.fillRuns.length){
+      var seenC={};cs=[];
+      p.fillRuns.forEach(function(r){(r.from||[]).forEach(function(x){var q=P(x.p);var c=q&&q.code;if(c&&!seenC[c]){seenC[c]=1;cs.push(c);}});});
+    }
     return '<div class="sgl">كود الصنف: <span class="ltr">'+esc(sid(p.code||'-'))+'</span></div>'+
       '<div class="sgl">أكواد الخامات المسحوبة</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+
       (cs.length?cs.map(function(c){return '<span class="pill ltr">'+esc(sid(c))+'</span>';}).join(''):'<span class="meta">مفيش أكواد</span>')+'</div>';
@@ -3736,11 +3740,7 @@ var ACT={
     var unit=F.unit||'قطعة';
     var codes=[];
     function addCode(c){if(c!==undefined&&c!==null&&c!==''&&codes.indexOf(String(c))<0)codes.push(String(c));}
-    src.forEach(function(p){
-      addCode(p.code);
-      (p.srcCodes||[]).forEach(addCode);
-      takeLots(p.id,F.q[p.id]).forEach(function(l){addCode(l.id);});
-    });
+    src.forEach(function(p){addCode(p.code);});
     var pulled=r3(src.reduce(function(a,p){return a+F.q[p.id];},0));
     src.forEach(function(p){S.ready[p.id]=r3((S.ready[p.id]||0)-F.q[p.id]);});
     if(ex){
