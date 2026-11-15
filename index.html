@@ -2417,9 +2417,20 @@ function stagesText(p,kind,qty){
 /* ---------- printing ---------- */
 /* التحضيرات (أصناف التحضير أو اللي متعلّمة مخفية من الأوردرات) مش بتظهر في الفواتير والتقارير */
 function invoiceHidden(p){return !!p&&(!!p.noOrder||/^\s*تحضير/.test(unesc(p.name||'')));}
+/* إجمالي الأوردر: كل الأصناف المتشابهة (من كل التعبئات) في سطر واحد */
+function orderTotalsRows(o){
+  var g={},ord=[];
+  (o.items||[]).forEach(function(it){
+    var k=it.p;
+    if(!g[k]){var p=P(it.p)||{name:'صنف محذوف',unit:''};g[k]={name:unesc(p.name),unit:p.unit||'',q:0};ord.push(k);}
+    g[k].q=r3(g[k].q+(Number(it.qty)||0));
+  });
+  return ord.map(function(k){return '<tr><td>'+esc(g[k].name)+'</td><td class="n">'+f(g[k].q)+' '+esc(g[k].unit)+'</td></tr>';}).join('');
+}
 function printOrderHTML(o){
   var h='<h1>طلبية '+o.id+'</h1><div class="pm">'+(o.cust?o.cust+' · ':'')+tstr(o.created)+(o.due?' · معاد التسليم: '+dueStr(o.due):'')+'</div>';
-  h+='<table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+itemRowsHTML(o,true)+'</tbody></table>';
+  h+='<h2>إجمالي الأوردر</h2><table class="pt"><thead><tr><th>الصنف</th><th>إجمالي الكمية</th></tr></thead><tbody>'+orderTotalsRows(o)+'</tbody></table>';
+  h+='<h2>التعبئات</h2><table class="pt"><thead><tr><th>#</th><th>الصنف</th><th>الكمية</th></tr></thead><tbody>'+itemRowsHTML(o,true)+'</tbody></table>';
   return h;
 }
 function printReport(title,html){
@@ -2440,7 +2451,18 @@ function doPrint(html){
   d.open();
   d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+css+
     '\nhtml,body{height:auto!important;overflow:visible!important;background:#fff!important;color:#000!important}'+
-    '#printArea{display:block!important}</style></head><body><div id="printArea" dir="rtl" lang="ar">'+html+'</div></body></html>');
+    '#printArea{display:block!important}'+
+    '@page{size:A4;margin:10mm}'+
+    '#printArea{font-size:11px;line-height:1.35}'+
+    '#printArea h1{font-size:17px;margin:0 0 2px}'+
+    '#printArea h2{font-size:13px;margin:10px 0 4px;break-after:avoid;page-break-after:avoid}'+
+    '#printArea h3{font-size:11.5px;margin:6px 0 3px;break-after:avoid;page-break-after:avoid}'+
+    '#printArea .pm{font-size:10.5px;margin-bottom:4px}'+
+    '#printArea table.pt{font-size:10.5px;width:100%;border-collapse:collapse;margin:2px 0 6px;page-break-inside:auto}'+
+    '#printArea .pt th,#printArea .pt td{padding:2px 5px;border:1px solid #999;line-height:1.25}'+
+    '#printArea .pt thead{display:table-header-group}'+
+    '#printArea .pt tr,#printArea .pg{break-inside:avoid;page-break-inside:avoid}'+
+    '</style></head><body><div id="printArea" dir="rtl" lang="ar">'+html+'</div></body></html>');
   d.close();
   setTimeout(function(){
     try{f.contentWindow.focus();f.contentWindow.print();}catch(e){toast('الطباعة مش متاحة هنا، افتح الصفحة من المتصفح');}
