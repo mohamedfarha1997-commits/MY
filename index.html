@@ -1094,7 +1094,9 @@ function gdSync(){
         if(remote!==undefined){
           var local=S,Mg=remote?mergeStates(local,remote):local;
           need=!remote||canon(Mg)!==canon(remote);
+          var fresh=GD.seeded?newRemote(local,Mg):[];
           if(canon(Mg)!==canon(local)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
+          if(fresh.length)notifyRemote(fresh);
           GD.ver=String(m.version);
           if(!need)GD.upAt=S.savedAt||0;
         }else need=(S.savedAt||0)!==GD.upAt;
@@ -1103,7 +1105,7 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){GD.ok=true;GD.err=null;GD.at=Date.now();gdPaint();})
+  }).then(function(){GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();gdPaint();})
     .catch(gdFail).then(function(){GD.busy=false;if(GD.again){GD.again=false;gdSync();}});
 }
 function gdStart(){
@@ -2827,6 +2829,35 @@ function openView(v){
 /* tapping a notification: the service worker focuses the app and sends the section to open */
 try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='open-view')openView(d.view);});}catch(e){}
 function notifyNew(title,body,tag,view){showSysNotif(title,body,tag,null,view);}
+/* records that exist in the merged state but not in the local one = created on another synced device */
+function newRemote(a,b){
+  var out=[];
+  ['orders','batches'].forEach(function(c){
+    var have={};(a[c]||[]).forEach(function(r){if(r&&r.id!=null)have[String(r.id)]=1;});
+    (b[c]||[]).forEach(function(r){
+      if(r&&r.id!=null&&!have[String(r.id)]&&!(b.tomb&&b.tomb[c]&&b.tomb[c][r.id]))out.push({c:c,r:r});
+    });
+  });
+  return out;
+}
+function notifyRemote(list){
+  if(!list.length)return;
+  if(list.length>3){
+    var no=list.filter(function(x){return x.c==='orders';}).length,nb=list.length-no;
+    var parts=[];if(no)parts.push(no+' أوردر');if(nb)parts.push(nb+' دفعة');
+    showSysNotif('وصل من جهاز تاني',parts.join(' و ')+' جداد','rnew-'+Date.now(),null,no?'orders':'prep');
+    return;
+  }
+  list.forEach(function(x){
+    if(x.c==='orders'){
+      var o=x.r;
+      showSysNotif('أوردر جديد من جهاز تاني',(unesc(o.cust||'')||'بدون اسم')+' · '+o.id+(o.due?' · ميعاد: '+o.due:''),'rorder-'+o.id,null,'orders');
+    }else{
+      var b=x.r,p=P(b.p);
+      showSysNotif('دفعة جديدة من جهاز تاني',(p?p.name:'')+' × '+(b.qty||'')+' · '+sid(b.id),'rbatch-'+b.id,null,'prep');
+    }
+  });
+}
 function notifyDone(b){var p=P(b.p);showSysNotif('خلص الوقت',(p?p.name:'')+' · '+sid(b.id),'done-'+b.id,null,'prod');}
 /* pre-schedule at start time too: browsers that support notification triggers fire it even if the page is closed */
 function scheduleNotif(b){
