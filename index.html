@@ -1936,14 +1936,25 @@ function prepMissingList(){
     return !S.batches.some(function(b){return b.p===pid&&b.stage!=='finish';});
   }).map(function(pid){return {pid:pid,p:P(pid),short:short[pid],fill:isFill(P(pid))};});
 }
+/* الحشو اللي بتكتبه في تحضير حشو: الخامات اللي ناقصة في المخزن بتتعرض هنا */
+function fillDraftLacks(){
+  var F=U.fill;
+  if(!F||!String(F.name||'').trim()||!(F.sel||[]).length)return [];
+  return F.sel.map(function(pid){
+    var p=P(pid),need=num(F.q&&F.q[pid]);
+    if(!p||!(need>0))return null;
+    var have=S.ready[pid]||0,lack=r3(need-have);
+    return lack>0?{name:String(F.name).trim(),ing:p,need:need,have:have,lack:lack}:null;
+  }).filter(Boolean);
+}
 function prepMissingHTML(){
-  var list=prepMissingList();
+  var list=fillDraftLacks();
   if(!list.length)return '';
   return '<div class="grp">حشو ملوش تحضير ('+list.length+')</div>'+
     '<div class="list">'+list.map(function(x){
-      var btn=x.fill?'<button class="btn sm" data-act="fillOpen" data-id="'+x.pid+'">اعمل حشو</button>':
-        '<button class="btn sm" data-act="prepOneBatch" data-p="'+x.pid+'">اعمل دفعة</button>';
-      return '<div class="rq"><div><b>'+esc(x.p.name)+'</b><small>ناقص '+f(x.short)+' '+esc(x.p.unit||'')+'</small></div>'+btn+'</div>';
+      return '<div class="rq"><div><b>'+esc(x.name)+'</b>'+
+        '<small>ناقص '+esc(x.ing.name)+': '+f(x.lack)+' '+esc(x.ing.unit||'')+' · المتاح '+f(x.have)+' · مطلوب '+f(x.need)+'</small></div>'+
+        '<span class="pill bad">ناقص</span></div>';
     }).join('')+'</div>';
 }
 /* الإجمالي المطلوب لكل تحضير عبر كل الأصناف النهائية (مجمّع) */
