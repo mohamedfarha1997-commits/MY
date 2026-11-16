@@ -822,7 +822,11 @@ function canon(x){return JSON.stringify(x,function(k,v){
   return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
 function recSig(r){var c={};Object.keys(r).forEach(function(k){if(k!=='_u')c[k]=r[k];});return canon(c);}
 function pref(k,d){var p=S.prefs||{};return p[k]!==undefined?p[k]:d;}
-function setPref(k,v){S.prefs=S.prefs||{};S.prefs[k]=v;S.prefsT=Date.now();save();}
+function setPref(k,v){
+  S.prefs=S.prefs||{};S.prefs[k]=v;
+  S.prefsK=S.prefsK||{};S.prefsK[k]=Date.now();
+  S.prefsT=Date.now();save();
+}
 function applyTheme(){document.documentElement.setAttribute('data-theme',pref('theme','light'));}
 
 /* remember the signature of every record, so a later stamp() can tell what was edited */
@@ -877,8 +881,16 @@ function mergeStates(a,b){
   M.fseq=Math.max(a.fseq||0,b.fseq||0);
   M.savedAt=Math.max(a.savedAt||0,b.savedAt||0);
   M.locks=Object.assign({},b.locks||{},a.locks||{});
-  var newer=(a.prefsT||0)>=(b.prefsT||0)?a:b;
-  M.prefs=newer.prefs||{};
+  /* كل إعداد ليه وقته: الجهاز اللي غيّر إعداد معين هو اللي بيحسم فيه، مش الجهاز اللي حفظ آخر مرة */
+  var pa=a.prefs||{},pb=b.prefs||{},ka=a.prefsK||{},kb=b.prefsK||{};
+  var keys={};Object.keys(pa).concat(Object.keys(pb)).forEach(function(k){keys[k]=1;});
+  M.prefs={};M.prefsK={};
+  Object.keys(keys).forEach(function(k){
+    var ta=ka[k]||0,tb=kb[k]||0;
+    var fromA=(pa[k]!==undefined)&&(ta>=tb||pb[k]===undefined);
+    M.prefs[k]=fromA?pa[k]:pb[k];
+    M.prefsK[k]=Math.max(ta,tb);
+  });
   M.prefsT=Math.max(a.prefsT||0,b.prefsT||0);
   /* سجل الإنتاج: الحركات من الجهازين بتتجمع، والدفعة المحذوفة بتفضل محذوفة إلا لو فيها حركة أحدث من الحذف */
   var pt={};
