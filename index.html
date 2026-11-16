@@ -2126,7 +2126,7 @@ function fillingView(){
       '</div>';
   }).join('')+'</div>';
   if(!src.length)pick='<div class="empty"><b>مفيش خامات متاحة في مخزن الإنتاج</b></div>';
-  var units=['قطعة','كادر','تورته','بولة','كاس','سفنديش كبير','سفنديش صغير','سفنديش وسط','فورمة كبيرة','فورمة صغيرة'];
+  var units=['قطعة','كادر','تورته','بولة','كاس','سفنديش كبير','سفنديش صغير','سفنديش وسط','فورمة كبيرة','فورمة صغيرة','فخارة'];
   var unitBtns='<div class="btns">'+units.map(function(u){return '<button class="btn '+((F.unit||'قطعة')===u?'':'ghost ')+'sm" data-act="fillUnit" data-v="'+u+'">'+u+'</button>';}).join('')+'</div>';
   var kindBtns='<div class="btns">'+[['cust','أوردرات'],['shop','أوردرات المحل']].map(function(x){
     return '<button class="btn '+(F.kind===x[0]?'':'ghost ')+'sm" data-act="fillKind" data-v="'+x[0]+'">'+x[1]+'</button>';
