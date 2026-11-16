@@ -739,7 +739,7 @@ var UNITS_M=['جرام','علبة','كيس','بيضة','غطا','حبة','نقط
 var PROD_UNITS=['قطعة','جرام','صاج','كادر','تورته','بولة','كاس','سفنديش كبير','سفنديش صغير','سفنديش وسط','فورمة كبيرة','فورمة صغيرة']; /* وحدة إنتاج الصنف: قطع أو وزن */
 function isPiece(p){return !p||!p.unit||isPieceU(p.unit);}
 function isPieceU(u){return !u||['قطعة','صاج','كادر','تورته','بولة','كاس','سفنديش كبير','سفنديش صغير','سفنديش وسط','فورمة كبيرة','فورمة صغيرة'].indexOf(u)>-1;}
-function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
+function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:u==='بيضة'?50:null;}
 /* k = الكمية الجديدة لكل وحدة قديمة */
 function convK(ou,nu){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;return 1;}
 /* بتحوّل كل الكميات المرتبطة بالصنف لما وحدته تتغير */
