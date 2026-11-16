@@ -2414,12 +2414,7 @@ function saveProd(F){
         var al2=(mm.alts||[]).filter(function(a){return a.u===r.u;})[0];
         if(al2){fac=al2.f;}
         else if(unitGrams(r.u)&&unitGrams(mm.unit)){fac=r3(unitGrams(r.u)/unitGrams(mm.unit));mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);}
-        else{
-          var ans=prompt('كام '+mm.unit+' في الوحدة "'+r.u+'"؟ (اكتب رقم بس)','');
-          var af=num(ans);
-          if(!isFinite(af)||af<=0){bad=bad||'اكتب عدد '+mm.unit+' لكل '+r.u+' عشان نحسب الكمية';return;}
-          fac=r3(af);mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);
-        }
+        else{bad=bad||'ضيف وحدة "'+r.u+'" للخامة '+n+' من شاشة المخزن (وحدات إضافية) وحدد كام '+mm.unit+' فيها';return;}
       }
       ings.push({key:key,n:n,u:r.u,q:r3(q*fac)});
     });
