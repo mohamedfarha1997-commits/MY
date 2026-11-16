@@ -1851,6 +1851,14 @@ function groupFillCards(fl){
 function groupNames(){
   var out=[];PRODUCTS.forEach(function(p){if(isFill(p)&&p.grp&&out.indexOf(p.grp)<0)out.push(p.grp);});return out;
 }
+/* آخر تشغيل للصنف المحشو: الخامات وكمياتها والناتج اللي بيتخصم ويتضاف تلقائي */
+function fillLastRun(ex){
+  if(!ex||!Array.isArray(ex.fillRuns)||!ex.fillRuns.length)return null;
+  var r=ex.fillRuns[ex.fillRuns.length-1];
+  var from=(r.from||[]).filter(function(x){return P(x.p)&&Number(x.q)>0;}).map(function(x){return {p:x.p,q:Number(x.q)};});
+  if(!from.length)return null;
+  return {out:Number(r.out)||0,from:from};
+}
 function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
@@ -1858,6 +1866,14 @@ function fillSuggest(F){
   var m=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
   var out='';
   if(dup)out+='<div class="meta" style="color:var(--filling);margin:-4px 0 8px">الصنف ده موجود قبل كده، الإنتاج الجديد هيتضاف عليه وأكواده هتتدمج (القديمة الأول)</div>';
+  var exAct=PRODUCTS.filter(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===q;})[0];
+  var lr=fillLastRun(exAct);
+  if(lr){
+    out+='<div class="card" style="--c:var(--filling);margin:-2px 0 10px;padding:10px 12px">'+
+      '<div class="meta" style="margin-bottom:6px">آخر تشغيل لنفس الصنف، والتطبيق بيحسبه تلقائي لو مختارتش خامات:</div>'+
+      lr.from.map(function(x){var pp=P(x.p);return '<div class="hist"><span>'+esc(pp.name)+'</span><span>- '+f(x.q)+' '+esc(pp.unit||'')+'</span></div>';}).join('')+
+      '<div class="hist"><span><b>هيتضاف</b></span><span><b>+ '+f(lr.out)+' '+esc(exAct.unit||'')+'</b></span></div></div>';
+  }
   if(m.length)out+='<div class="meta" style="margin:-4px 0 6px">أصناف حشو بتبدأ بنفس الحروف، اختار واحد عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="fdrop">'+
     m.map(function(p){return '<button data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
   return out;
@@ -3767,6 +3783,14 @@ var ACT={
     var name=String(F.name||'').trim();
     if(!name){toast('اكتب اسم الصنف');return false;}
     var ex=PRODUCTS.filter(function(x){return isFill(x)&&String(x.name||'').trim()===name;})[0];
+    if(ex&&!(F.sel||[]).length){
+      var lr0=fillLastRun(ex);
+      if(lr0){
+        F.q=F.q||{};F.sel=lr0.from.map(function(x){return x.p;});
+        lr0.from.forEach(function(x){F.q[x.p]=x.q;});
+        if(!(num(F.out)>0))F.out=String(lr0.out);
+      }
+    }
     var out=num(F.out);
     if(!(isFinite(out)&&out>0)){toast('اكتب الكمية الناتجة');return false;}
     var src=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived&&(F.q[p.id]||0)>0;});
