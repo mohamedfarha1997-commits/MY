@@ -3956,6 +3956,17 @@ function onField(e){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;
     var nm=String(t.value||'').trim();
     var mt=PRODUCTS.filter(function(x){return String(x.name||'').trim()===nm;})[0];
+    /* لو الاسم بتاع صنف محشو اتعمل قبل كده: الخانات بتتملى على طول بآخر تشغيل */
+    if(mt&&isFill(mt)&&U.fill.autoName!==nm){
+      var lrA=fillLastRun(mt);
+      if(lrA){
+        U.fill.autoName=nm;U.fill.kind=mt.fill;U.fill.unit=mt.unit||U.fill.unit;U.fill.grp=mt.grp||'';
+        U.fill.sel=lrA.from.map(function(x){return x.p;});
+        U.fill.q={};lrA.from.forEach(function(x){U.fill.q[x.p]=x.q;});
+        U.fill.out=String(lrA.out);
+        render();return;
+      }
+    }
     if(mt){U.fill.grp=mt.grp||'';var gi=document.querySelector('[data-fg]');if(gi)gi.value=mt.grp||'';}
     var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);
     return;
