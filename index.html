@@ -1927,6 +1927,25 @@ function fillNeedParts(p,shortQty){
   if(outTotal<=0)outTotal=Number(p.fromTotal)||1;
   return Object.keys(totals).map(function(k){return {p:k,q:r3(totals[k]*shortQty/outTotal),legacy:legacy};});
 }
+/* الأصناف الناقصة اللي مفيش ليها دفعة شغالة: بتتعرض في جدول، وزرار يعمل الدفعة */
+function prepMissingList(){
+  var short={};
+  fgShortRows().forEach(function(r){short[r.x.p]=r3((short[r.x.p]||0)+r.x.short);});
+  return Object.keys(short).filter(function(pid){
+    var p=P(pid);if(!p||p.archived)return false;
+    return !S.batches.some(function(b){return b.p===pid&&b.stage!=='finish';});
+  }).map(function(pid){return {pid:pid,p:P(pid),short:short[pid],fill:isFill(P(pid))};});
+}
+function prepMissingHTML(){
+  var list=prepMissingList();
+  if(!list.length)return '';
+  return '<div class="grp">حشو ملوش تحضير ('+list.length+')</div>'+
+    '<div class="list">'+list.map(function(x){
+      var btn=x.fill?'<button class="btn sm" data-act="fillOpen" data-id="'+x.pid+'">اعمل حشو</button>':
+        '<button class="btn sm" data-act="prepOneBatch" data-p="'+x.pid+'">اعمل دفعة</button>';
+      return '<div class="rq"><div><b>'+esc(x.p.name)+'</b><small>ناقص '+f(x.short)+' '+esc(x.p.unit||'')+'</small></div>'+btn+'</div>';
+    }).join('')+'</div>';
+}
 /* الإجمالي المطلوب لكل تحضير عبر كل الأصناف النهائية (مجمّع) */
 function prepTotalsHTML(){
   var short={},rows=fgShortRows();
@@ -1971,7 +1990,7 @@ function prepReqView(){
     return '<article class="card" style="--c:var(--prepreq)"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><small class="meta">نقص نهائي '+f(sh)+' '+esc(p.unit||'')+'</small></div></div>'+(detail?'<div class="grp">المكونات الوسيطة المطلوبة لإعادة إنتاجه</div>'+detail:'<div class="meta">لا توجد مكونات وسيطة مسجلة لهذا الصنف.</div>')+'</article>';
   }).join('');
   return head('تحضيرات مطلوبة','المكونات الوسيطة اللازمة لإعادة إنتاج النواقص النهائية','')+
-    prepBatchBtn()+prepTotalsHTML()+
+    prepBatchBtn()+prepTotalsHTML()+prepMissingHTML()+
     '<details data-fk="prepDetail"'+(FOLD_OPEN['prepDetail']===true?' open':'')+' style="margin-bottom:10px"><summary class="grp" style="cursor:pointer">تفصيل النواقص حسب الصنف النهائي ('+ids.length+')</summary><div class="list">'+cards+'</div></details>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
@@ -3393,6 +3412,27 @@ var ACT={
   },
   bioEnableAct:function(){bioEnable().then(function(){toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
+  fillOpen:function(d){
+    var p=P(d.id);if(!p)return false;
+    U.fill={name:p.name,grp:p.grp||'',kind:p.fill||'cust',unit:p.unit||'قطعة',q:{},out:'',sel:[]};
+    U.view='filling';
+  },
+  prepOneBatch:function(d){
+    var x=prepMissingList().filter(function(y){return y.pid===d.p;})[0];
+    if(!x){toast('الصنف ده متوفر أو ليه دفعة شغالة');return false;}
+    var qty=Math.max(1,Math.ceil(r3(x.short/yieldOf(x.pid))));
+    S.batches.push({id:'B-'+nextBatchNo()+'-'+devId(),p:x.pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
+    toast('اتعملت دفعة '+x.p.name+' × '+qty);
+  },
+  prepAllMissing:function(){
+    var list=prepMissingList();
+    if(!list.length){toast('مفيش أصناف ناقصة من غير دفعة');return false;}
+    list.forEach(function(x){
+      var qty=Math.max(1,Math.ceil(r3(x.short/yieldOf(x.pid))));
+      S.batches.push({id:'B-'+nextBatchNo()+'-'+devId(),p:x.pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
+    });
+    toast('اتعملت '+list.length+' دفعة للأصناف الناقصة');
+  },
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){if(limited())return false;
     var p=P(d.p);if(!p||!p.archived)return false;
