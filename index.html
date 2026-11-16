@@ -2414,9 +2414,14 @@ function saveProd(F){
         var al2=(mm.alts||[]).filter(function(a){return a.u===r.u;})[0];
         if(al2){fac=al2.f;}
         else if(unitGrams(r.u)&&unitGrams(mm.unit)){fac=r3(unitGrams(r.u)/unitGrams(mm.unit));mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);}
-        else{bad=bad||'ضيف وحدة "'+r.u+'" للخامة '+n+' من شاشة المخزن (وحدات إضافية) وحدد كام '+mm.unit+' فيها';return;}
+        else{
+          /* مفيش تحويل معروف: بنعمل نسخة من الخامة بالوحدة الجديدة (أو بنستخدم نسخة موجودة) */
+          var cp=MATERIALS.filter(function(x){return norm(unesc(x.name))===norm(unesc(mm.name))&&x.unit===r.u;})[0];
+          if(!cp){cp={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:mm.name,cat:mm.cat,unit:r.u,min:0,storage:mm.storage||'مخزن جاف',exp:'',supplier:'',notes:'',alts:[]};S.materials.push(cp);S.stock[cp.id]=0;}
+          mm=cp;fac=1;
+        }
       }
-      ings.push({key:key,n:n,u:r.u,q:r3(q*fac)});
+      ings.push({key:key,n:n,u:r.u,q:r3(q*fac),mid:mm?mm.id:null});
     });
     var steps=g.steps.map(function(t){return t.trim();}).filter(Boolean);
     if(g.kind==='prep'){if(!ings.length&&!steps.length)return;gname='مرحلة '+(++pn);}
@@ -2446,7 +2451,7 @@ function saveProd(F){
   stages.forEach(function(g){
     g.name=esc(g.name);g.steps=g.steps.map(esc);
     g.ings=g.ings.map(function(i){
-      var m=findMat(i.n);
+      var m=i.mid?M(i.mid):findMat(i.n);
       if(!m){
         m={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:esc(i.n),cat:'عام',unit:i.u,min:0,storage:'مخزن جاف',exp:'',supplier:'',notes:''};
         S.materials.push(m);S.stock[m.id]=0;
