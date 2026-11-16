@@ -1492,8 +1492,16 @@ function seasonSegHTML(){return seasonSeg(curSeason(),'setSeason');}
 function rList(){return prodsOf(U.view==='shopProducts'?'shop':'cust').filter(inSeason);}
 function rShown(list){var q=String(U.rsearch||'').trim().toLowerCase();return q?list.filter(function(p){return unesc(p.name).toLowerCase().indexOf(q)>-1;}):list;}
 function rCur(shown){return shown.some(function(p){return p.id===U.rsel;})?U.rsel:'';}
+function shortEditTxt(p){
+  var t=p._u;
+  if(!t||t<1e12)return 'تعديل غير معروف';
+  var m=Math.round((Date.now()-t)/60000);
+  if(m<60)return 'تعديل منذ '+Math.max(1,m)+' د';
+  if(m<1440)return 'تعديل منذ '+Math.floor(m/60)+' س';
+  return 'تعديل منذ '+Math.floor(m/1440)+' ي';
+}
 function rOptions(shown,sel){
-  return '<option value="">'+(shown.length?'اختار وصفة...':'مفيش نتيجة')+'</option>'+shown.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+'</option>';}).join('');
+  return '<option value="">'+(shown.length?'اختار وصفة...':'مفيش نتيجة')+'</option>'+shown.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+' · '+shortEditTxt(p)+'</option>';}).join('');
 }
 function tempTxt(p){return (p.temp!==''&&p.temp!=null)?f(p.temp)+'°م':'';}
 function compText(p,q){
@@ -1505,7 +1513,14 @@ function recipeCardHTML(p,q){
   var full=stagesText(p,'prep',q);
   var meta=[p.mins+' دقيقة'].concat(tempTxt(p)?['درجة الحرارة '+tempTxt(p)]:[]).join(' · ');
   return '<article class="card"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button><button class="btn ghost sm" data-act="copyProd" data-id="'+p.id+'">نسخ</button></div>'+
-    (p.notes?'<div class="meta">'+esc(p.notes)+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
+    '<div class="meta">'+lastEditTxt(p)+'</div>'+(p.notes?'<div class="meta">'+esc(p.notes)+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
+}
+function lastEditTxt(p){
+  var t=p._u;
+  if(!t||t<1e12)return 'آخر تعديل: غير معروف';
+  var m=Math.round((Date.now()-t)/60000);
+  var rel=m<1?'الآن':m<60?'منذ '+m+' دقيقة':m<1440?'منذ '+Math.floor(m/60)+' ساعة':'منذ '+Math.floor(m/1440)+' يوم';
+  return 'آخر تعديل: '+rel+' · '+tstr(t);
 }
 function rCardInner(){
   var shown=rShown(rList()),sel=rCur(shown),p=PRODUCTS.filter(function(x){return x.id===sel;})[0];
