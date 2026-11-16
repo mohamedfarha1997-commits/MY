@@ -2826,6 +2826,7 @@ function openView(v){
 }
 /* tapping a notification: the service worker focuses the app and sends the section to open */
 try{if(navigator.serviceWorker)navigator.serviceWorker.addEventListener('message',function(e){var d=e.data||{};if(d.type==='open-view')openView(d.view);});}catch(e){}
+function notifyNew(title,body,tag,view){showSysNotif(title,body,tag,null,view);}
 function notifyDone(b){var p=P(b.p);showSysNotif('خلص الوقت',(p?p.name:'')+' · '+sid(b.id),'done-'+b.id,null,'prod');}
 /* pre-schedule at start time too: browsers that support notification triggers fire it even if the page is closed */
 function scheduleNotif(b){
@@ -3566,6 +3567,7 @@ var ACT={
     var qty=Math.max(1,Math.ceil(r3(x.short/yieldOf(x.pid))));
     S.batches.push({id:'B-'+nextBatchNo()+'-'+devId(),p:x.pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
     toast('اتعملت دفعة '+x.p.name+' × '+qty);
+    notifyNew('دفعة جديدة',x.p.name+' × '+qty,'newb-'+Date.now(),'prep');
   },
   prepAllMissing:function(){
     var list=prepMissingList();
@@ -3575,6 +3577,7 @@ var ACT={
       S.batches.push({id:'B-'+nextBatchNo()+'-'+devId(),p:x.pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now()});
     });
     toast('اتعملت '+list.length+' دفعة للأصناف الناقصة');
+    notifyNew('دفعات جديدة',list.length+' صنف ناقص اتعملوا دفعات','newb-'+Date.now(),'prep');
   },
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){if(limited())return false;
@@ -3620,6 +3623,7 @@ var ACT={
       S.batches.push(nb);ids.push(id);
     });
     U.sheet=null;
+    notifyNew(ids.length>1?'دفعات جديدة':'دفعة جديدة',ids.length>1?ids.length+' دفعات اتعملوا':'دفعة '+sid(ids[0])+' اتعملت','newb-'+Date.now(),'prep');
     toast(ids.length>1?'تم إنشاء '+ids.length+' دفعات'+(held?' · '+held+' منها اتحجزت لأوردرات':''):'تم إنشاء الدفعة '+sid(ids[0])+(held?' · اتحجزت لطلبية':''));
     go('prep');
   },
@@ -3905,6 +3909,7 @@ var ACT={
       return;
     }
     S.orders.push({id:id,kind:os.kind||'cust',cust:esc((os.cust||'').trim()),items:items,created:now,due:os.due,season:os.season||'normal',note:esc((os.note||'').trim())});
+    notifyNew('أوردر جديد',((os.cust||'').trim()||'بدون اسم')+' · '+id+(os.due?' · ميعاد: '+os.due:''),'order-'+id,'orders');
     U.osheet=null;U.oexp=null;
     toast('تم تسجيل الطلبية '+id+(lacks?' · فيه '+lacks+' صنف ناقص، شوفه في مخزن الإنتاج':' · كلها من المخزن'));
   },
@@ -4120,6 +4125,7 @@ ACT.batchSuggestApply=function(){
     }
   });
   toast('اتعملت '+made+' دفعة مقترحة');
+  notifyNew('دفعات جديدة',made+' دفعة مقترحة اتعملت','newb-'+Date.now(),'prep');
   go('prep');
 };
 ACT.prepBatches=function(){
@@ -4136,6 +4142,7 @@ ACT.prepBatches=function(){
   });
   if(!made){toast('مفيش تحضيرات ناقصة');return false;}
   toast('تم إنشاء '+made+' دفعة كاملة للتحضيرات الناقصة');
+  notifyNew('دفعات جديدة',made+' دفعة كاملة اتعملت للتحضيرات الناقصة','newb-'+Date.now(),'prep');
   go('prep');
 };
 ACT.plToggle=function(d){
