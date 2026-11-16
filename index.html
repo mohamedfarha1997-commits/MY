@@ -3,7 +3,7 @@
 window.addEventListener('error',function(e){try{var a=document.getElementById('app');var m='خطأ: '+(e&&e.message?e.message:'غير معروف');if(a&&!a.textContent.trim()){a.innerHTML='<div dir="rtl" style="padding:16px;font:14px sans-serif;color:#b91c1c"><b>حصلت مشكلة في تحميل الصفحة</b><div style="margin-top:8px;word-break:break-all">'+m+'</div><button onclick="location.reload()" style="margin-top:12px;padding:8px 14px">إعادة التحميل</button></div>';}}catch(x){}});
 window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.KH_INSTALL=e;});
 window.addEventListener('appinstalled',function(){window.KH_INSTALL=null;});
-if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});}).catch(function(){});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 </script><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.fgcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fgc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer}
 .fgc .mtop{display:flex;justify-content:space-between;align-items:center;gap:6px}
