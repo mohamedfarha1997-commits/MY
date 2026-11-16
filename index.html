@@ -2772,7 +2772,7 @@ function mealQ(qty,p){return f(qty)+' وجبة'+(p&&(p.yield!==1||!isPiece(p))?'
 /* الناتج المتوقع للدفعة حسب عدد الوجبات */
 function batchOutTxt(x,q){
   var out=r3((Number(q)||0)*yieldOf(x.id));
-  return 'بتطلع '+f(out)+' '+(x.unit==='جرام'?'جرام':'قطعة');
+  return 'بتطلع '+f(out)+' '+esc(x.unit||'قطعة');
 }
 /* بطاقة الصنف في الدفعة: لو متختار بتعرض الكمية جوه نفس المربع */
 function pkTileHTML(x,s){
@@ -2782,8 +2782,8 @@ function pkTileHTML(x,s){
     '<div class="opk-h"><b>'+esc(x.name)+'</b><button class="ox" data-act="sheetProd" data-p="'+x.id+'" aria-label="شيل الصنف">×</button></div>'+
     '<small>'+x.mins+' دقيقة تشغيل</small>'+
     '<small class="pkout" data-out="'+x.id+'" style="color:var(--ink);font-weight:600">'+batchOutTxt(x,q)+'</small>'+
-    '<div class="opk-q"><button data-act="sheetQty" data-p="'+x.id+'" data-d="-1"'+(q<=1?' disabled':'')+' aria-label="أنقص">−</button>'+
-    '<input type="text" inputmode="numeric" data-sq="'+x.id+'" value="'+q+'" aria-label="الكمية">'+
+    '<div class="opk-q"><button data-act="sheetQty" data-p="'+x.id+'" data-d="-1"'+(q<=0.25?' disabled':'')+' aria-label="أنقص">−</button>'+
+    '<input type="text" inputmode="decimal" data-sq="'+x.id+'" value="'+q+'" aria-label="الكمية">'+
     '<button data-act="sheetQty" data-p="'+x.id+'" data-d="1" aria-label="زوّد">+</button></div></div>';
 }
 function batchMatsHTML(list){
@@ -3413,7 +3413,7 @@ var ACT={
     var sh=U.sheet,i=sh.sel.indexOf(d.p);
     if(i>-1){sh.sel.splice(i,1);}else{sh.sel.push(d.p);if(!sh.q[d.p])sh.q[d.p]=1;}
   },
-  sheetQty:function(d){var sh=U.sheet;sh.q[d.p]=Math.max(1,Math.min(500,(sh.q[d.p]||1)+Number(d.d)));},
+  sheetQty:function(d){var sh=U.sheet;sh.q[d.p]=Math.max(0.25,Math.min(500,r3((sh.q[d.p]||1)+Number(d.d))));},
   sheetCreate:function(){
     var s=U.sheet;
     if(!s.sel.length){toast('اختار صنف واحد على الأقل');return false;}
@@ -3990,7 +3990,7 @@ function onField(e){
   }
   if(d.fq!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};var fv=num(t.value);U.fill.q[d.fq]=(isFinite(fv)&&fv>0)?r3(fv):0;return;}
   if(d.fo!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.out=t.value;return;}
-  if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>=1)?Math.min(500,Math.floor(sv)):1;var oe=document.querySelector('[data-out="'+d.sq+'"]');if(oe&&P(d.sq))oe.textContent=batchOutTxt(P(d.sq),U.sheet.q[d.sq]);return;}
+  if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>0)?Math.min(500,r3(sv)):1;var oe=document.querySelector('[data-out="'+d.sq+'"]');if(oe&&P(d.sq))oe.textContent=batchOutTxt(P(d.sq),U.sheet.q[d.sq]);return;}
   if(d.oq!==undefined&&U.osheet){var ov=num(t.value);U.osheet.items[d.oq]=(isFinite(ov)&&ov>=0)?Math.min(99999,qFloor(P(d.oq),ov)):0;return;}
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
   if(d.rej!==undefined){var rb=batch(d.rej),rv=num(t.value);rb.rej=(isFinite(rv)&&rv>=0)?Math.min(pc(rb),r3(rv)):0;if(rb.stk==null){var se=document.querySelector('[data-stk="'+rb.id+'"]');if(se)se.value=pc(rb)-rb.rej;}return;}
