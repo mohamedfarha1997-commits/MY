@@ -2380,7 +2380,13 @@ function saveMat(F){
   var dup=MATERIALS.some(function(m){return m.id!==F.edit&&(m.unit||'')===(F.unit||'')&&unesc(m.name).trim().toLowerCase()===name.toLowerCase();});
   if(dup){toast('الاسم ده موجود قبل كده');return false;}
   var o={name:esc(name),cat:esc((F.cat||'').trim()||'عام'),unit:F.unit,min:min,storage:F.storage,exp:F.exp||'',supplier:esc((F.supplier||'').trim()),notes:esc((F.notes||'').trim()),alts:alts};
-  if(F.edit){Object.assign(M(F.edit),o);toast('تم حفظ التعديلات');}
+  if(F.edit&&F.origUnit!==undefined&&F.unit!==F.origUnit){
+    /* تغيير الوحدة بيعمل نسخة جديدة بالوحدة الجديدة، والخامة الأصلية تفضل زي ما هي عشان الوصفات القديمة ما تتكسرش */
+    o.id='m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    S.materials.push(o);S.stock[o.id]=0;
+    toast('اتعملت نسخة من '+name+' بالوحدة '+F.unit+' (الأصلية فضلت زي ما هي)');
+  }
+  else if(F.edit){Object.assign(M(F.edit),o);toast('تم حفظ التعديلات');}
   else{o.id='m'+Date.now().toString(36);S.materials.push(o);S.stock[o.id]=r3(qty);toast('تمت إضافة '+name);}
   U.form=null;
 
