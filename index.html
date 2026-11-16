@@ -2277,7 +2277,15 @@ function sheetHTML(){
 }
 function opts(a,sel){return a.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>';}).join('');}
 /* وحدات الخامة: الوحدة الأساسية + وحدات إضافية (alts: 1 وحدة = f من الوحدة الأساسية) */
-function ingUnitOpts(r){var m=r.m?M(r.m):null;if(!m||!m.unit)return opts(UNITS_M,r.u);return opts([m.unit].concat((m.alts||[]).map(function(a){return a.u;})),r.u);}
+function ingUnitOpts(r){
+  var m=r.m?M(r.m):null;
+  var base=(m&&m.unit)?m.unit:'';
+  var known=[];
+  if(base)known.push(base);
+  ((m&&m.alts)||[]).forEach(function(a){if(known.indexOf(a.u)<0)known.push(a.u);});
+  UNITS_M.concat(PROD_UNITS,['كجم','لتر','مل','ملعقة صغيرة','ملعقة كبيرة','كوب','علبة','كيس']).forEach(function(u){if(known.indexOf(u)<0)known.push(u);});
+  return opts(known,r.u||base||'جرام');
+}
 function altsHTML(){
   var F=U.form,al=F.alts||[],base=F.unit||'جرام';
   var rows=al.map(function(a,i){
@@ -2396,7 +2404,17 @@ function saveProd(F){
       if(seen[key]){bad=bad||n+' متكرر في نفس المرحلة';return;}
       seen[key]=1;
       var mm=findMat(n),fac=1;
-      if(mm&&r.u&&r.u!==mm.unit){var al2=(mm.alts||[]).filter(function(a){return a.u===r.u;})[0];if(!al2){bad=bad||'وحدة '+r.u+' مش معرّفة لـ '+n;return;}fac=al2.f;}
+      if(mm&&r.u&&r.u!==mm.unit){
+        var al2=(mm.alts||[]).filter(function(a){return a.u===r.u;})[0];
+        if(al2){fac=al2.f;}
+        else if(unitGrams(r.u)&&unitGrams(mm.unit)){fac=r3(unitGrams(r.u)/unitGrams(mm.unit));mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);}
+        else{
+          var ans=prompt('كام '+mm.unit+' في الوحدة "'+r.u+'"؟ (اكتب رقم بس)','');
+          var af=num(ans);
+          if(!isFinite(af)||af<=0){bad=bad||'اكتب عدد '+mm.unit+' لكل '+r.u+' عشان نحسب الكمية';return;}
+          fac=r3(af);mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);
+        }
+      }
       ings.push({key:key,n:n,u:r.u,q:r3(q*fac)});
     });
     var steps=g.steps.map(function(t){return t.trim();}).filter(Boolean);
