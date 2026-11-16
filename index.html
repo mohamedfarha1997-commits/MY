@@ -3781,7 +3781,17 @@ var ACT={
     if(!p)return false;
     U.fill=U.fill||{name:'',kind:'cust',q:{}};
     U.fill.name=p.name;U.fill.grp=p.grp||'';
-    if(isFill(p)){U.fill.kind=p.fill;U.fill.unit=p.unit;}
+    if(isFill(p)){
+      U.fill.kind=p.fill;U.fill.unit=p.unit;
+      /* اختيار الصنف من الاقتراحات بيملي الخامات والكميات من آخر تشغيل زي ما بيحصل وانت بتكتب */
+      var lrP=fillLastRun(p);
+      if(lrP){
+        U.fill.autoName=p.name;
+        U.fill.sel=lrP.from.map(function(x){return x.p;});
+        U.fill.q={};lrP.from.forEach(function(x){U.fill.q[x.p]=x.q;});
+        U.fill.out=String(lrP.out);
+      }
+    }
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
