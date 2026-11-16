@@ -1859,6 +1859,15 @@ function fillLastRun(ex){
   if(!from.length)return null;
   return {out:Number(r.out)||0,from:from};
 }
+/* لما تغيّر الكمية الناتجة، الخامات اللي في آخر تشغيل بتتعدّل بنفس النسبة */
+function fillRescale(F){
+  var exR=PRODUCTS.filter(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===String(F.name||'').trim();})[0];
+  var lrR=fillLastRun(exR);
+  if(!lrR||!(num(F.out)>0)||!(lrR.out>0))return;
+  var kR=num(F.out)/lrR.out;
+  F.q=F.q||{};
+  lrR.from.forEach(function(x){if((F.sel||[]).indexOf(x.p)>-1)F.q[x.p]=r3(x.q*kR);});
+}
 function fillSuggest(F){
   var q=String((F&&F.name)||'').trim();
   if(!q)return '';
@@ -1869,10 +1878,12 @@ function fillSuggest(F){
   var exAct=PRODUCTS.filter(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===q;})[0];
   var lr=fillLastRun(exAct);
   if(lr){
+    var kS=(num(F&&F.out)>0&&lr.out>0)?num(F.out)/lr.out:1;
+    var outS=(num(F&&F.out)>0)?num(F.out):lr.out;
     out+='<div class="card" style="--c:var(--filling);margin:-2px 0 10px;padding:10px 12px">'+
-      '<div class="meta" style="margin-bottom:6px">آخر تشغيل لنفس الصنف، والتطبيق بيحسبه تلقائي لو مختارتش خامات:</div>'+
-      lr.from.map(function(x){var pp=P(x.p);return '<div class="hist"><span>'+esc(pp.name)+'</span><span>- '+f(x.q)+' '+esc(pp.unit||'')+'</span></div>';}).join('')+
-      '<div class="hist"><span><b>هيتضاف</b></span><span><b>+ '+f(lr.out)+' '+esc(exAct.unit||'')+'</b></span></div></div>';
+      '<div class="meta" style="margin-bottom:6px">آخر تشغيل لنفس الصنف، والتطبيق بيحسبه تلقائي لو مختارتش خامات (غيّر الكمية الناتجة وهيتعدّل الحساب):</div>'+
+      lr.from.map(function(x){var pp=P(x.p);return '<div class="hist"><span>'+esc(pp.name)+'</span><span>- '+f(r3(x.q*kS))+' '+esc(pp.unit||'')+'</span></div>';}).join('')+
+      '<div class="hist"><span><b>هيتضاف</b></span><span><b>+ '+f(r3(outS))+' '+esc(exAct.unit||'')+'</b></span></div></div>';
   }
   if(m.length)out+='<div class="meta" style="margin:-4px 0 6px">أصناف حشو بتبدأ بنفس الحروف، اختار واحد عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="fdrop">'+
     m.map(function(p){return '<button data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
@@ -3999,7 +4010,13 @@ function onField(e){
     return;
   }
   if(d.fq!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};var fv=num(t.value);U.fill.q[d.fq]=(isFinite(fv)&&fv>0)?r3(fv):0;return;}
-  if(d.fo!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.out=t.value;return;}
+  if(d.fo!==undefined){
+    U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.out=t.value;
+    fillRescale(U.fill);
+    Object.keys(U.fill.q||{}).forEach(function(id){var el=document.querySelector('[data-fq="'+id+'"]');if(el)el.value=U.fill.q[id]||'';});
+    var sbo=document.getElementById('fillSug');if(sbo)sbo.innerHTML=fillSuggest(U.fill);
+    return;
+  }
   if(d.sq!==undefined&&U.sheet){var sv=num(t.value);U.sheet.q[d.sq]=(isFinite(sv)&&sv>0)?Math.min(500,r3(sv)):1;var oe=document.querySelector('[data-out="'+d.sq+'"]');if(oe&&P(d.sq))oe.textContent=batchOutTxt(P(d.sq),U.sheet.q[d.sq]);return;}
   if(d.oq!==undefined&&U.osheet){var ov=num(t.value);U.osheet.items[d.oq]=(isFinite(ov)&&ov>=0)?Math.min(99999,qFloor(P(d.oq),ov)):0;return;}
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
