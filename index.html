@@ -623,11 +623,14 @@ async function checkPin(p){
 }
 function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
 var SEED_USERS=[
-    {id:'U512',name:'كريم',code:'512',salt:'865b1776b6f7fcae1bf38a89e9f0b192',h:'5eaa94d61dd481fdca6e30fb7d0f4972160bc270c8a0a4d6801f91d564d5e0bd',iter:200000},
-    {id:'U879',name:'عبدالله',code:'879',salt:'f0fe856c05b1ea0b60a59bef25762ad2',h:'053272f74ab7a7b97ba4a5e6f6954139c486ea5cf685c216c3f64125a88737a5',iter:200000}
+    {id:'U512',name:'كريم',code:'512',salt:'865b1776b6f7fcae1bf38a89e9f0b192',h:'5eaa94d61dd481fdca6e30fb7d0f4972160bc270c8a0a4d6801f91d564d5e0bd',iter:200000}
 ];
+/* حسابات اتشالت نهائياً: مش بتترجع من الحفظ القديم */
+var REMOVED_USER_CODES=['879'];
 function usersList(){
-  S.users=S.users||[];
+  S.users=(S.users||[]).filter(function(u){return REMOVED_USER_CODES.indexOf(u.code)<0;});
+  if(S.prefs&&S.prefs.userTabs){REMOVED_USER_CODES.forEach(function(c){delete S.prefs.userTabs[c];});}
+  try{var au=localStorage.getItem(AUTH_KEY)||'';if(au.indexOf('u:')===0&&REMOVED_USER_CODES.indexOf(au.slice(2))>-1)localStorage.removeItem(AUTH_KEY);}catch(e){}
   SEED_USERS.forEach(function(u){if(!S.users.some(function(x){return x.code===u.code;}))S.users.push(Object.assign({},u));});
   return S.users;
 }
@@ -645,7 +648,7 @@ function findUserByPw(p){
   }
   return next(0);
 }
-function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
+function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});REMOVED_USER_CODES.forEach(function(c){used[c]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
 function markBy(b,act){
   if(!b)return;
   S.plog=S.plog||{};
@@ -2365,7 +2368,7 @@ function saveProd(F){
   U.form=null;
 
 }
-function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
+function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+usersCardHTML()+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
 /* كل كارت في الإعدادات بيتقفل ويتفتح بالضغط على عنوانه */
 function foldSections(html){
   return String(html).split(/(?=<section )/).map(function(part){return foldable(part);}).join('');
