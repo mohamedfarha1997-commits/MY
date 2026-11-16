@@ -1526,9 +1526,85 @@ function recipePanel(){
     '<div class="fld" style="margin-bottom:12px"><input id="rsq" data-rsq="1" type="search" placeholder="ابحث عن وصفة" value="'+esc(U.rsearch||'')+'" autocomplete="off" aria-label="بحث"><select id="rsel" data-rs="1" aria-label="اختار وصفة">'+rOptions(shown,sel)+'</select></div>'+
     qrow+'<div id="rcard" style="margin-top:12px">'+rCardInner()+'</div>';
 }
+/* ---------- طباعة وصفات محددة ---------- */
+function rpState(){return U.rp||(U.rp={kind:'cust',sel:[],q:1,search:''});}
+function rpAvail(){
+  var s=rpState(),q=String(s.search||'').trim().toLowerCase();
+  return prodsOf(s.kind).filter(function(p){return !q||unesc(p.name).toLowerCase().indexOf(q)>-1;});
+}
+function rpListHTML(){
+  var s=rpState(),l=rpAvail();
+  if(!l.length)return '<div class="meta">مفيش وصفات</div>';
+  return '<div class="chk">'+l.map(function(p){
+    var on=s.sel.indexOf(p.id)>-1,se=seasonOf(p);
+    var sl=se==='normal'?'':' · '+((SEASONS.filter(function(x){return x[0]===se;})[0]||['',''])[1]);
+    return '<button class="chip'+(on?' on':'')+'" data-act="rpToggle" data-p="'+p.id+'"><i>'+svg('check')+'</i>'+esc(unesc(p.name))+'<small class="meta">'+esc(sl)+'</small></button>';
+  }).join('')+'</div>';
+}
+function rpSheetHTML(){
+  if(!U.rp||!U.rp.open)return '';
+  var s=U.rp,n=s.sel.length;
+  return '<button class="back" data-act="rpClose" aria-label="إغلاق"></button><section class="sheet f" style="--c:var(--recipes)" role="dialog" aria-label="طباعة وصفات"><div class="sbody">'+
+    '<h3>طباعة وصفات</h3><div class="meta">اختار الوصفات اللي عايز تطبعها، كل وصفة في صفحة منسقة لوحدها</div>'+
+    '<div class="fld"><input data-rpq="1" type="search" placeholder="ابحث عن وصفة" value="'+esc(s.search||'')+'" autocomplete="off" aria-label="بحث"></div>'+
+    '<div class="qrow"><span class="meta">المقادير لـ</span><input data-rpn="1" type="text" inputmode="decimal" value="'+esc(s.q)+'" aria-label="عدد الوجبات" style="width:70px;height:40px;text-align:center;border:1.5px solid var(--field);border-radius:10px;font:inherit;background:var(--surface);color:var(--ink)"><span class="meta">وجبة</span></div>'+
+    '<div class="btns"><button class="btn ghost sm" data-act="rpAll">تحديد الكل</button><button class="btn ghost sm" data-act="rpNone">إلغاء التحديد</button></div>'+
+    '<div id="rpList">'+rpListHTML()+'</div></div>'+
+    '<div class="sfoot"><button class="btn main" data-act="rpPrint"'+(n?'':' disabled')+'>طباعة '+(n?'('+n+')':'')+'</button><button class="btn ghost" data-act="rpClose">إلغاء</button></div></section>';
+}
+function recipePrintHTML(list,qty){
+  var H=function(x){return esc(unesc(x));};
+  var date=tstr(Date.now()).slice(0,10);
+  var css='<style>'+
+    '#printArea{display:block!important;min-height:0!important;justify-content:flex-start!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+    '.rpg{break-after:page;page-break-after:always;font-size:14px;line-height:1.5}'+
+    '.rpg:last-child{break-after:auto;page-break-after:auto}'+
+    '.rph{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;border-bottom:3px solid #293394;padding-bottom:8px;margin-bottom:10px}'+
+    '.rpt{font-family:var(--f-disp);font-size:30px;font-weight:700;color:#1B2370;line-height:1.2}'+
+    '.rpc{font-size:12px;color:#555;white-space:nowrap}'+
+    '.rpchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}'+
+    '.rpchip{border:1px solid #b9c0d8;border-radius:99px;padding:3px 13px;font-size:13px;font-weight:600;background:#eef0fb;color:#1B2370}'+
+    '.rpst{margin:12px 0;border:1px solid #cfd6dd;border-radius:10px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}'+
+    '.rpsh{background:#293394;color:#fff;padding:6px 14px;font-weight:700;font-size:15px}'+
+    '.rpi{width:100%;border-collapse:collapse}'+
+    '.rpi td{padding:6px 14px;border-top:1px solid #e3e7ec}'+
+    '.rpi tr:first-child td{border-top:0}'+
+    '.rpi tr:nth-child(even) td{background:#f6f7fb}'+
+    '.rpi td.q{text-align:end;white-space:nowrap;font-weight:700;width:1%}'+
+    '.rps{margin:0;padding:8px 34px 10px 14px;border-top:1px dashed #cfd6dd}'+
+    '.rps li{margin:3px 0}'+
+    '.rpn{margin-top:10px;padding:8px 12px;border-right:4px solid #B45309;background:#fff7ec;border-radius:6px;font-size:13px}'+
+    '.rpf{margin-top:14px;font-size:11px;color:#777;text-align:center}'+
+    '</style>';
+  return css+list.map(function(p){
+    var out=r3(qty*yieldOf(p.id));
+    var chips=['وقت التشغيل: '+f(p.mins)+' دقيقة'];
+    if(tempTxt(p))chips.push('درجة الحرارة: '+tempTxt(p));
+    chips.push('المقادير لـ '+f(qty)+' وجبة');
+    chips.push('الناتج: '+f(out)+' '+H(p.unit||'قطعة'));
+    var stages=(p.stages||[]).filter(function(g){return g.kind==='prep';}).map(function(g,gi){
+      var ings=(g.ings||[]).map(function(i){var m=M(i.m);return m?'<tr><td>'+H(m.name)+'</td><td class="q">'+f(r3(i.q*qty))+' '+H(m.unit)+'</td></tr>':'';}).join('');
+      var steps=(g.steps||[]).filter(Boolean).map(function(t){return '<li>'+H(t)+'</li>';}).join('');
+      if(!ings&&!steps)return '';
+      return '<div class="rpst"><div class="rpsh">'+(gi+1)+'. '+H(g.name||'')+'</div>'+(ings?'<table class="rpi">'+ings+'</table>':'')+(steps?'<ol class="rps">'+steps+'</ol>':'')+'</div>';
+    }).join('');
+    var comps=(p.comps||[]).filter(function(c){return !P(c.p).missing;});
+    var compH=comps.length?'<div class="rpst"><div class="rpsh">من مخزن الإنتاج</div><table class="rpi">'+comps.map(function(c){var cp=P(c.p);return '<tr><td>'+H(cp.name)+'</td><td class="q">'+f(r3(c.q*qty))+' '+H(cp.unit)+'</td></tr>';}).join('')+'</table></div>':'';
+    return '<section class="rpg"><div class="rph"><div class="rpt">'+H(p.name)+'</div><div class="rpc">'+esc(p.code||'')+'</div></div>'+
+      '<div class="rpchips">'+chips.map(function(c){return '<span class="rpchip">'+c+'</span>';}).join('')+'</div>'+
+      (stages||'<div class="meta">مفيش مراحل مسجلة</div>')+compH+
+      (p.notes?'<div class="rpn"><b>ملاحظات:</b> '+H(p.notes)+'</div>':'')+
+      '<div class="rpf">RMY Pro · '+date+'</div></section>';
+  }).join('');
+}
+document.addEventListener('input',function(e){
+  var t=e.target,d=t&&t.dataset;if(!d||!U.rp)return;
+  if(d.rpq!==undefined){U.rp.search=t.value;var el=document.getElementById('rpList');if(el)el.innerHTML=rpListHTML();}
+  else if(d.rpn!==undefined){var v=num(t.value);U.rp.q=(isFinite(v)&&v>0)?Math.min(999,r3(v)):1;}
+});
 function recipesView(){
   var kind=U.view==='shopProducts'?'shop':'cust';
-  var btn='<div class="btns"><button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="'+kind+'">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="'+kind+'">استيراد</button></div>';
+  var btn='<div class="btns"><button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="'+kind+'">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="'+kind+'">استيراد</button><button class="btn ghost sm" data-act="rpOpen" data-k="'+kind+'">طباعة وصفات</button></div>';
   if(!prodsOf('cust').length)return head('وصفات','اختار وصفة وشوف مراحلها ومقاديرها',btn)+'<div class="empty"><b>مفيش وصفات</b><span>ضيف وصفة من الزرار اللي فوق.</span><button class="btn" data-act="newProd">'+svg('plus')+'وصفة جديدة</button></div>';
   return head('وصفات','اختار وصفة وهتظهر لك بس',btn)+recipePanel();
 }
@@ -2503,7 +2579,7 @@ function render(){
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML();
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
@@ -2961,7 +3037,7 @@ function shopBatchesHTML(){
   return '<div class="list">'+list.map(function(b){var p=P(b.p);return '<div class="card" style="--c:var(--recipes)"><div class="mtop"><div><b>'+esc(p.name)+'</b><small>'+f(b.qty)+' '+esc(p.unit||'')+'</small></div><span class="pill">'+(lab[b.stage]||'')+'</span></div></div>';}).join('')+'</div>';
 }
 function shopProductsHTML(){
-  var btn='<div class="btns"><button class="btn" data-act="newProd" data-shop="1">'+svg('plus')+'وصفة محل جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="shop">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="shop">استيراد</button></div>';
+  var btn='<div class="btns"><button class="btn" data-act="newProd" data-shop="1">'+svg('plus')+'وصفة محل جديدة</button><button class="btn ghost sm" data-act="recExport" data-k="shop">تصدير</button><button class="btn ghost sm" data-act="recImport" data-k="shop">استيراد</button><button class="btn ghost sm" data-act="rpOpen" data-k="shop">طباعة وصفات</button></div>';
   if(!prodsOf('shop').length)return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+'<div class="empty"><b>مفيش وصفات محل</b><span>ضيف وصفة وحدّدها كوصفة محل عشان تظهر في أوردرات المحل.</span></div>';
   return head('وصفات المحل','الوصفات دي بتظهر في أوردرات المحل بس',btn)+recipePanel();
 }
@@ -4042,6 +4118,19 @@ ACT.plDel=function(){
   U.plSel=[];
   toast('اتمسحت '+ids.length+' دفعة من السجل');
 };
+ACT.rpOpen=function(d){var k=(d&&d.k==='shop')?'shop':'cust';if(!U.rp||U.rp.kind!==k)U.rp={kind:k,sel:[],q:1,search:''};U.rp.open=true;};
+ACT.rpClose=function(){if(U.rp)U.rp.open=false;};
+ACT.rpToggle=function(d){var s=rpState(),i=s.sel.indexOf(d.p);if(i>-1)s.sel.splice(i,1);else s.sel.push(d.p);};
+ACT.rpAll=function(){var s=rpState();rpAvail().forEach(function(p){if(s.sel.indexOf(p.id)<0)s.sel.push(p.id);});};
+ACT.rpNone=function(){rpState().sel=[];};
+ACT.rpPrint=function(){
+  var s=rpState();
+  var list=prodsOf(s.kind).filter(function(p){return s.sel.indexOf(p.id)>-1;});
+  if(!list.length){toast('اختار وصفة واحدة على الأقل');return false;}
+  var old=document.title;document.title='وصفات '+stamp();
+  doPrint(recipePrintHTML(list,s.q>0?s.q:1));document.title=old;return false;
+};
+READ_ACTS.rpOpen=1;READ_ACTS.rpClose=1;READ_ACTS.rpToggle=1;READ_ACTS.rpAll=1;READ_ACTS.rpNone=1;READ_ACTS.rpPrint=1;
 READ_ACTS.plToggle=1;READ_ACTS.plAll=1;
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
@@ -4058,7 +4147,7 @@ document.addEventListener('keydown',function(e){
     if(!canWrite()){toast('مش مسموح بالتعديل في القسم ده');return;}
     if(ACT.recvOk()!==false){save();render();}
   }
-  if(e.key==='Escape'&&(U.sheet||U.form||U.osheet)){U.sheet=null;U.form=null;U.osheet=null;render();}
+  if(e.key==='Escape'&&(U.sheet||U.form||U.osheet||(U.rp&&U.rp.open))){U.sheet=null;U.form=null;U.osheet=null;if(U.rp)U.rp.open=false;render();}
 });
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
