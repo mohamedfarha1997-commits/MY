@@ -1583,7 +1583,7 @@ function recipePrintHTML(list,qty){
     chips.push('المقادير لـ '+f(qty)+' وجبة');
     chips.push('الناتج: '+f(out)+' '+H(p.unit||'قطعة'));
     var stages=(p.stages||[]).filter(function(g){return g.kind==='prep';}).map(function(g,gi){
-      var ings=(g.ings||[]).map(function(i){var m=M(i.m);return m?'<tr><td>'+H(m.name)+'</td><td class="q">'+f(r3(i.q*qty))+' '+H(m.unit)+'</td></tr>':'';}).join('');
+      var ings=(g.ings||[]).map(function(i){var m=M(i.m);return m?'<tr><td>'+H(m.name)+'</td><td class="q">'+f(r3((i.dq!=null?i.dq:i.q)*qty))+' '+H(i.du||m.unit)+'</td></tr>':'';}).join('');
       var steps=(g.steps||[]).filter(Boolean).map(function(t){return '<li>'+H(t)+'</li>';}).join('');
       if(!ings&&!steps)return '';
       return '<div class="rpst"><div class="rpsh">'+(gi+1)+'. '+H(g.name||'')+'</div>'+(ings?'<table class="rpi">'+ings+'</table>':'')+(steps?'<ol class="rps">'+steps+'</ol>':'')+'</div>';
@@ -2421,7 +2421,7 @@ function saveProd(F){
           mm=cp;fac=1;
         }
       }
-      ings.push({key:key,n:n,u:r.u,q:r3(q*fac),mid:mm?mm.id:null});
+      ings.push({key:key,n:n,u:r.u,q:r3(q*fac),dq:q,du:r.u,mid:mm?mm.id:null});
     });
     var steps=g.steps.map(function(t){return t.trim();}).filter(Boolean);
     if(g.kind==='prep'){if(!ings.length&&!steps.length)return;gname='مرحلة '+(++pn);}
@@ -2456,7 +2456,7 @@ function saveProd(F){
         m={id:'m'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:esc(i.n),cat:'عام',unit:i.u,min:0,storage:'مخزن جاف',exp:'',supplier:'',notes:''};
         S.materials.push(m);S.stock[m.id]=0;
       }
-      return {m:m.id,q:i.q};
+      return {m:m.id,q:i.q,dq:i.dq,du:i.du};
     });
   });
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
@@ -2626,7 +2626,7 @@ function findMat(name){
   return MATERIALS.filter(function(m){return norm(unesc(m.name))===n;})[0];
 }
 function stageIngText(g,qty){
-  return (g.ings||[]).map(function(i){var m=M(i.m);return m?m.name+' '+f(r3(i.q*qty))+' '+m.unit:'';}).filter(Boolean).join(' · ');
+  return (g.ings||[]).map(function(i){var m=M(i.m);return m?m.name+' '+f(r3((i.dq!=null?i.dq:i.q)*qty))+' '+(i.du||m.unit):'';}).filter(Boolean).join(' · ');
 }
 function stageItems(p,kind,qty){
   var out=[];
@@ -3508,7 +3508,7 @@ var ACT={
     U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
-          ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.q),u:m?m.unit:'جرام'};}),
+          ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.dq!=null?i.dq:i.q),u:i.du||(m?m.unit:'جرام')};}),
           steps:g.steps.length?g.steps.map(unesc):['']};
       })};
   },
