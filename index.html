@@ -3821,17 +3821,16 @@ var ACT={
     var pw=(document.getElementById('uPw')||{}).value||'';
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
-    checkPin(pw).then(function(isOwner){
-      if(isOwner){toast('الباسورد ده بتاع المالك، اختار غيره');return null;}
-      return findUserByPw(pw).then(function(x){
-        if(x){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return null;}
-        var code=nextUserCode(),salt=randHex();
-        return hexPbkdf2(pw,salt,200000).then(function(h){
-          usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:h,iter:200000});
-          var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
-          toast('اتضاف المستخدم · الكود '+code);render();
-        });
-      });
+    var code=nextUserCode(),salt=randHex();
+    toast('جاري إضافة المستخدم...');
+    /* الفحوصات الثلاثة بتشتغل مع بعض بدل ما تستنى بعض */
+    Promise.all([checkPin(pw),findUserByPw(pw),hexPbkdf2(pw,salt,200000)]).then(function(r){
+      if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
+      if(r[1]){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
+      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000});
+      var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
+      var nu=document.getElementById('uName'),np=document.getElementById('uPw');if(nu)nu.value='';if(np)np.value='';
+      toast('اتضاف المستخدم · الكود '+code);render();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
   },
