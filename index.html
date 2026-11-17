@@ -2559,6 +2559,11 @@ function hoursText(){
 }
 /* آخر وقت كان التطبيق فيه مفتوح للمستخدمين: أي أوردر بيتسجل بعده بيظهر في شاشة الراحة لحد ما التطبيق يفتح تاني */
 function markOpenSeen(){var n=trustedNow();if(n!==null){try{localStorage.setItem('khat-open-seen',String(n));}catch(e){}}}
+/* لو الجهاز ما اتفتحش وقت الشغل قبل كده، أول مرة يتقفل بنحفظ وقت الفتح دلوقتي عشان الطلبات اللي تيجي بعده تظهر */
+function ensureOpenSeen(){
+  var has=false;try{has=!!localStorage.getItem('khat-open-seen');}catch(e){}
+  if(!has)markOpenSeen();
+}
 function missedOrders(){
   var since=0;try{since=Number(localStorage.getItem('khat-open-seen'))||0;}catch(e){}
   if(!since)return [];
@@ -2746,7 +2751,7 @@ function render(){
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
-  if(limited()){var open=workOpenNow();if(open===true)markOpenSeen();if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}}
+  if(limited()){var open=workOpenNow();if(open===true)markOpenSeen();if(open===false)ensureOpenSeen();if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}}
   U.restShown=false;
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
