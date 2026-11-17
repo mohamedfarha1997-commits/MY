@@ -513,6 +513,10 @@ button,input{font-family:inherit}
 @keyframes x-sheen{to{background-position:100% 0}}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
 /* هيدر بدون لوجو: العدد في الشمال والأزرار في اليمين، والتاريخ والحالة في الصف اللي تحتهم */
+.top .greet,.top .ttl{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-width:0}
+.top .greet{font-family:var(--f-disp);font-size:18px;font-weight:700;color:var(--ink-2)}
+.top .ttl b{font-family:var(--f-disp);font-size:22px;line-height:1.2;color:var(--ink);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .ttl .btn{flex:none}
 .top{display:grid!important;grid-template-columns:1fr auto;align-items:center;gap:8px 12px;padding:14px 16px 12px!important}
 .top .today{justify-self:start;text-align:start}
 .top .today b{font-size:40px;line-height:1}
@@ -1497,11 +1501,23 @@ function toast(m){var el=document.getElementById('toast');el.textContent=unesc(m
 function dateStr(){
   try{return new Date().toLocaleDateString('ar-EG-u-nu-latn',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '';}
 }
+/* هيدر الصفحة الرئيسية: تحية حسب الوقت واسم المستخدم لو داخل بحسابه */
+function greetHTML(){
+  var h=new Date().getHours();
+  var g=h<12?'صباح الخير':h<17?'نهارك سعيد':'مساء النور';
+  var c=sessionCode();var u=c?userByCode(c):null;
+  return '<div class="greet">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>';
+}
+/* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
+function titleHTML(){
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب'}[U.view]||'';
+  return '<div class="ttl"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><b>'+esc(name)+'</b></div>';
+}
 function topHTML(){
   /* الأوردرات اللي هتتسلّم النهارده (معادها النهارده ولسه متسلّمتش) */
   var todayKey=ymd(new Date());
   var total=(S.orders||[]).filter(function(o){return !o.deliveredAt&&o.due&&String(o.due).slice(0,10)===todayKey;}).length;
-  return '<header class="top">'+
+  return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
     '<div class="today"><b>'+f(total)+'</b><span>أوردرات خارجة اليوم</span></div>'+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
@@ -3060,7 +3076,7 @@ function render(){
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():'')+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
