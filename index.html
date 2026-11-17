@@ -106,7 +106,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
   --shadow:0 1px 2px rgb(16 28 40 / .06);
   --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
-  --f-disp:'Reem Kufi','IBM Plex Sans Arabic',Tahoma,sans-serif;
+  --f-disp:'Lalezar','Cairo','IBM Plex Sans Arabic',Tahoma,sans-serif;
 }
 :root[data-theme="dark"]{
   --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
@@ -548,6 +548,10 @@ button,input{font-family:inherit}
 .top .greet,.top .ttlback,.top .hl{grid-row:1}
 .top .ttlname{grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:center}
 .top .hdate{grid-column:1;grid-row:2;justify-self:start;font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+/* الهيدر ثابت فوق وشفاف (زجاجي) عشان المحتوى يبان تحته وهو بيتحرك، مع إن النص يفضل واضح */
+.top{position:sticky!important;top:env(safe-area-inset-top,0px);z-index:25;margin-top:0!important;overflow:visible!important;background:color-mix(in srgb,var(--surface) 70%,transparent)!important;backdrop-filter:blur(16px) saturate(1.6);-webkit-backdrop-filter:blur(16px) saturate(1.6);border-color:color-mix(in srgb,var(--line) 75%,transparent)!important;border-top-left-radius:0!important;border-top-right-radius:0!important;border-bottom-left-radius:18px!important;border-bottom-right-radius:18px!important;box-shadow:0 10px 24px -18px var(--glow)}
+.top .ttlname{font-size:20px;font-weight:400}
+.top .greet{font-family:var(--f-disp);font-weight:400}
 .top .dstat{grid-column:3;grid-row:2;justify-self:end}
 .top .hl{gap:12px}
 .top .themebtn{width:36px;min-width:36px;height:36px;min-height:36px}
@@ -768,7 +772,7 @@ img,svg,canvas,video{max-width:100%;height:auto}
 </head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@500;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Lalezar&family=Cairo:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Lalezar&family=Cairo:wght@500;600;700&display=swap"></noscript>
 
 
 
