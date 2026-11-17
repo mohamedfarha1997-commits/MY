@@ -4447,7 +4447,20 @@ document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset
 syncTime();
 setInterval(function(){if(!document.hidden)syncTime();},300000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)syncTime();});
+/* الإجازة بتخص يوم واحد: أول ما اليوم يتغير بتتلغي لوحدها من البيانات */
+/* بيتعمل مرة واحدة كل يوم عند تغيير التاريخ بتوقيت القاهرة (منتصف الليل)، حتى لو التطبيق كان مقفول وقتها */
+function clearStaleLeaves(){
+  var ms=trustedNow();if(ms===null)return;
+  var today=cairoDateKey(ms);
+  var last=null;try{last=localStorage.getItem('khat-leave-day');}catch(e){}
+  if(last===today)return;
+  var changed=false;
+  usersList().forEach(function(u){if(u.leave&&u.leave!==today){u.leave=null;changed=true;}});
+  try{localStorage.setItem('khat-leave-day',today);}catch(e){}
+  if(changed)save();
+}
 setInterval(function(){
+  clearStaleLeaves();
   if(!limited())return;
   var o=onLeaveToday()===false?workOpenNow():false;
   if(o===true)markOpenSeen();
