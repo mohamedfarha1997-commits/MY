@@ -620,6 +620,13 @@ button,input{font-family:inherit}
 /* شبكات الكروت بتتقاس على عرض الشاشة (عدد الأعمدة بيزيد تلقائي) */
 .pgrid,.pkgrid{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))!important}
 .fgcards{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))}
+/* عين الإخفاء على كروت الدفعة الجديدة (للمالك بس) */
+.pk{position:relative}
+.pk .fgeye{position:absolute;top:4px;inset-inline-start:4px;width:26px;height:26px;z-index:2}
+.pk .fgeye svg{width:15px;height:15px}
+.pk.hid{opacity:.6;border-style:dashed}
+.pk.hid .fgeye{color:var(--bad)}
+.pk.on .opk-h .ox{z-index:2}
 /* الجداول والمحتوى العريض ما يكسرش الصفحة */
 .card table,.sheet table{display:block;overflow-x:auto;max-width:100%}
 .card table tbody,.sheet table tbody{display:table;width:100%}
@@ -2361,7 +2368,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
-    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived&&!!x.shop===!!s.shop;}).map(function(x){return pkTileHTML(x,s);}).join('')+'</div>'+
+    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived&&!!x.shop===!!s.shop&&!fgUserHidden(x);}).map(function(x){return pkTileHTML(x,s);}).join('')+'</div>'+
     ''+
     (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length||cshort.length?'<div class="note">في نقص في '+(sh.length+cshort.length)+((sh.length+cshort.length)>2?' أصناف':' صنف')+(cshort.length?' (منها وصفات من مخزن الإنتاج)':'')+'. تقدر تنشئ الدفعة وتكمّل النقص قبل السحب.</div>':'')+
@@ -3190,9 +3197,11 @@ function batchOutTxt(x,q){
 }
 /* بطاقة الصنف في الدفعة: لو متختار بتعرض الكمية جوه نفس المربع */
 function pkTileHTML(x,s){
-  if(s.sel.indexOf(x.id)<0)return '<button class="pk" data-act="sheetProd" data-p="'+x.id+'">'+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></button>';
+  /* العين للمالك بس: الصنف المقفول بيختفي عن المستخدمين */
+  var eye=limited()?'':fgEyeHTML(x),hid=!limited()&&fgHiddenIds().indexOf(x.id)>-1,cl=hid?' hid':'';
+  if(s.sel.indexOf(x.id)<0)return '<div class="pk'+cl+'" role="button" tabindex="0" data-act="sheetProd" data-p="'+x.id+'">'+eye+esc(x.name)+'<small>'+x.mins+' دقيقة تشغيل</small></div>';
   var q=s.q[x.id]||1;
-  return '<div class="pk on" style="cursor:default">'+
+  return '<div class="pk on'+cl+'" style="cursor:default">'+eye+
     '<div class="opk-h"><b>'+esc(x.name)+'</b><button class="ox" data-act="sheetProd" data-p="'+x.id+'" aria-label="شيل الصنف">×</button></div>'+
     '<small>'+x.mins+' دقيقة تشغيل</small>'+
     '<small class="pkout" data-out="'+x.id+'" style="color:var(--ink);font-weight:600">'+batchOutTxt(x,q)+'</small>'+
