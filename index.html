@@ -2546,10 +2546,6 @@ function onLeaveToday(){
   if(ms===null)return null;
   return cairoDateKey(ms)===u.leave;
 }
-function leaveHTML(){
-  return '<section class="login" style="text-align:center;padding:40px 16px"><div style="margin-bottom:12px"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>'+
-    '<h2 style="margin-bottom:8px">إجازة النهاردة</h2><p class="meta">التطبيق مش متاح النهاردة. هيفتح تاني بعد الإجازة.</p></section>';
-}
 /* true = مفتوح، false = برا المواعيد، null = مش عارفين الوقت (مفيش إنترنت) */
 function workOpenNow(){
   var h=pref('hours',null);
@@ -2590,7 +2586,7 @@ function missedBatches(){
   if(!since)return [];
   return (S.batches||[]).filter(function(b){return !b.withdrawn&&(b.created||0)>=since;}).sort(function(a,b){return b.created-a.created;});
 }
-function restHTML(unknown){
+function restHTML(unknown,leave){
   var list=unknown?[]:missedOrders();
   var bl=unknown?[]:missedBatches();
   var bItems=bl.map(function(b){
@@ -2601,7 +2597,7 @@ function restHTML(unknown){
     return '<div class="hist" style="text-align:right"><span><span class="ltr">'+esc(sid(o.id))+'</span> · '+esc(custName(o))+'<br><span class="meta">'+esc(itemsText(o))+(o.due?' · معاد التسليم: '+esc(dueStr(o.due)):'')+'</span></span></div>';
   }).join('');
   return '<section class="login" style="text-align:center;padding:40px 16px"><div style="margin-bottom:12px"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M7 2v3M11 2v3M15 2v3"/></svg></div>'+
-    '<h2 style="margin-bottom:8px">'+(unknown?'محتاج إنترنت':'وقت الراحة')+'</h2><p class="meta" style="margin-bottom:12px">'+(unknown?'عشان نتأكد من الوقت الصح، اتصل بالإنترنت وحاول تاني.':'التطبيق مش متاح دلوقتي. هيفتح في ميعاد الشغل.')+'</p>'+
+    '<h2 style="margin-bottom:8px">'+(unknown?'محتاج إنترنت':(leave?'إجازة النهاردة':'وقت الراحة'))+'</h2><p class="meta" style="margin-bottom:12px">'+(unknown?'عشان نتأكد من الوقت الصح، اتصل بالإنترنت وحاول تاني.':(leave?'التطبيق مش متاح النهاردة. هيفتح تاني بعد الإجازة.':'التطبيق مش متاح دلوقتي. هيفتح في ميعاد الشغل.'))+'</p>'+
     (unknown?'':
       (list.length?'<div style="text-align:right;margin-top:16px"><h3 style="margin-bottom:8px">طلبات جت وقت الراحة ('+list.length+')</h3>'+items+'</div>':'')+
       (bl.length?'<div style="text-align:right;margin-top:16px"><h3 style="margin-bottom:8px">دفعات اتعملت وقت الراحة ('+bl.length+')</h3>'+bItems+'</div>':'')+
@@ -2768,7 +2764,7 @@ function render(){
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
   if(limited()){
     var lv=onLeaveToday();
-    if(lv!==false){document.getElementById('app').innerHTML=lv===true?leaveHTML():restHTML(true);U.restShown=true;return;}
+    if(lv!==false){if(lv===true)ensureOpenSeen();document.getElementById('app').innerHTML=restHTML(lv!==true,lv===true);U.restShown=true;return;}
     var open=workOpenNow();if(open===true)markOpenSeen();if(open===false)ensureOpenSeen();
     if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}
   }
