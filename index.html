@@ -4366,20 +4366,6 @@ var ACT={
   userPwCancel:function(){U.pwUser=null;},
   userEditOpen:function(d){U.editUser=d.id;U.pwUser=null;U.confirm=null;render();return false;},
   userEditCancel:function(){U.editUser=null;},
-  userEditSave:function(){
-    var u=usersList().filter(function(x){return x.id===U.editUser;})[0];
-    if(!u){U.editUser=null;return false;}
-    var n=((document.getElementById('uEditName')||{}).value||'').trim();
-    var c=((document.getElementById('uEditCode')||{}).value||'').trim();
-    if(!n){toast('اكتب اسم المستخدم');return false;}
-    if(!validUserCode(c)){toast('الكود لازم يكون 3 أرقام');return false;}
-    if(c!==u.code&&userCodeTaken(c,u.id)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
-    var old=u.code;
-    if(c!==old)renameUserCode(old,c);
-    u.name=n;u.code=c;
-    U.editUser=null;save();
-    toast('اتحفظ التعديل'+(c!==old?' · الكود الجديد '+c:''));render();return false;
-  },
   userPwSave:function(){
     var u=usersList().filter(function(x){return x.id===U.pwUser;})[0];
     if(!u){U.pwUser=null;return;}
