@@ -1064,7 +1064,16 @@ function gdApi(url,opt){
     return r;
   });
 }
-function gdBody(){return JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:S});}
+/* ترتيب الأقسام في الملف اللي على درايف: الأهم الأول، وباقي الأقسام أبجدي */
+var DRIVE_ORDER=['users','prefs','hours','materials','products','orders','batches','done','ready','readyT','stock','stockT','locks','plog','plogTomb','tomb','seq','oseq','fseq','savedAt','prefsK','prefsT','demo'];
+function stateForDrive(s){
+  var o={};
+  DRIVE_ORDER.forEach(function(k){if(s[k]!==undefined)o[k]=s[k];});
+  Object.keys(s).sort().forEach(function(k){if(o[k]===undefined)o[k]=s[k];});
+  return o;
+}
+/* الملف بيتكتب مرتب (سطر لكل قيمة) عشان يتقري بسهولة لو اتفتح من درايف */
+function gdBody(){return JSON.stringify({app:'khat-entaj',v:1,savedAt:Date.now(),data:stateForDrive(S)},null,2);}
 function gdFindOldest(){
   var q=encodeURIComponent("name='"+GD_NAME+"' and trashed=false");
   return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime&pageSize=5&fields=files(id)&spaces=drive')
