@@ -2501,7 +2501,44 @@ function saveProd(F){
   U.form=null;
 
 }
-function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+usersCardHTML()+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
+/* مواعيد العمل للمستخدمين: بتتحدد من الإعدادات، ولو مفيش مواعيد التطبيق بيفتح طول الوقت */
+var DAY_NAMES=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function hrMins(s){var m=/^(\d{1,2}):(\d{2})$/.exec(String(s||''));return m?Number(m[1])*60+Number(m[2]):0;}
+function workOpenNow(){
+  var h=pref('hours',null);
+  if(!h||!Array.isArray(h))return true;
+  var d=new Date(),now=d.getHours()*60+d.getMinutes(),dow=d.getDay();
+  var today=h[dow],yest=h[(dow+6)%7],ok=false;
+  if(today&&today.on){
+    var a=hrMins(today.from),b=hrMins(today.to);
+    if(a===b)ok=true;
+    else if(b>a)ok=ok||(now>=a&&now<b);
+    else ok=ok||(now>=a);
+  }
+  if(yest&&yest.on){var a2=hrMins(yest.from),b2=hrMins(yest.to);if(b2<a2&&now<b2)ok=true;}
+  return ok;
+}
+function hoursText(){
+  var h=pref('hours',null);
+  if(!h)return '';
+  return h.map(function(x,i){return DAY_NAMES[i]+': '+(x&&x.on?(x.from+' - '+x.to):'إجازة');}).join(' · ');
+}
+function restHTML(){
+  return '<section class="login" style="text-align:center;padding:40px 16px"><div style="margin-bottom:12px"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M7 2v3M11 2v3M15 2v3"/></svg></div>'+
+    '<h2 style="margin-bottom:8px">وقت الراحة</h2><p class="meta" style="margin-bottom:12px">التطبيق مش متاح دلوقتي. هيفتح في ميعاد الشغل.</p>'+
+    (hoursText()?'<p class="meta" style="margin:0">'+esc(hoursText())+'</p>':'')+'</section>';
+}
+function hoursCardHTML(){
+  var h=pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};});
+  var rows=DAY_NAMES.map(function(n,i){
+    var x=h[i]||{on:false,from:'09:00',to:'18:00'};
+    return '<tr><td>'+n+'</td><td><button class="tg'+(x.on?' on':'')+'" data-act="hrToggle" data-d="'+i+'">'+(x.on?'مفتوح':'إجازة')+'</button></td>'+
+      '<td>'+(x.on?'<input type="time" data-hr="from" data-d="'+i+'" value="'+esc(x.from)+'" aria-label="من"> - <input type="time" data-hr="to" data-d="'+i+'" value="'+esc(x.to)+'" aria-label="إلى">':'<span class="meta">—</span>')+'</td></tr>';
+  }).join('');
+  return '<section class="card" style="--c:var(--settings)"><h3>مواعيد العمل للمستخدمين</h3><p class="meta" style="margin:0">المستخدمين مش هيقدروا يفتحوا التطبيق برا المواعيد دي. المالك دايمًا يقدر يفتح. لو مفيش مواعيد متظبطة، التطبيق مفتوح طول الوقت.</p>'+
+    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+}
+function settingsView(){return foldSections(head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','')+hoursCardHTML()+usersCardHTML()+tabsCardHTML()+seasonsCardHTML()+securityCardHTML()+prodLogCardHTML()+monthsHTML()+footHTML());}
 /* كل كارت في الإعدادات بيتقفل ويتفتح بالضغط على عنوانه */
 function foldSections(html){
   return String(html).split(/(?=<section )/).map(function(part){return foldable(part);}).join('');
@@ -2650,6 +2687,8 @@ function render(){
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
+  if(limited()&&!workOpenNow()){document.getElementById('app').innerHTML=restHTML();U.restShown=true;return;}
+  U.restShown=false;
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
@@ -3883,6 +3922,11 @@ var ACT={
     var box=document.querySelector('[data-msug="'+d.gi+'-'+d.ii+'"]');if(box)box.innerHTML='';
     return false;
   },
+  hrToggle:function(d){
+    var h=(pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};})).map(function(x){return Object.assign({},x);});
+    var i=Number(d.d);h[i]=Object.assign({from:'09:00',to:'18:00'},h[i],{on:!(h[i]&&h[i].on)});
+    setPref('hours',h);
+  },
   userPwOpen:function(d){U.pwUser=d.id;U.confirm=null;render();return false;},
   userPwCancel:function(){U.pwUser=null;},
   userPwSave:function(){
@@ -4305,9 +4349,14 @@ function onField(e){
 }
 document.addEventListener('input',onField);
 document.addEventListener('change',function(e){var ds=e.target&&e.target.dataset;
+  if(ds&&ds.hr!==undefined){var hh=(pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};})).map(function(x){return Object.assign({},x);});var di=Number(ds.d);hh[di]=Object.assign({on:true,from:'09:00',to:'18:00'},hh[di]);hh[di][ds.hr]=e.target.value||hh[di][ds.hr];setPref('hours',hh);render();return;}
   if(ds&&ds.btype!==undefined&&U.osheet){var bb=(U.osheet.boxes||[]).filter(function(b){return b.n===Number(ds.btype);})[0];if(bb)bb.type=e.target.value;render();return;}
   if(ds&&ds.ibox!==undefined&&U.osheet){U.osheet.box=U.osheet.box||{};U.osheet.box[ds.ibox]=Number(e.target.value);render();return;}
   if(ds&&ds.oadd!==undefined){var v=e.target.value;if(v&&U.osheet){U.osheet.added=U.osheet.added||[];if(U.osheet.added.indexOf(v)<0)U.osheet.added.push(v);if(U.osheet.items[v]===undefined)U.osheet.items[v]=0;}render();return;}if(ds&&(ds.oq!==undefined||ds.opk!==undefined)){onField(e);render();return;}if(ds&&ds.sq!==undefined){onField(e);render();return;}if(ds&&ds.f==='unit'&&U.form){onField(e);render();return;}if(ds&&ds.rs!==undefined)onField(e);if(ds&&(ds.rej!==undefined||ds.stk!==undefined)){if(!canWrite()){toast('مش مسموح بالتعديل في القسم ده');return;}onField(e);save();render();}});
+setInterval(function(){
+  if(!limited())return;
+  if(!!U.restShown!==!workOpenNow())render();
+},60000);
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
