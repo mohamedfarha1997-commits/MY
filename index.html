@@ -533,6 +533,27 @@ button,input{font-family:inherit}
 .top .ttl .btn{min-height:30px;padding:0 10px}
 .top .hsub{grid-column:1/-1;margin-top:2px;padding-top:4px;font-size:11px;line-height:1.3;border-top:none}
 .top::before{display:none}
+.top .hl{gap:12px}
+.top .themebtn{width:36px;min-width:36px;height:36px;min-height:36px}
+.top .themebtn svg{width:20px;height:20px}
+.top .hsub>span:first-child{font-size:13px;font-weight:600;color:var(--ink-2)}
+.dstat{--p:var(--muted);display:inline-flex;align-items:center;gap:6px;padding:3px 10px 3px 7px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;background:color-mix(in srgb,var(--p) 13%,var(--surface));color:var(--p);border:1px solid color-mix(in srgb,var(--p) 32%,transparent)}
+.dstat.ok{--p:var(--good)}
+.dstat.sync{--p:var(--prep)}
+.dstat.conn{--p:var(--warn)}
+.dstat.warn{--p:var(--warn)}
+.dstat.bad{--p:var(--bad)}
+.dstat.off{--p:var(--muted)}
+.dico{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transform-origin:50% 50%}
+@media (prefers-reduced-motion:no-preference){
+  .dstat.ok .dico{animation:dbreath 2.6s ease-in-out infinite}
+  .dstat.sync .dico{animation:dspin 1.1s linear infinite}
+  .dstat.conn .dico{animation:dspin 2.4s linear infinite}
+  .dstat.warn .dico,.dstat.bad .dico{animation:dblink 1.4s ease-in-out infinite}
+}
+@keyframes dbreath{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(1.08)}}
+@keyframes dspin{to{transform:rotate(360deg)}}
+@keyframes dblink{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes x-swipe-fwd{from{opacity:0;transform:translateX(-64px)}to{opacity:1;transform:none}}
 @keyframes x-swipe-back{from{opacity:0;transform:translateX(64px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
@@ -1338,6 +1359,20 @@ function gdStart(){
   document.addEventListener('visibilitychange',function(){if(!document.hidden)gdSync();});
   if(GD.on&&!gdTokOk())gdArm();
 }
+/* حالة درايف في الهيدر: أيقونة متحركة بتوضح نوع الاتصال الحالي */
+function driveHTML(){
+  var cloud='M17.5 19H9a7 7 0 1 1 6.9-8.2A5.5 5.5 0 1 1 17.5 19z';
+  var refresh='M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18.5 2v4h-4M5.5 22v-4h4';
+  var st,lbl,ico,act='gdNow';
+  if(!GD.on){st='off';lbl='غير متصل';ico='<path d="'+cloud+'"/><path d="M3 3l18 18"/>';act='tab';}
+  else if(GD.needTap){st='warn';lbl='محتاج تأكيد';ico='<path d="'+cloud+'"/><path d="M12 10v3M12 16v.01"/>';}
+  else if(GD.err&&!GD.ok){st='bad';lbl='خطأ';ico='<path d="'+cloud+'"/><path d="M9.5 11.5l5 5M14.5 11.5l-5 5"/>';act='tab';}
+  else if(GD.busy){st='sync';lbl='بيزامن';ico='<path d="'+refresh+'"/>';}
+  else if(GD.ok){st='ok';lbl='متصل';ico='<path d="'+cloud+'"/><path d="M9.5 13.5l2 2 3.5-3.5"/>';}
+  else {st='conn';lbl='جاري الاتصال';ico='<path d="'+refresh+'"/>';}
+  return '<span class="dstat '+st+'" data-act="'+act+'"'+(act==='tab'?' data-v="settings"':'')+' role="button" tabindex="0">'+
+    '<svg class="dico" viewBox="0 0 24 24" aria-hidden="true">'+ico+'</svg><span>'+lbl+'</span></span>';
+}
 function gdBadge(){
   if(GD.ok)return '<span class="pill ok" data-act="gdNow">متصل بدرايف</span>';
   if(GD.err&&!GD.needTap)return '<span class="pill bad" data-act="tab" data-v="settings">درايف: خطأ، اضغط للتفاصيل</span>';
@@ -1526,7 +1561,7 @@ function titleHTML(){
 function topHTML(){
     return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
-    '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
+    '<div class="hsub"><span>'+dateStr()+'</span>'+driveHTML()+'</div>'+
     '</header>';
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
