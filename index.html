@@ -72,6 +72,11 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 .fillform .empty{padding:14px 10px}
 .fillform .meta[style*="margin:-4px"]{margin-top:0!important}
 :root{--waste:#b91c1c}
+.fgtop{display:flex;align-items:center;gap:6px}
+.fgeye{width:30px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.fgeye svg{width:17px;height:17px}
+.fgc.hid{opacity:.6;border-style:dashed}
+.fgc.hid .fgeye{color:var(--bad)}
 
 /* ---- block 2 ---- */
 /* حدود أوضح للمربعات والحقول في الشيتات والنماذج */
@@ -1527,6 +1532,9 @@ function rawSeason(){return U.season||'normal';}
 function curSeason(){var v=rawSeason();return v==='boxes'?'normal':v;}
 function inSeason(p){return seasonOf(p)===curSeason();}
 function hiddenSeasons(){return pref('seasonsHidden',[]);}
+/* أصناف مخفية عن المستخدمين في مخزن الإنتاج: المالك بس يشوفها */
+function fgHiddenIds(){return pref('fgHidden',[]);}
+function fgUserHidden(p){return !!p&&limited()&&fgHiddenIds().indexOf(p.id)>-1;}
 function seasonHidden(k){return k!=='normal'&&hiddenSeasons().indexOf(k)>-1;}
 function visibleSeasons(){return SEASONS.filter(function(x){return !seasonHidden(x[0]);});}
 function screenKind(){return U.view==='shopOrders'?'shop':'cust';}
@@ -1813,7 +1821,7 @@ function fgShortRows(){
   var out=[];
   S.orders.forEach(function(o){
     if(o.deliveredAt)return;
-    ordShort(o).forEach(function(x){if(x.short>0)out.push({o:o,x:x});});
+    ordShort(o).forEach(function(x){if(x.short>0&&!fgUserHidden(P(x.p)))out.push({o:o,x:x});});
   });
   return out;
 }
@@ -1830,7 +1838,7 @@ function shortByProduct(rows){
   return ord.map(function(k){return g[k];});
 }
 /* فلتر المواسم لمخزن الإنتاج، وهو مستقل عن موسم الأوردرات */
-function fgSeasonOK(p){var v=U.fgSeason||'all';return v==='all'||seasonOf(p)===v;}
+function fgSeasonOK(p){if(fgUserHidden(p))return false;var v=U.fgSeason||'all';return v==='all'||seasonOf(p)===v;}
 function fgSeasonRow(){
   var cur=U.fgSeason||'all';
   return '<div class="seg" style="margin-top:6px" role="group" aria-label="المواسم">'+
@@ -1891,11 +1899,18 @@ function lotsHTML(p){
       (limited()?'':' <button class="btn ghost sm" data-act="lotZero" data-p="'+esc(p.id)+'" data-id="'+esc(l.id)+'">'+(U.confirm===ck?'اضغط تاني للتأكيد':'صفّر الدفعة')+'</button>')+'</span></div>';
   }).join('');
 }
+var EYE_ON_P='<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+var EYE_OFF_P='<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+function fgEyeHTML(p){
+  var hid=fgHiddenIds().indexOf(p.id)>-1;
+  return '<button class="fgeye" data-act="toggleFgHide" data-p="'+esc(p.id)+'" aria-pressed="'+hid+'" aria-label="'+(hid?'إظهار للمستخدمين':'إخفاء عن المستخدمين')+'" title="'+(hid?'مخفي عن المستخدمين · اضغط للإظهار':'ظاهر للمستخدمين · اضغط للإخفاء')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(hid?EYE_OFF_P:EYE_ON_P)+'</svg></button>';
+}
 function fgCardHTML(p,q,res){
   var tot=q+res,pct=tot>0?Math.round(q/tot*100):0;
+  var hidOwner=!limited()&&fgHiddenIds().indexOf(p.id)>-1;
   var st=q>0?'<span class="pill ok">متاح</span>':(res>0?'<span class="pill low">محجوز كله</span>':'<span class="pill bad">نافد</span>');
   var on=(U.fgSel||[]).indexOf(p.id)>-1;
-  return '<div class="fgc'+(on?' sel':'')+'"'+(limited()?'':' data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"')+'><div class="mtop"><b>'+esc(p.name)+'</b>'+st+'</div>'+
+  return '<div class="fgc'+(on?' sel':'')+(hidOwner?' hid':'')+'"'+(limited()?'':' data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"')+'><div class="mtop"><b>'+esc(p.name)+'</b><span class="fgtop">'+st+(limited()?'':fgEyeHTML(p))+'</span></div>'+
     '<div class="fgn">'+f(q)+' <span class="meta">'+esc(p.unit)+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
     '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+'</div>';
@@ -2282,11 +2297,11 @@ function wasteView(){
 function fgStockView(){
   var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
-  PRODUCTS.forEach(function(p){inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
+  PRODUCTS.forEach(function(p){if(fgUserHidden(p))return;inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
   var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['short','نواقص ('+nS+')'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
     return '<button class="'+(F===x[0]?'on':'')+'" data-act="fgFilter" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>'+fgSeasonRow();
-  var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.length+'</b><span>صنف</span></div>'+
+  var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.filter(function(p){return !fgUserHidden(p);}).length+'</b><span>صنف</span></div>'+
     '<div class="tile"><b>'+f(inStock)+'</b><span>في المخزن</span></div>'+
     '<div class="tile"><b>'+f(resAll)+'</b><span>محجوز للأوردرات</span></div>'+
     '<div class="tile"><b style="color:'+(nS?'var(--warn)':'inherit')+'">'+nS+'</b><span>ناقص</span></div></div>';
@@ -3698,6 +3713,12 @@ var ACT={
     var a=hiddenSeasons(),i=a.indexOf(d.k);
     if(i>-1)a.splice(i,1);else a.push(d.k);
     setPref('seasonsHidden',a);
+    render();return false;
+  },
+  toggleFgHide:function(d){
+    var a=fgHiddenIds(),i=a.indexOf(d.p);
+    if(i>-1)a.splice(i,1);else a.push(d.p);
+    setPref('fgHidden',a);
     render();return false;
   },
   setSeason:function(d){U.season=d.v;if(d.v==='boxes')U.boxKind=screenKind();U.rsel=null;render();return false;},
