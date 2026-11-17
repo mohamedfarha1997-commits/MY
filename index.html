@@ -1786,7 +1786,14 @@ function whoOf(n,c){
   if(n&&userByCode(n)){var u2=userByCode(n);return u2&&u2.name?u2.name:n;}
   return n||'';
 }
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(whoOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: '+esc(whoOf(r.d.ap,r.d.apc))+'</span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+/* كود اللي اعتمد: كود المستخدم، والمالك كوده (CHEF MYF)، ولو السجل قديم بيتحول من الاسم للكود */
+function codeOf(n,c){
+  if(c)return c;
+  if(n==='المالك'||n==='CHEF MYF')return 'CHEF MYF';
+  var u=usersList().filter(function(x){return x.name===n;})[0];
+  return u?u.code:(n||'');
+}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(codeOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: <span class="ltr">'+esc(codeOf(r.d.ap,r.d.apc))+'</span></span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
