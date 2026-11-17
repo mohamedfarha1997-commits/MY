@@ -91,7 +91,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 .sheet .card,.sheet .sec,.sheet .ptile,.sheet .pk{border:1.5px solid var(--line)!important}
 .sheet .btn.ghost{border:1.5px solid var(--field)}
 /* تصغير عام للواجهة عشان تبقى مناسبة لشاشة الهاتف */
-#app{zoom:.9}
+#app{zoom:.86}
 /* شبكة الأصناف: عمودين متساويين وكروت بنفس الحجم، وتتقاس على عرض الهاتف */
 .pgrid,.pkgrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px;width:100%;box-sizing:border-box}
 .pgrid>*,.pkgrid>*{min-width:0}
@@ -106,7 +106,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
   --shadow:0 1px 2px rgb(16 28 40 / .06);
   --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
-  --f-disp:'Lalezar','Cairo','IBM Plex Sans Arabic',Tahoma,sans-serif;
+  --f-disp:'Cairo','IBM Plex Sans Arabic',Tahoma,sans-serif;
 }
 :root[data-theme="dark"]{
   --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
@@ -514,7 +514,7 @@ button,input{font-family:inherit}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
 /* هيدر بدون لوجو: العدد في الشمال والأزرار في اليمين، والتاريخ والحالة في الصف اللي تحتهم */
 .top .greet{grid-column:1;grid-row:1;min-width:0}
-.top .ttlback{grid-column:1;grid-row:1;justify-self:start;flex:none}
+.ttlback{grid-column:1;grid-row:1;justify-self:start;flex:none}
 .top .ttlname{grid-column:2;grid-row:1;justify-self:center;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
 .top .greet{font-family:var(--f-disp);font-size:16px;font-weight:700;color:var(--ink-2)}
 .top .ttlname{font-family:var(--f-disp);font-size:18px;line-height:1.2;color:var(--ink)}
@@ -532,20 +532,22 @@ button,input{font-family:inherit}
 .top .hl .btn.ghost.sm{min-height:32px;padding:0 6px}
 .top .greet{font-size:15px}
 .top .ttlname{font-size:16px}
-.top .ttlback{min-height:30px;padding:0 10px}
+.ttlback{min-height:30px;padding:0 10px}
 .top .hsub{grid-column:1/-1;margin-top:2px;padding-top:4px;font-size:11px;line-height:1.3;border-top:none}
 .top::before{display:none}
 /* اسم القسم: أكبر ومتوسّط رأسياً وأفقياً في الهيدر */
 .top .ttlname{grid-row:1;align-self:center;justify-self:center;font-size:18px;font-weight:800;line-height:1.2;color:var(--ink);padding:0 2px}
 /* زرار الرجوع: كبسولة زجاجية مع سهم ملوّن بيتحرك لما تضغط */
-.top .ttlback{grid-row:1;align-self:center;display:inline-flex;align-items:center;gap:6px;height:36px;min-height:36px;padding:0 14px 0 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--ink) 12%,var(--line));background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink);font-size:14px;font-weight:700;line-height:1;box-shadow:inset 0 1px 0 rgb(255 255 255 / .55),0 6px 14px -8px rgb(16 28 40 / .45);cursor:pointer;transition:transform .15s ease,box-shadow .2s ease}
-.top .ttlback svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--prep);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
-.top .ttlback:hover svg{transform:translateX(3px)}
-.top .ttlback:active{transform:scale(.94);box-shadow:inset 0 1px 2px rgb(16 28 40 / .15)}
-.top .ttlback:focus-visible{outline:2px solid var(--prep);outline-offset:2px}
+.ttlback{grid-row:1;align-self:center;display:inline-flex;align-items:center;gap:6px;height:36px;min-height:36px;padding:0 14px 0 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--ink) 12%,var(--line));background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink);font-size:14px;font-weight:700;line-height:1;box-shadow:inset 0 1px 0 rgb(255 255 255 / .55),0 6px 14px -8px rgb(16 28 40 / .45);cursor:pointer;transition:transform .15s ease,box-shadow .2s ease}
+.ttlback svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--prep);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.ttlback:hover svg{transform:translateX(3px)}
+.ttlback:active{transform:scale(.94);box-shadow:inset 0 1px 2px rgb(16 28 40 / .15)}
+.ttlback:focus-visible{outline:2px solid var(--prep);outline-offset:2px}
+.backrow{display:flex;justify-content:flex-start;align-items:center;margin:10px 0 4px;padding:0 2px}
+.backrow .ttlback{grid-row:auto;align-self:auto}
 .top .hl{align-self:center}
 /* ترتيب الهيدر: الاسم في نص الهيدر بالكامل (رأسياً وأفقياً)، والتاريخ يمين والمزامنة شمال تحته */
-.top .greet,.top .ttlback,.top .hl{grid-row:1}
+.top .greet,.ttlback,.top .hl{grid-row:1}
 .top .ttlname{grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:center}
 .top .hdate{grid-column:1;grid-row:2;justify-self:start;font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
 /* الهيدر ثابت فوق وشفاف (زجاجي) عشان المحتوى يبان تحته وهو بيتحرك، مع إن النص يفضل واضح */
@@ -553,6 +555,8 @@ button,input{font-family:inherit}
 .top .ttlname{font-size:20px;font-weight:400}
 .top .greet{font-family:var(--f-disp);font-weight:400}
 .top .dstat{grid-column:3;grid-row:2;justify-self:end}
+.top.tophome .hl{grid-column:1;justify-self:start}
+.top.tophome .greet{grid-column:3;justify-self:end;text-align:end}
 .top .hl{gap:12px}
 .top .themebtn{width:36px;min-width:36px;height:36px;min-height:36px}
 .top .themebtn svg{width:20px;height:20px}
@@ -734,7 +738,7 @@ button,input{font-family:inherit}
 
 /* ---- responsive layer: يشتغل على الموبايل والتابلت والشاشات الكبيرة ---- */
 /* التصغير بالـ zoom للموبايل بس، والشاشات الكبيرة بحجم طبيعي */
-@media (max-width:640px){#app{zoom:.9}}
+@media (max-width:640px){#app{zoom:.86}}
 @media (min-width:641px){#app{zoom:1}}
 /* العرض بيكبر مع الشاشة: 760 للموبايل، وحتى 1180 على الديسكتوب */
 @media (min-width:900px){.app{max-width:1180px}}
@@ -1576,18 +1580,18 @@ function greetHTML(){
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
   var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب'}[U.view]||'';
-  return '<button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button><b class="ttlname">'+esc(name)+'</b>';
+  return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
+    return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
+/* زرار الرجوع بيتعرض في صف تحت الهيدر */
 function backHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة'}[U.view]||'';
-  return '<div class="backbar"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><span class="meta">'+name+'</span></div>';
+  return '<div class="backrow"><button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button></div>';
 }
 function bbarHTML(){
   return '<nav class="bbar" aria-label="التنقل"><button class="btn" data-act="tab" data-v="home">'+svg('home')+'الرئيسية</button></nav>';
@@ -3138,7 +3142,7 @@ function render(){
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():'')+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
