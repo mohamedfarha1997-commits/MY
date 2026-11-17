@@ -1082,7 +1082,9 @@ function setPref(k,v){
   S.prefsK=S.prefsK||{};S.prefsK[k]=Date.now();
   S.prefsT=Date.now();save();
 }
-function applyTheme(){document.documentElement.setAttribute('data-theme',pref('theme','light'));}
+/* الوضع النهاري/الليلي: لكل مستخدم على حدة (محفوظ في بياناته)، والمالك ليه إعداده الخاص */
+function themeOf(){var u=sessionCode()?userByCode(sessionCode()):null;if(u)return u.theme==='dark'?'dark':'light';return pref('theme','light');}
+function applyTheme(){document.documentElement.setAttribute('data-theme',themeOf());}
 
 /* remember the signature of every record, so a later stamp() can tell what was edited */
 function baseline(){
@@ -3876,7 +3878,7 @@ function installHTML(){
   return '<section class="card dat" style="--c:var(--prep)"><div class="row"><h3>تثبيت التطبيق على الهاتف</h3></div>'+hint+(btn?'<div class="dbtns">'+btn+'</div>':'')+'</section>';
 }
 var ACT={
-  theme:function(){var n=curTheme()==="dark"?"light":"dark";setPref('theme',n);render();return false;},
+  theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
