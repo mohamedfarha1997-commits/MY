@@ -1842,7 +1842,7 @@ function fgLots(pid){
   var pp=PRODUCTS.filter(function(x){return x.id===pid;})[0];
   if(pp&&isFill(pp)){var rr=S.ready[pid]||0;return rr>0?[{id:pp.code||'',q:rr}]:[];}
   var R=S.ready[pid]||0,T=0;
-  var L=S.done.filter(function(d){return d.p===pid;}).sort(function(a,b){return (a.at||0)-(b.at||0);}).map(function(d){
+  var L=S.done.filter(function(d){return d.p===pid&&!d.zeroed;}).sort(function(a,b){return (a.at||0)-(b.at||0);}).map(function(d){
     var q=d.toStk!=null?d.toStk:(d.o?0:(d.stk!=null?d.stk:d.good));
     return {id:d.id,q:q||0};
   }).filter(function(l){return l.q>0;});
@@ -1868,7 +1868,9 @@ function lotsHTML(p){
   var L=fgLots(p.id);
   if(!L.length)return '';
   return '<div class="sgl">الدفعات في المخزن</div>'+L.map(function(l){
-    return '<div class="meta" style="display:flex;justify-content:space-between;gap:6px"><span class="ltr">'+(l.id?sid(l.id):(isFill(p)?'المتاح':'رصيد سابق'))+'</span><span>'+f(l.q)+' '+esc(p.unit)+'</span></div>';
+    var ck='lot:'+p.id+':'+l.id;
+    return '<div class="meta" style="display:flex;justify-content:space-between;align-items:center;gap:6px"><span class="ltr">'+(l.id?sid(l.id):(isFill(p)?'المتاح':'رصيد سابق'))+'</span><span>'+f(l.q)+' '+esc(p.unit)+
+      (limited()?'':' <button class="btn ghost sm" data-act="lotZero" data-p="'+esc(p.id)+'" data-id="'+esc(l.id)+'">'+(U.confirm===ck?'اضغط تاني للتأكيد':'صفّر الدفعة')+'</button>')+'</span></div>';
   }).join('');
 }
 function fgCardHTML(p,q,res){
@@ -3934,6 +3936,17 @@ var ACT={
     ids.forEach(function(id){S.ready[id]=0;});
     toast('اتصفر مخزون '+ids.length+' صنف');
     U.confirm=null;U.fgSel=[];
+  },
+  lotZero:function(d){
+    if(limited())return false;
+    var key='lot:'+d.p+':'+d.id;
+    if(U.confirm!==key){U.confirm=key;setTimeout(function(){if(U.confirm===key){U.confirm=null;render();}},3000);return;}
+    var L=fgLots(d.p).filter(function(l){return String(l.id)===String(d.id);})[0];
+    U.confirm=null;
+    if(!L){toast('الدفعة دي خلصت');return;}
+    if(d.id){S.done.forEach(function(x){if(x.p===d.p&&x.id===d.id)x.zeroed=true;});}
+    S.ready[d.p]=r3((S.ready[d.p]||0)-L.q);
+    toast('اتصفرت الدفعة '+(d.id||'رصيد سابق'));
   },
   cleanStart:function(){
     if(U.confirm!=='clean'){U.confirm='clean';setTimeout(function(){if(U.confirm==='clean'){U.confirm=null;render();}},3000);return;}
