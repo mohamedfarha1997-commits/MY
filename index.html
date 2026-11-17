@@ -513,9 +513,9 @@ button,input{font-family:inherit}
 @keyframes x-sheen{to{background-position:100% 0}}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
 /* هيدر بدون لوجو: العدد في الشمال والأزرار في اليمين، والتاريخ والحالة في الصف اللي تحتهم */
-.top .greet,.top .ttl{grid-column:1/-1;display:flex;align-items:center;gap:10px;min-width:0}
-.top .greet{font-family:var(--f-disp);font-size:18px;font-weight:700;color:var(--ink-2)}
-.top .ttl b{font-family:var(--f-disp);font-size:22px;line-height:1.2;color:var(--ink);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .greet,.top .ttl{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px;min-width:0}
+.top .greet{font-family:var(--f-disp);font-size:16px;font-weight:700;color:var(--ink-2)}
+.top .ttl b{font-family:var(--f-disp);font-size:18px;line-height:1.2;color:var(--ink);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .top .ttl .btn{flex:none}
 .top{display:grid!important;grid-template-columns:1fr auto;align-items:center;gap:8px 12px;padding:14px 16px 12px!important}
 .top .today{justify-self:start;text-align:start}
@@ -523,6 +523,16 @@ button,input{font-family:inherit}
 .top .today span{display:block;margin-top:4px;font-size:13px;font-weight:600;color:var(--ink-2)}
 .top .hl{justify-self:end;display:flex;align-items:center;gap:8px}
 .top .hsub{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
+/* هيدر مضغوط: صف واحد للتحية/العنوان والأزرار، وسطر صغير للتاريخ والمزامنة */
+.top{margin-top:4px!important;padding:6px 10px!important;border-radius:16px!important;gap:0 8px!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important}
+.top .hl{grid-column:2;grid-row:1;gap:6px}
+.top .themebtn{width:32px;min-width:32px;min-height:32px;height:32px;padding:0}
+.top .hl .btn.ghost.sm{min-height:32px;padding:0 6px}
+.top .greet{font-size:15px}
+.top .ttl b{font-size:16px}
+.top .ttl .btn{min-height:30px;padding:0 10px}
+.top .hsub{grid-column:1/-1;margin-top:2px;padding-top:4px;font-size:11px;line-height:1.3;border-top:none}
+.top::before{display:none}
 @keyframes x-swipe-fwd{from{opacity:0;transform:translateX(-64px)}to{opacity:1;transform:none}}
 @keyframes x-swipe-back{from{opacity:0;transform:translateX(64px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
@@ -1514,11 +1524,7 @@ function titleHTML(){
   return '<div class="ttl"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><b>'+esc(name)+'</b></div>';
 }
 function topHTML(){
-  /* الأوردرات اللي هتتسلّم النهارده (معادها النهارده ولسه متسلّمتش) */
-  var todayKey=ymd(new Date());
-  var total=(S.orders||[]).filter(function(o){return !o.deliveredAt&&o.due&&String(o.due).slice(0,10)===todayKey;}).length;
-  return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
-    '<div class="today"><b>'+f(total)+'</b><span>أوردرات خارجة اليوم</span></div>'+
+    return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
     '</header>';
