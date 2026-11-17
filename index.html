@@ -742,6 +742,15 @@ function usersList(){
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
 function sessionCode(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a.indexOf('u:')===0?a.slice(2):'';}catch(e){return '';}}
 function limited(){return !!sessionCode();}
+/* لو المستخدم اتحذف والجلسة بتاعته لسه مفتوحة: بنسجّل خروجه. بنعمل كده بس بعد ما البيانات تتزامن مع درايف، عشان ما نطردش حد بسبب بيانات ناقصة */
+function kickDeletedUser(){
+  if(!GD.ok)return false;
+  var c=sessionCode();
+  if(!c||userByCode(c))return false;
+  try{localStorage.removeItem(AUTH_KEY);}catch(e){}
+  lockSettings();U.view='home';U.bioPrompt=false;U.loginErr='الحساب ده اتحذف، سجّل دخول تاني أو كلم المالك.';
+  return true;
+}
 function tabsFor(){var c=sessionCode();if(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}return STAFF_DEFAULT;}
 function actorCode(){var c=sessionCode();if(c)return c;return 'CHEF MYF';}
 function findUserByPw(p){
@@ -2769,6 +2778,7 @@ function bioPromptHTML(){
 }
 function render(){
   applyTheme();
+  kickDeletedUser();
   var hadSheet=!!document.querySelector('#app .sheet');
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
@@ -3502,8 +3512,6 @@ function tabsCardHTML(){
   }).join('');
   rows+='<tr><td>اعتماد الإنتاج (بعد انتهاء الوقت)</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('approve')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="approve">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
-  rows+='<tr><td>استعادة كل التبويبات</td><td><span class="meta">يرجّع كل الأقسام للمستخدم</span></td>'+
-    users.map(function(u){return '<td><button class="btn ghost sm" data-act="userAllTabs" data-u="'+esc(u.code)+'">كل التبويبات</button></td>';}).join('')+'</tr>';
   rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
   var hd='<tr><th>التبويب</th><th>المالك</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
@@ -4063,12 +4071,6 @@ var ACT={
     S.users=usersList().filter(function(x){return x.id!==d.id;});
     if(u){var m=Object.assign({},pref('userTabs',{}));delete m[u.code];setPref('userTabs',m);}
     U.confirm=null;toast('اتشال المستخدم');render();return false;
-  },
-  userAllTabs:function(d){
-    if(limited())return false;
-    var m=Object.assign({},pref('userTabs',{}));
-    m[d.u]=navItems().map(function(x){return x.k;}).concat(['approve']);
-    setPref('userTabs',m);toast('اتفتحت كل التبويبات للمستخدم ده');render();return false;
   },
   toggleUserTab:function(d){
     var m=Object.assign({},pref('userTabs',{}));var a=(m[d.u]||STAFF_DEFAULT).slice();var ix=a.indexOf(d.k);
