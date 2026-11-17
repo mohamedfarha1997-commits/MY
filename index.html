@@ -633,8 +633,13 @@ button,input{font-family:inherit}
 .pk.hid .fgeye{color:var(--bad)}
 .pk.on .opk-h .ox{z-index:2}
 /* الجداول والمحتوى العريض ما يكسرش الصفحة */
-.card table,.sheet table{display:block;overflow-x:auto;max-width:100%}
-.card table tbody,.sheet table tbody{display:table;width:100%}
+/* جدول الصلاحيات: الأسماء بتفضل فوق عمود كل مستخدم، والتمرير الأفقي على الكارت نفسه */
+.card:has(> .ttab){overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ttab{table-layout:auto}
+.ttab th{text-align:center;vertical-align:top;padding:6px 4px;font-weight:600}
+.ttab th:first-child,.ttab td:first-child{text-align:start}
+.ttab td:not(:first-child){text-align:center}
+.ttab td:last-child{width:auto}
 img,svg,canvas,video{max-width:100%;height:auto}
 /* الشاشات الكبيرة: خطوط ومسافات أوسع شوية */
 @media (min-width:1024px){
