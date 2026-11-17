@@ -2535,6 +2535,21 @@ function cairoParts(ms){
   var dows={Sun:0,Mon:1,Tue:2,Wed:3,Thu:4,Fri:5,Sat:6};
   return {dow:dows[p.weekday],mins:Number(p.hour)*60+Number(p.minute)};
 }
+function cairoDateKey(ms){
+  return new Intl.DateTimeFormat('en-CA',{timeZone:TZ_CAIRO,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));
+}
+/* إجازة المستخدم: بتتحدد بيوم بعينه (تاريخ القاهرة)، وبتخلص لوحدها بعد اليوم ده. true = في إجازة، false = لأ، null = مش عارفين الوقت */
+function onLeaveToday(){
+  var u=sessionCode()?userByCode(sessionCode()):null;
+  if(!u||!u.leave)return false;
+  var ms=trustedNow();
+  if(ms===null)return null;
+  return cairoDateKey(ms)===u.leave;
+}
+function leaveHTML(){
+  return '<section class="login" style="text-align:center;padding:40px 16px"><div style="margin-bottom:12px"><svg width="72" height="72" viewBox="0 0 24 24" fill="none" stroke="var(--ink-2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>'+
+    '<h2 style="margin-bottom:8px">إجازة النهاردة</h2><p class="meta">التطبيق مش متاح النهاردة. هيفتح تاني بعد الإجازة.</p></section>';
+}
 /* true = مفتوح، false = برا المواعيد، null = مش عارفين الوقت (مفيش إنترنت) */
 function workOpenNow(){
   var h=pref('hours',null);
@@ -2751,7 +2766,12 @@ function render(){
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
-  if(limited()){var open=workOpenNow();if(open===true)markOpenSeen();if(open===false)ensureOpenSeen();if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}}
+  if(limited()){
+    var lv=onLeaveToday();
+    if(lv!==false){document.getElementById('app').innerHTML=lv===true?leaveHTML():restHTML(true);U.restShown=true;return;}
+    var open=workOpenNow();if(open===true)markOpenSeen();if(open===false)ensureOpenSeen();
+    if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}
+  }
   U.restShown=false;
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
@@ -3485,9 +3505,11 @@ function tabsCardHTML(){
 function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
 function usersCardHTML(){
   var list=usersList();
+  var nowMs=trustedNow(),todayK=nowMs===null?null:cairoDateKey(nowMs);
   var rows=list.map(function(u){
     var conf=U.confirm==='udel:'+u.id;
-    return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userPwOpen" data-id="'+u.id+'">غيّر الباسورد</button> <button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
+    var onLv=!!(todayK&&u.leave===todayK);
+    return '<tr><td><b>'+esc(u.name)+'</b>'+(onLv?' <span class="meta">· في إجازة النهاردة</span>':'')+'</td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userLeave" data-id="'+u.id+'" '+(todayK?'':'disabled')+'>'+(onLv?'ألغِ الإجازة':'إجازة النهاردة')+'</button> <button class="btn ghost sm" data-act="userPwOpen" data-id="'+u.id+'">غيّر الباسورد</button> <button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
   }).join('');
   var pwBox='';
   var pu=U.pwUser?list.filter(function(x){return x.id===U.pwUser;})[0]:null;
@@ -3991,6 +4013,15 @@ var ACT={
     var i=Number(d.d);h[i]=Object.assign({from:'09:00',to:'18:00'},h[i],{on:!(h[i]&&h[i].on)});
     setPref('hours',h);
   },
+  userLeave:function(d){
+    var u=usersList().filter(function(x){return x.id===d.id;})[0];
+    var ms=trustedNow();
+    if(!u)return false;
+    if(ms===null){toast('محتاج إنترنت عشان نحدد تاريخ النهاردة');return false;}
+    var today=cairoDateKey(ms);
+    u.leave=(u.leave===today)?null:today;
+    toast(u.leave?'اتسجلت إجازة '+u.name+' النهاردة':'اتلغت إجازة '+u.name);
+  },
   userPwOpen:function(d){U.pwUser=d.id;U.confirm=null;render();return false;},
   userPwCancel:function(){U.pwUser=null;},
   userPwSave:function(){
@@ -4422,9 +4453,10 @@ setInterval(function(){if(!document.hidden)syncTime();},300000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden)syncTime();});
 setInterval(function(){
   if(!limited())return;
-  var o=workOpenNow();
+  var o=onLeaveToday()===false?workOpenNow():false;
   if(o===true)markOpenSeen();
-  if(!!U.restShown!==(o!==true))render();
+  var blocked=onLeaveToday()!==false||o!==true;
+  if(!!U.restShown!==blocked)render();
 },60000);
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
