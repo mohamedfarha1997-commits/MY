@@ -845,6 +845,8 @@ function userCodeTaken(c,exceptId){
 function userLeaveActive(u,todayK){
   if(!u||!todayK)return false;
   if(u.leave===todayK)return true;
+  var wo=weekOffOf(u);
+  if(wo!==null&&weekdayOfKey(todayK)===wo)return true;
   return !!(u.leaveFrom&&u.leaveTo&&todayK>=u.leaveFrom&&todayK<=u.leaveTo);
 }
 /* تغيير كود مستخدم: بنحوّل تفضيلاته وسجلات الإنتاج والجلسة لكوده الجديد عشان الحركات القديمة تفضل منسوبة ليه */
@@ -2733,7 +2735,7 @@ function cairoDateKey(ms){
 /* إجازة المستخدم: بتتحدد بيوم بعينه (تاريخ القاهرة)، وبتخلص لوحدها بعد اليوم ده. true = في إجازة، false = لأ، null = مش عارفين الوقت */
 function onLeaveToday(){
   var u=sessionCode()?userByCode(sessionCode()):null;
-  if(!u||(!u.leave&&!u.leaveFrom))return false;
+  if(!u||(!u.leave&&!u.leaveFrom&&weekOffOf(u)===null))return false;
   var ms=trustedNow();
   if(ms===null)return null;
   return userLeaveActive(u,cairoDateKey(ms));
@@ -3719,6 +3721,10 @@ function tabsCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المستخدم اللي بيتضاف بيتسجل هنا تلقائي بالتبويبات الافتراضية.</p><div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+rows+'</tbody></table></div></section>';
 }
 function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
+var WEEK_DAYS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function weekOffOf(u){return (u&&u.weekOff!=null&&u.weekOff!=='')?Number(u.weekOff):null;}
+function weekdayOfKey(k){return new Date(k+'T12:00:00Z').getUTCDay();}
+function weekOffOptions(cur){return '<option value="">بدون</option>'+WEEK_DAYS_AR.map(function(n,i){return '<option value="'+i+'"'+(String(cur)===String(i)?' selected':'')+'>'+n+'</option>';}).join('');}
 function usersCardHTML(){
   var list=usersList();
   var nowMs=trustedNow(),todayK=nowMs===null?null:cairoDateKey(nowMs);
@@ -3742,6 +3748,9 @@ function usersCardHTML(){
         '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small></div>'+
       '<div class="ugrp"><span class="sec-l">الباسورد</span>'+
         '<div class="fld"><label for="uEditPw">باسورد جديد</label><input id="uEditPw" type="password" autocomplete="new-password" placeholder="اتركه فاضي لو مش عايز تغيّره"></div></div>'+
+      '<div class="ugrp"><span class="sec-l">يوم الإجازة الأسبوعي</span>'+
+        '<div class="fld"><label for="uWeekOff">اليوم اللي بيتكرر كل أسبوع</label><select id="uWeekOff">'+weekOffOptions(eu.weekOff)+'</select></div>'+
+        '<small class="uhint">المستخدم بياخد إجازة في اليوم ده كل أسبوع تلقائي، ومش محتاج تفعّله كل مرة.</small></div>'+
       '<div class="ugrp"><span class="sec-l">الإجازة التلقائية</span>'+
         '<div class="urow"><div class="fld"><label for="uLeaveFrom">من يوم</label><input id="uLeaveFrom" type="date" value="'+esc(eu.leaveFrom||'')+'"></div>'+
         '<div class="fld"><label for="uLeaveTo">لحد يوم</label><input id="uLeaveTo" type="date" value="'+esc(eu.leaveTo||'')+'"></div></div>'+
@@ -4300,7 +4309,7 @@ var ACT={
     var u=usersList().filter(function(x){return x.id===U.editUser;})[0];
     if(!u){U.editUser=null;return false;}
     var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
-    var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo');
+    var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo'),wo=g('uWeekOff');
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(!validUserCode(c)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
     if(c.toLowerCase()!==String(u.code).toLowerCase()&&userCodeTaken(c,u.id)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
@@ -4312,6 +4321,7 @@ var ACT={
       if(c!==old)renameUserCode(old,c);
       u.name=n;u.code=c;
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
+      u.weekOff=wo===''?null:Number(wo);
       U.editUser=null;U.pwUser=null;save();
       toast('اتحفظت التعديلات'+(c!==old?' · الكود الجديد '+c:''));render();
     };
