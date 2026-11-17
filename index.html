@@ -1513,7 +1513,7 @@ function prepCard(b){
   }
   var fk='prep-'+b.id,isOpen=FOLD_OPEN[fk]===true;
   return '<details class="card ordfold prepfold" data-fk="'+fk+'"'+(isOpen?' open':'')+' style="--c:var(--prep)">'+
-    '<summary class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+(b.by?' · عملها: '+esc(b.by):'')+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
+    '<summary class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+(whoOf(b.by,b.byc)?' · عملها: '+esc(whoOf(b.by,b.byc)):'')+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
     '<span class="pill '+(b.withdrawn?'c':'low')+'">'+(b.withdrawn?'قيد التجهيز':'بانتظار السحب')+'</span></summary>'+
     '<div class="ordbody"><div>'+rows+crows+'</div>'+perMealHTML(p)+act+
     '<div class="foot"><span class="meta">'+p.mins+' دقيقة تشغيل</span><button class="btn quiet" data-act="cancel" data-id="'+b.id+'">'+(U.confirm===b.id?'اضغط تاني للتأكيد':'إلغاء الدفعة')+'</button></div></div></details>';
@@ -1741,7 +1741,7 @@ function prodCard(b){
   var tt=tempTxt(p);
   var info='<div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">'+
     (tt?'<span class="tempchip">'+flameHTML(run&&!fin)+'<span>'+esc(tt)+'</span></span>':'')+
-    (b.by?'<span>عملها: '+esc(b.by)+'</span>':'')+'</div>';
+    (whoOf(b.by,b.byc)?'<span>عملها: '+esc(whoOf(b.by,b.byc))+'</span>':'')+'</div>';
   var label=fin?svg('check'):(run?mmss(dur(b)-elapsed(b)):p.mins+' د');
   var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">على النار</span>':'<span class="pill">بانتظار البدء</span>');
   var act;
@@ -1774,7 +1774,14 @@ function plRows(mode){
   return rows;
 }
 function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(r.d.by?'<br><span class="meta">عملها: '+esc(r.d.by)+'</span>':'')+(r.d.ap?'<br><span class="meta">اعتمدها: '+esc(r.d.ap)+'</span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+/* اسم الشخص من الكود لو متاح، وإلا الاسم المحفوظ، ولو المحفوظ كود بيترجم لاسم */
+function whoOf(n,c){
+  if(c==='CHEF MYF'||n==='CHEF MYF')return 'المالك';
+  if(c){var u=userByCode(c);if(u&&u.name)return u.name;}
+  if(n&&userByCode(n)){var u2=userByCode(n);return u2&&u2.name?u2.name:n;}
+  return n||'';
+}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(whoOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: '+esc(whoOf(r.d.ap,r.d.apc))+'</span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
@@ -3866,7 +3873,7 @@ var ACT={
     var ids=[],held=0;
     s.sel.forEach(function(pid){
       var id='B-'+nextBatchNo()+'-'+devId();
-      var nb={id:id,p:pid,qty:s.q[pid]||1,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName()};
+      var nb={id:id,p:pid,qty:s.q[pid]||1,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName(),byc:actorCode()};
       var tgt=fgShortRows().filter(function(r){return r.x.p===pid&&!S.batches.some(function(b){return b.o===r.o.id&&b.p===pid;});}).sort(function(a,b){return String(a.o.due||'').localeCompare(String(b.o.due||''));})[0];
       if(tgt){nb.o=tgt.o.id;held++;}
       S.batches.push(nb);ids.push(id);
@@ -3907,7 +3914,7 @@ var ACT={
   approve:function(d){if(!canApprove()){toast('مش مسموح لك تعتمد الإنتاج');return false;}markBy(batch(d.id),'approve');
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
-    S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o,by:b.by||'',ap:actorName()});
+    S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o,by:b.by||'',byc:b.byc||'',ap:actorName(),apc:actorCode()});
     var ordA=b.o?S.orders.filter(function(x){return x.id===b.o;})[0]:null,itA=ordA?ordA.items.filter(function(x){return x.p===b.p;})[0]:null;
     if(itA){
       var toOrd=Math.min(stk,Math.max(0,r3(itA.qty-(itA.fs||0)-(itA.got||0))));
@@ -4369,7 +4376,7 @@ ACT.batchSuggestApply=function(){
   sg.forEach(function(x){
     for(var i=0;i<x.n;i++){
       var id='B-'+nextBatchNo()+'-'+devId();
-      S.batches.push({id:id,p:x.pid,qty:x.per,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName()});made++;
+      S.batches.push({id:id,p:x.pid,qty:x.per,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName(),byc:actorCode()});made++;
     }
   });
   toast('اتعملت '+made+' دفعة مقترحة');
@@ -4385,7 +4392,7 @@ ACT.prepBatches=function(){
     var qty=Math.ceil(r3(lk[pid]/yieldOf(pid)));
     if(!(qty>0))return;
     var id='B-'+nextBatchNo()+'-'+devId();
-    S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName()});
+    S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName(),byc:actorCode()});
     made++;
   });
   if(!made){toast('مفيش تحضيرات ناقصة');return false;}
