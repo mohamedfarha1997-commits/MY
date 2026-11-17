@@ -2188,26 +2188,14 @@ function fillRescale(F){
   F.q=F.q||{};
   lrR.from.forEach(function(x){if((F.sel||[]).indexOf(x.p)>-1)F.q[x.p]=r3(x.q*kR);});
 }
+function fillDupName(name){
+  var n=String(name||'').trim();
+  return !!n&&PRODUCTS.some(function(x){return isFill(x)&&String(x.name||'').trim()===n;});
+}
+/* تبويب الإضافة: لو الصنف موجود قبل كده بيظهر تنبيه بس، ومفيش إضافة تاني */
 function fillSuggest(F){
-  var q=String((F&&F.name)||'').trim();
-  if(!q)return '';
-  var dup=PRODUCTS.some(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===q;});
-  var m=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
-  var out='';
-  if(dup)out+='<div class="meta" style="color:var(--filling);margin:-4px 0 8px">الصنف ده موجود قبل كده، الإنتاج الجديد هيتضاف عليه وأكواده هتتدمج (القديمة الأول)</div>';
-  var exAct=PRODUCTS.filter(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===q;})[0];
-  var lr=fillLastRun(exAct);
-  if(lr){
-    var kS=(num(F&&F.out)>0&&lr.out>0)?num(F.out)/lr.out:1;
-    var outS=(num(F&&F.out)>0)?num(F.out):lr.out;
-    out+='<div class="card" style="--c:var(--filling);margin:-2px 0 10px;padding:10px 12px">'+
-      '<div class="meta" style="margin-bottom:6px">آخر تشغيل لنفس الصنف، والتطبيق بيحسبه تلقائي لو مختارتش خامات (غيّر الكمية الناتجة وهيتعدّل الحساب):</div>'+
-      lr.from.map(function(x){var pp=P(x.p);return '<div class="hist"><span>'+esc(pp.name)+'</span><span>- '+f(r3(x.q*kS))+' '+esc(pp.unit||'')+'</span></div>';}).join('')+
-      '<div class="hist"><span><b>هيتضاف</b></span><span><b>+ '+f(r3(outS))+' '+esc(exAct.unit||'')+'</b></span></div></div>';
-  }
-  if(m.length)out+='<div class="meta" style="margin:-4px 0 6px">أصناف حشو بتبدأ بنفس الحروف، اختار واحد عشان الاسم والمجموعة يتملوا تلقائي:</div><div class="fdrop">'+
-    m.map(function(p){return '<button data-act="fillPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
-  return out;
+  if(!fillDupName(F&&F.name))return '';
+  return '<div class="card" style="--c:var(--bad);margin:-2px 0 10px;padding:10px 12px"><b style="color:var(--bad)">الصنف ده موجود قبل كده</b><div class="meta" style="margin-top:4px">مينفعش تضيفه تاني. لو عايز تزوّد عليه، شغّله من تبويب حشو.</div></div>';
 }
 function prepReqIds(){
   var seen=[];fgShortRows().forEach(function(r){if(seen.indexOf(r.x.p)<0)seen.push(r.x.p);});return seen;
@@ -2398,13 +2386,18 @@ function fillingView(){
     '<div class="fld"><label>الكمية الناتجة</label><input type="text" inputmode="decimal" data-fo="1" value="'+(F.out||'')+'" placeholder="مثلاً 3"></div>'+
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+'<div class="meta" style="margin-top:8px">الموسم</div>'+seasonBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
-    '<div class="btns"><button class="btn" data-act="fillMake">اعمل الصنف</button></div></section>';
-  var ft=U.fillTab||'add';
-  var tabsH='<div class="seg" role="group" aria-label="تبويبات الحشو" style="margin-bottom:10px">'+[['add','إضافة أصناف جديدة'],['run','حشو']].map(function(x){return '<button class="'+(ft===x[0]?'on':'')+'" data-act="fillTab" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
-  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج',"")+tabsH+runFillHTML()+prodLogHTML('fill');
-  return head('تحضير حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+tabsH+form+prodLogHTML('fill');
+    '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
+  var ft=U.fillTab||'run';
+  var tiles='<div class="fgcards" style="margin-bottom:12px">'+[
+      ['run','حشو','شغّل صنف محشو موجود من مخزن الإنتاج'],
+      ['add','إضافة أصناف جديدة','اعمل صنف محشو جديد بكود جديد']
+    ].map(function(x){
+      var on=ft===x[0];
+      return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
+    }).join('')+'</div>';
+  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+tiles+runFillHTML()+prodLogHTML('fill');
+  return head('تحضير حشو','إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles+form;
 }
-
 function wasteCardHTML(p){
   var stk=S.ready[p.id]||0,open=U.wasteOpen===p.id;
   var st=stk>0?'<span class="pill ok">متاح</span>':'<span class="pill bad">نافد</span>';
@@ -3024,6 +3017,7 @@ function bioPromptHTML(){
 }
 function render(){
   applyTheme();
+  if(U.view!=='filling')U.fillTab=null;
   kickDeletedUser();
   var hadSheet=!!document.querySelector('#app .sheet');
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
@@ -4571,6 +4565,7 @@ var ACT={
     var name=String(F.name||'').trim();
     if(!name){toast('اكتب اسم الصنف');return false;}
     var ex=PRODUCTS.filter(function(x){return isFill(x)&&String(x.name||'').trim()===name;})[0];
+    if(ex&&!F.allowExisting){toast('الصنف ده موجود قبل كده، شغّله من تبويب حشو');return false;}
     if(ex&&!(F.sel||[]).length){
       var lr0=fillLastRun(ex);
       if(lr0){
@@ -4689,7 +4684,7 @@ ACT.runDo=function(){
   if(!(R.sel||[]).length){toast('الصنف ده ملوش خامات');return false;}
   var short=R.sel.some(function(pid){return (num(R.q[pid])||0)>(S.ready[pid]||0)+1e-9;});
   if(short){toast('فيه خامات ناقصة في المخزن');return false;}
-  U.fill={name:String(p.name||'').trim(),kind:p.fill||'cust',q:Object.assign({},R.q),out:String(R.out),unit:p.unit||'قطعة',sel:R.sel.slice(),grp:p.grp||'',season:p.season||'normal'};
+  U.fill={allowExisting:true,name:String(p.name||'').trim(),kind:p.fill||'cust',q:Object.assign({},R.q),out:String(R.out),unit:p.unit||'قطعة',sel:R.sel.slice(),grp:p.grp||'',season:p.season||'normal'};
   if(ACT.fillMake()===false){U.fill=null;return false;}
   U.run=null;
 };
@@ -4808,21 +4803,8 @@ function onField(e){
   if(d.fg!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.grp=t.value;return;}
   if(d.fn!==undefined){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.name=t.value;
-    var nm=String(t.value||'').trim();
-    var mt=PRODUCTS.filter(function(x){return String(x.name||'').trim()===nm;})[0];
-    /* لو الاسم بتاع صنف محشو اتعمل قبل كده: الخانات بتتملى على طول بآخر تشغيل */
-    if(mt&&isFill(mt)&&U.fill.autoName!==nm){
-      var lrA=fillLastRun(mt);
-      if(lrA){
-        U.fill.autoName=nm;U.fill.kind=mt.fill;U.fill.unit=mt.unit||U.fill.unit;U.fill.grp=mt.grp||'';
-        U.fill.sel=lrA.from.map(function(x){return x.p;});
-        U.fill.q={};lrA.from.forEach(function(x){U.fill.q[x.p]=x.q;});
-        U.fill.out=String(lrA.out);
-        render();return;
-      }
-    }
-    if(mt){U.fill.grp=mt.grp||'';var gi=document.querySelector('[data-fg]');if(gi)gi.value=mt.grp||'';}
     var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);
+    var mb=document.getElementById('fillMakeBtn');if(mb)mb.disabled=fillDupName(U.fill.name);
     return;
   }
   if(d.rn!==undefined){
