@@ -554,6 +554,10 @@ button,input{font-family:inherit}
 .top{position:sticky!important;top:env(safe-area-inset-top,0px);z-index:25;margin-top:0!important;overflow:visible!important;background:color-mix(in srgb,var(--surface) 70%,transparent)!important;backdrop-filter:blur(16px) saturate(1.6);-webkit-backdrop-filter:blur(16px) saturate(1.6);border-color:color-mix(in srgb,var(--line) 75%,transparent)!important;border-top-left-radius:0!important;border-top-right-radius:0!important;border-bottom-left-radius:18px!important;border-bottom-right-radius:18px!important;box-shadow:0 10px 24px -18px var(--glow)}
 .top .ttlname{font-size:20px;font-weight:400}
 .top .greet{font-family:var(--f-disp);font-weight:400}
+/* عادي وإنت فوق */
+.top{background:color-mix(in srgb,var(--surface) 94%,transparent)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:background .25s ease,backdrop-filter .25s ease}
+/* زجاجي بلور لما تنزل للأسفل */
+.top.glass{background:color-mix(in srgb,var(--surface) 60%,transparent)!important;backdrop-filter:blur(18px) saturate(1.8);-webkit-backdrop-filter:blur(18px) saturate(1.8)}
 .top .dstat{grid-column:3;grid-row:2;justify-self:end}
 /* الأيقونتين على اليمين في كل الصفحات */
 .top .hl{grid-column:1;justify-self:start}
@@ -3146,6 +3150,7 @@ function render(){
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
+  hdrGlass();
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
@@ -5002,6 +5007,13 @@ setInterval(function(){
   var blocked=onLeaveToday()!==false||o!==true;
   if(!!U.restShown!==blocked)render();
 },60000);
+/* الهيدر يبقى زجاجي لما المحتوى يتحرك تحته (نزول)، ويرجع عادي فوق */
+function hdrGlass(){
+  var h=document.querySelector('.top');if(!h)return;
+  var y=window.scrollY||document.documentElement.scrollTop||0;
+  h.classList.toggle('glass',y>6);
+}
+window.addEventListener('scroll',hdrGlass,{passive:true});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
