@@ -601,6 +601,10 @@ button,input{font-family:inherit}
 .fold.open .fold-b{display:flex;flex-direction:column;gap:12px}
 .fold.open>.fold-h{margin-bottom:0}
 
+.msug{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 8px}
+.msug:empty{display:none}
+.msugBtn{border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer}
+.msugBtn:active{transform:scale(.97)}
 </style>
 
 </head><body>
@@ -2339,7 +2343,7 @@ function matFormHTML(){
 function stageForm(g,gi,n,cnt){
   var ings=g.ings.map(function(r,ii){
     var at='data-gi="'+gi+'" data-ii="'+ii+'"';
-    return '<div class="iline"><input '+at+' data-fd="n" list="matl" placeholder="المكوّن" value="'+esc(r.n)+'" aria-label="المكوّن" autocomplete="off"><input '+at+' data-fd="q" inputmode="decimal" placeholder="الكمية" value="'+esc(r.q)+'" aria-label="الكمية للوحدة"><select '+at+' data-fd="u" aria-label="الوحدة">'+ingUnitOpts(r)+'</select><button class="xbtn" data-act="ingDel" data-gi="'+gi+'" data-ii="'+ii+'" aria-label="احذف المكوّن">×</button></div>';
+    return '<div class="iline"><input '+at+' data-fd="n" placeholder="المكوّن" value="'+esc(r.n)+'" aria-label="المكوّن" autocomplete="off"><input '+at+' data-fd="q" inputmode="decimal" placeholder="الكمية" value="'+esc(r.q)+'" aria-label="الكمية للوحدة"><select '+at+' data-fd="u" aria-label="الوحدة">'+ingUnitOpts(r)+'</select><button class="xbtn" data-act="ingDel" data-gi="'+gi+'" data-ii="'+ii+'" aria-label="احذف المكوّن">×</button></div><div class="msug" data-msug="'+gi+'-'+ii+'"></div>';
   }).join('');
   var steps=g.steps.map(function(t,ti){
     return '<div class="sline"><input data-gi="'+gi+'" data-ti="'+ti+'" value="'+esc(t)+'" placeholder="خطوة '+(ti+1)+'" aria-label="خطوة '+(ti+1)+'"><button class="xbtn" data-act="stepDel" data-gi="'+gi+'" data-ti="'+ti+'" aria-label="احذف الخطوة">×</button></div>';
@@ -3871,6 +3875,14 @@ var ACT={
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
   },
+  matPick:function(d){
+    var el=document.querySelector('[data-fd="n"][data-gi="'+d.gi+'"][data-ii="'+d.ii+'"]');
+    if(!el)return false;
+    el.value=d.n;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    var box=document.querySelector('[data-msug="'+d.gi+'-'+d.ii+'"]');if(box)box.innerHTML='';
+    return false;
+  },
   userPwOpen:function(d){U.pwUser=d.id;U.confirm=null;render();return false;},
   userPwCancel:function(){U.pwUser=null;},
   userPwSave:function(){
@@ -4208,6 +4220,26 @@ document.addEventListener('keydown',function(e){
   }
   if(e.key==='Escape'&&(U.sheet||U.form||U.osheet||(U.rp&&U.rp.open))){U.sheet=null;U.form=null;U.osheet=null;if(U.rp)U.rp.open=false;render();}
 });
+/* تطبيع للعربي: بيشيل التشكيل، ويوحّد الألف والياء والتاء المربوطة عشان الكتابة تتطابق */
+function matNorm(s){
+  return String(s||'').replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').trim().toLowerCase();
+}
+function matSuggestBox(t){
+  var box=document.querySelector('[data-msug="'+t.dataset.gi+'-'+t.dataset.ii+'"]');
+  if(!box)return;
+  var q=matNorm(t.value);
+  if(!q){box.innerHTML='';return;}
+  var dups=matDupNames();
+  var hits=MATERIALS.filter(function(m){return matNorm(unesc(m.name)).indexOf(q)>-1;})
+    .sort(function(a,b){
+      var x=matNorm(unesc(a.name)).indexOf(q)===0?0:1,y=matNorm(unesc(b.name)).indexOf(q)===0?0:1;
+      return x-y;
+    }).slice(0,6);
+  box.innerHTML=hits.map(function(m){
+    var lbl=matOptLabel(m,dups);
+    return '<button type="button" class="msugBtn" data-act="matPick" data-gi="'+t.dataset.gi+'" data-ii="'+t.dataset.ii+'" data-n="'+esc(lbl)+'">'+esc(lbl)+'</button>';
+  }).join('');
+}
 function onField(e){
   var t=e.target,F=U.form,d=t&&t.dataset;
   if(!d)return;
@@ -4258,6 +4290,7 @@ function onField(e){
     var r=g.ings[Number(d.ii)];if(!r)return;
     if(d.fd==='n'){
       r.n=t.value;
+      matSuggestBox(t);
       var mm=findMat(t.value);
       r.m=mm?mm.id:null;if(mm)r.u=mm.unit;
       try{
