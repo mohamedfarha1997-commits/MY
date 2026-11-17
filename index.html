@@ -72,6 +72,11 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 .fillform .empty{padding:14px 10px}
 .fillform .meta[style*="margin:-4px"]{margin-top:0!important}
 :root{--waste:#b91c1c}
+.tempchip{display:inline-flex;align-items:center;gap:5px;font-weight:700;font-size:13px;color:var(--ink);padding:2px 9px 2px 7px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.flame{width:16px;height:16px;fill:var(--muted);flex:none}
+.flame.lit{fill:#f97316;filter:drop-shadow(0 0 2px #fb923c) drop-shadow(0 0 7px #ef4444)}
+@media (prefers-reduced-motion:no-preference){.flame.lit{animation:flick 1.1s ease-in-out infinite alternate}}
+@keyframes flick{from{transform:scale(1) translateY(0);filter:drop-shadow(0 0 2px #fb923c) drop-shadow(0 0 5px #ef4444)}to{transform:scale(1.12) translateY(-1px);filter:drop-shadow(0 0 4px #fdba74) drop-shadow(0 0 10px #f97316)}}
 .fgtop{display:flex;align-items:center;gap:6px}
 .fgeye{width:30px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
 .fgeye svg{width:17px;height:17px}
@@ -1508,7 +1513,7 @@ function prepCard(b){
   }
   var fk='prep-'+b.id,isOpen=FOLD_OPEN[fk]===true;
   return '<details class="card ordfold prepfold" data-fk="'+fk+'"'+(isOpen?' open':'')+' style="--c:var(--prep)">'+
-    '<summary class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
+    '<summary class="bh"><div><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+' · '+batchQ(b,p)+'</h3><span class="meta">أُنشئت '+ago(b.created)+(b.by?' · عملها: '+esc(b.by):'')+'</span>'+(b.o?'<div>'+otag(b)+'</div>':'')+'</div>'+
     '<span class="pill '+(b.withdrawn?'c':'low')+'">'+(b.withdrawn?'قيد التجهيز':'بانتظار السحب')+'</span></summary>'+
     '<div class="ordbody"><div>'+rows+crows+'</div>'+perMealHTML(p)+act+
     '<div class="foot"><span class="meta">'+p.mins+' دقيقة تشغيل</span><button class="btn quiet" data-act="cancel" data-id="'+b.id+'">'+(U.confirm===b.id?'اضغط تاني للتأكيد':'إلغاء الدفعة')+'</button></div></div></details>';
@@ -1730,8 +1735,13 @@ function prodDetails(b,p){
   var full=stagesText(p,'prep',b.qty);
   return '<div class="stg-sum" style="margin-top:0">'+pills+'</div>'+(p.notes?'<div class="meta">'+esc(p.notes)+'</div>':'')+compText(p,b.qty)+(full?'<details class="det"><summary>تفاصيل الوصفة</summary>'+full+'</details>':'');
 }
+function flameHTML(lit){return '<svg class="flame'+(lit?' lit':'')+'" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c.6 3.4 5 6 5 11.2A5 5 0 0 1 7 13.2c0-3.2 2-4.9 2.6-7.6 1 1.5 1.5 2.7 1.6 4 1.2-1.8 1.4-4.5.8-7.6z"/></svg>';}
 function prodCard(b){
   var p=P(b.p),run=!!b.startedAt,fin=timerDone(b),pct=run?elapsed(b)/dur(b):0;
+  var tt=tempTxt(p);
+  var info='<div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px">'+
+    (tt?'<span class="tempchip">'+flameHTML(run&&!fin)+'<span>'+esc(tt)+'</span></span>':'')+
+    (b.by?'<span>عملها: '+esc(b.by)+'</span>':'')+'</div>';
   var label=fin?svg('check'):(run?mmss(dur(b)-elapsed(b)):p.mins+' د');
   var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">على النار</span>':'<span class="pill">بانتظار البدء</span>');
   var act;
@@ -1740,7 +1750,7 @@ function prodCard(b){
   else act='<button class="btn block" data-act="startRun" data-id="'+b.id+'">ابدأ التشغيل · '+p.mins+' دقيقة</button>';
   return '<article class="card"><div class="prow"><div class="ring" data-ring="'+b.id+'" data-fin="'+(fin?1:0)+'">'+
     '<svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="30" fill="none" stroke="var(--line)" stroke-width="7"/><circle class="rp" cx="38" cy="38" r="30" fill="none" stroke="'+(fin?'var(--good)':'var(--c)')+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+RING+'" stroke-dashoffset="'+(RING*(1-pct))+'"/></svg><b class="rt">'+label+'</b></div>'+
-    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+'</h3><div class="meta">'+batchQ(b,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
+    '<div class="pinfo"><span class="bid ltr">'+sid(b.id)+'</span><h3 class="bn">'+esc(p.name)+'</h3>'+info+'<div class="meta">'+batchQ(b,p)+'</div>'+(b.o?otag(b):'')+'<div style="margin-top:4px">'+state+'</div></div></div>'+act+'</article>';
 }
 function prodView(){return prodBoard()+prodLogHTML('batch');}
 function prodBoard(){
