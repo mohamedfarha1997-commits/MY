@@ -513,10 +513,12 @@ button,input{font-family:inherit}
 @keyframes x-sheen{to{background-position:100% 0}}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
 /* هيدر بدون لوجو: العدد في الشمال والأزرار في اليمين، والتاريخ والحالة في الصف اللي تحتهم */
-.top .greet,.top .ttl{grid-column:1;grid-row:1;display:flex;align-items:center;gap:8px;min-width:0}
+.top .greet{grid-column:1;grid-row:1;min-width:0}
+.top .ttlback{grid-column:1;grid-row:1;justify-self:start;flex:none}
+.top .ttlname{grid-column:2;grid-row:1;justify-self:center;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
 .top .greet{font-family:var(--f-disp);font-size:16px;font-weight:700;color:var(--ink-2)}
-.top .ttl b{font-family:var(--f-disp);font-size:18px;line-height:1.2;color:var(--ink);min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.top .ttl .btn{flex:none}
+.top .ttlname{font-family:var(--f-disp);font-size:18px;line-height:1.2;color:var(--ink)}
+
 .top{display:grid!important;grid-template-columns:1fr auto;align-items:center;gap:8px 12px;padding:14px 16px 12px!important}
 .top .today{justify-self:start;text-align:start}
 .top .today b{font-size:40px;line-height:1}
@@ -524,13 +526,13 @@ button,input{font-family:inherit}
 .top .hl{justify-self:end;display:flex;align-items:center;gap:8px}
 .top .hsub{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 /* هيدر مضغوط: صف واحد للتحية/العنوان والأزرار، وسطر صغير للتاريخ والمزامنة */
-.top{margin-top:4px!important;padding:6px 10px!important;border-radius:16px!important;gap:0 8px!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important}
-.top .hl{grid-column:2;grid-row:1;gap:6px}
+.top{margin-top:4px!important;padding:6px 10px!important;border-radius:16px!important;gap:0 8px!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;align-items:center!important}
+.top .hl{grid-column:3;grid-row:1;gap:6px}
 .top .themebtn{width:32px;min-width:32px;min-height:32px;height:32px;padding:0}
 .top .hl .btn.ghost.sm{min-height:32px;padding:0 6px}
 .top .greet{font-size:15px}
-.top .ttl b{font-size:16px}
-.top .ttl .btn{min-height:30px;padding:0 10px}
+.top .ttlname{font-size:16px}
+.top .ttlback{min-height:30px;padding:0 10px}
 .top .hsub{grid-column:1/-1;margin-top:2px;padding-top:4px;font-size:11px;line-height:1.3;border-top:none}
 .top::before{display:none}
 .top .hl{gap:12px}
@@ -1556,7 +1558,7 @@ function greetHTML(){
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
   var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب'}[U.view]||'';
-  return '<div class="ttl"><button class="btn ghost sm" data-act="tab" data-v="home">→ رجوع</button><b>'+esc(name)+'</b></div>';
+  return '<button class="btn ghost sm ttlback" data-act="tab" data-v="home">→ رجوع</button><b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
     return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
@@ -1624,8 +1626,9 @@ function navHTML(){
 function demoHTML(){
   return '<div class="demo"><span>الأصناف والأرقام الحالية تجريبية. امسحها وضيف أصنافك بتفاصيلها.</span><button class="btn ghost sm" data-act="cleanStart">'+(U.confirm==='clean'?'اضغط تاني للتأكيد':'امسح وابدأ بأصنافي')+'</button></div>';
 }
+/* العنوان بقى في هيدر الصفحة (في النص)، فهنا بنعرض الوصف والأزرار بس */
 function head(t,sub,btn){
-  return '<div class="sh"><div><h2>'+t+'</h2><p>'+sub+'</p></div>'+(btn||'')+'</div>';
+  return '<div class="sh"><div>'+(sub?'<p>'+sub+'</p>':'')+'</div>'+(btn||'')+'</div>';
 }
 
 /* total weight of ONE meal (sum of all ingredients per single meal); non-weight units listed separately */
