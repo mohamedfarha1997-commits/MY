@@ -635,6 +635,28 @@ button,input{font-family:inherit}
 .stile .sic{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--settings) 14%,transparent);color:var(--settings);flex:none}
 .stile .sic svg{width:24px;height:24px}
 .stile .stl{font-size:13px;font-weight:700;line-height:1.35;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;max-width:100%}
+.utable{width:100%}
+.utable th{font-size:12px;color:var(--muted);font-weight:600}
+.utable td{vertical-align:middle}
+.uact{white-space:nowrap;text-align:end}
+.uname{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.uname b{font-weight:700}
+.uava{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;flex:none;font-weight:800;font-size:17px;color:#fff;background:linear-gradient(135deg,var(--settings),color-mix(in srgb,var(--settings) 55%,#0b1220))}
+.uava.sm{width:30px;height:30px;border-radius:10px;font-size:13px}
+.ucode{display:inline-block;padding:3px 9px;border-radius:8px;background:color-mix(in srgb,var(--settings) 10%,transparent);font-variant-numeric:tabular-nums;font-weight:600}
+.upill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;color:var(--settings);background:color-mix(in srgb,var(--settings) 14%,transparent)}
+.btn.danger{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+.uedit{margin-top:14px;border-radius:20px;padding:16px;border:1px solid color-mix(in srgb,var(--settings) 28%,transparent);background:linear-gradient(180deg,color-mix(in srgb,var(--settings) 6%,var(--card)),var(--card));box-shadow:0 18px 30px -26px var(--settings)}
+.uedit-h{display:flex;align-items:center;gap:12px;padding-bottom:12px}
+.uedit-h>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.uedit-h small{color:var(--muted);font-size:12px}
+.ugrp{display:grid;gap:10px;padding:14px 0;border-top:1px dashed var(--line)}
+.urow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.urow .fld{min-width:0}
+.uhint{font-size:12px;color:var(--muted);line-height:1.6}
+.ubtns{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.ufoot{padding-top:12px;border-top:1px solid var(--line)}
+.ufoot .btn{min-width:120px}
 .stile:active{transform:scale(.97)}
 
 .msug{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 8px}
@@ -812,11 +834,18 @@ function usersList(){
   return S.users;
 }
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
-/* كود المستخدم: ٣ أرقام، ومينفعش يتكرر مع مستخدم تاني أو كود المالك أو كود اتشال */
-function validUserCode(c){return /^\d{3}$/.test(String(c||'').trim());}
+/* كود المستخدم: من ٣ لـ ١٢ حرف أو رقم (عربي أو إنجليزي)، ومينفعش يتكرر مع مستخدم تاني أو كود المالك أو كود اتشال (من غير فرق بين الكبير والصغير) */
+function validUserCode(c){return /^[A-Za-z0-9\u0621-\u064A]{3,12}$/.test(String(c||'').trim());}
 function userCodeTaken(c,exceptId){
-  if(c==='CHEF MYF'||REMOVED_USER_CODES.indexOf(c)>-1)return true;
-  return usersList().some(function(u){return u.code===c&&u.id!==exceptId;});
+  var k=String(c||'').trim().toLowerCase();
+  if(k==='chef myf'||REMOVED_USER_CODES.some(function(x){return String(x).toLowerCase()===k;}))return true;
+  return usersList().some(function(u){return String(u.code).toLowerCase()===k&&u.id!==exceptId;});
+}
+/* الإجازة: يوم واحد (زرار إجازة النهاردة) أو فترة من-إلى بتتفعل وتتقفل لوحدها حسب تاريخ القاهرة */
+function userLeaveActive(u,todayK){
+  if(!u||!todayK)return false;
+  if(u.leave===todayK)return true;
+  return !!(u.leaveFrom&&u.leaveTo&&todayK>=u.leaveFrom&&todayK<=u.leaveTo);
 }
 /* تغيير كود مستخدم: بنحوّل تفضيلاته وسجلات الإنتاج والجلسة لكوده الجديد عشان الحركات القديمة تفضل منسوبة ليه */
 function renameUserCode(old,nw){
@@ -2704,10 +2733,10 @@ function cairoDateKey(ms){
 /* إجازة المستخدم: بتتحدد بيوم بعينه (تاريخ القاهرة)، وبتخلص لوحدها بعد اليوم ده. true = في إجازة، false = لأ، null = مش عارفين الوقت */
 function onLeaveToday(){
   var u=sessionCode()?userByCode(sessionCode()):null;
-  if(!u||!u.leave)return false;
+  if(!u||(!u.leave&&!u.leaveFrom))return false;
   var ms=trustedNow();
   if(ms===null)return null;
-  return cairoDateKey(ms)===u.leave;
+  return userLeaveActive(u,cairoDateKey(ms));
 }
 /* true = مفتوح، false = برا المواعيد، null = مش عارفين الوقت (مفيش إنترنت) */
 function workOpenNow(){
@@ -3695,28 +3724,40 @@ function usersCardHTML(){
   var nowMs=trustedNow(),todayK=nowMs===null?null:cairoDateKey(nowMs);
   var rows=list.map(function(u){
     var conf=U.confirm==='udel:'+u.id;
-    var onLv=!!(todayK&&u.leave===todayK);
-    return '<tr><td><b>'+esc(u.name)+'</b>'+(onLv?' <span class="meta">· في إجازة النهاردة</span>':'')+'</td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm" data-act="userLeave" data-id="'+u.id+'" '+(todayK?'':'disabled')+'>'+(onLv?'ألغِ الإجازة':'إجازة النهاردة')+'</button> <button class="btn ghost sm" data-act="userPwOpen" data-id="'+u.id+'">غيّر الباسورد</button> <button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
+    var onLv=userLeaveActive(u,todayK);
+    return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><b>'+esc(u.name)+'</b>'+(onLv?'<span class="upill">في إجازة</span>':'')+'</div></td>'+
+      '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+
+      '<td class="uact"><button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button></td></tr>';
   }).join('');
-  var pwBox='';
-  var pu=U.pwUser?list.filter(function(x){return x.id===U.pwUser;})[0]:null;
-  if(pu)pwBox='<div class="stack" style="margin-top:10px"><p class="meta" style="margin:0">باسورد جديد لـ <b>'+esc(pu.name)+'</b></p>'+
-    '<div class="fld"><label for="uPwNew">الباسورد الجديد</label><input id="uPwNew" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
-    '<div class="btns"><button class="btn" data-act="userPwSave">احفظ الباسورد</button><button class="btn ghost" data-act="userPwCancel">إلغاء</button></div></div>';
   var editBox='';
   var eu=U.editUser?list.filter(function(x){return x.id===U.editUser;})[0]:null;
-  if(eu)editBox='<div class="stack" style="margin-top:10px"><p class="meta" style="margin:0">تعديل بيانات <b>'+esc(eu.name)+'</b></p>'+
-    '<div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
-    '<div class="fld"><label for="uEditCode">الكود (3 أرقام)</label><input id="uEditCode" inputmode="numeric" maxlength="3" autocomplete="off" value="'+esc(eu.code)+'"></div>'+
-    '<div class="btns"><button class="btn" data-act="userEditSave">احفظ التعديل</button><button class="btn ghost" data-act="userEditCancel">إلغاء</button></div></div>';
+  if(eu){
+    var onNow=userLeaveActive(eu,todayK);
+    var period=(eu.leaveFrom&&eu.leaveTo)?('من '+eu.leaveFrom+' إلى '+eu.leaveTo):'مفيش فترة إجازة';
+    editBox='<div class="uedit">'+
+      '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
+      '<div class="ugrp"><span class="sec-l">البيانات</span>'+
+        '<div class="urow"><div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
+        '<div class="fld"><label for="uEditCode">الكود</label><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'"></div></div>'+
+        '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small></div>'+
+      '<div class="ugrp"><span class="sec-l">الباسورد</span>'+
+        '<div class="fld"><label for="uEditPw">باسورد جديد</label><input id="uEditPw" type="password" autocomplete="new-password" placeholder="اتركه فاضي لو مش عايز تغيّره"></div></div>'+
+      '<div class="ugrp"><span class="sec-l">الإجازة التلقائية</span>'+
+        '<div class="urow"><div class="fld"><label for="uLeaveFrom">من يوم</label><input id="uLeaveFrom" type="date" value="'+esc(eu.leaveFrom||'')+'"></div>'+
+        '<div class="fld"><label for="uLeaveTo">لحد يوم</label><input id="uLeaveTo" type="date" value="'+esc(eu.leaveTo||'')+'"></div></div>'+
+        '<small class="uhint">الوضع بيتفعل تلقائي أول يوم في الفترة وبيتقفل تلقائي بعد آخر يوم. الحالية: '+esc(period)+'.</small>'+
+        '<div class="ubtns"><button class="btn ghost sm" data-act="userLeaveClear">مسح الفترة</button><button class="btn ghost sm" data-act="userLeave" data-id="'+eu.id+'" '+(todayK?'':'disabled')+'>'+(eu.leave===todayK?'ألغِ إجازة النهاردة':'إجازة النهاردة بس')+'</button></div></div>'+
+      '<div class="ubtns ufoot"><button class="btn ghost" data-act="userEditCancel">إلغاء</button><button class="btn" data-act="userEditSave">حفظ التعديلات</button></div>'+
+    '</div>';
+  }
   var form='<div class="stack" style="margin-top:10px">'+
     '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
-    '<div class="fld"><label for="uCode">الكود (3 أرقام، اختياري)</label><input id="uCode" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="يتولد تلقائي لو فاضي"></div>'+
+    '<div class="fld"><label for="uCode">الكود (اختياري)</label><input id="uCode" autocomplete="off" maxlength="12" placeholder="يتولد تلقائي لو فاضي"></div>'+
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
-  return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس. الباسورد لازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود المختصر (3 أرقام) بيظهر للمراجعة في جدول الصلاحيات وجدول الإنتاج.</p>'+
+  return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
-    (list.length?'<table class="ttab" style="margin-top:12px"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+pwBox+editBox+'</section>';
+    (list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
 }
 /* كل تشغيل: دفعات الإنتاج العادي + تحضير الحشو، مرتبين من الأحدث */
 function prodRunsAll(){
@@ -4213,7 +4254,7 @@ var ACT={
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
     var cIn=((document.getElementById('uCode')||{}).value||'').trim();
-    if(cIn&&!validUserCode(cIn)){toast('الكود لازم يكون 3 أرقام');return false;}
+    if(cIn&&!validUserCode(cIn)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
     if(cIn&&userCodeTaken(cIn,null)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
     var code=cIn||nextUserCode(),salt=randHex();
     toast('جاري إضافة المستخدم...');
@@ -4227,6 +4268,66 @@ var ACT={
       var nu=document.getElementById('uName'),np=document.getElementById('uPw'),nc=document.getElementById('uCode');if(nu)nu.value='';if(np)np.value='';if(nc)nc.value='';
       toast('اتضاف المستخدم · الكود '+code);render();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
+    return false;
+  },
+  matPick:function(d){
+    var el=document.querySelector('[data-fd="n"][data-gi="'+d.gi+'"][data-ii="'+d.ii+'"]');
+    if(!el)return false;
+    el.value=d.n;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    var box=document.querySelector('[data-msug="'+d.gi+'-'+d.ii+'"]');if(box)box.innerHTML='';
+    return false;
+  },
+  hrToggle:function(d){
+    var h=(pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};})).map(function(x){return Object.assign({},x);});
+    var i=Number(d.d);h[i]=Object.assign({from:'09:00',to:'18:00'},h[i],{on:!(h[i]&&h[i].on)});
+    setPref('hours',h);
+  },
+  userLeave:function(d){
+    var u=usersList().filter(function(x){return x.id===d.id;})[0];
+    var ms=trustedNow();
+    if(!u)return false;
+    if(ms===null){toast('محتاج إنترنت عشان نحدد تاريخ النهاردة');return false;}
+    var today=cairoDateKey(ms);
+    u.leave=(u.leave===today)?null:today;
+    toast(u.leave?'اتسجلت إجازة '+u.name+' النهاردة':'اتلغت إجازة '+u.name);
+  },
+  userPwOpen:function(d){U.pwUser=d.id;U.editUser=null;U.confirm=null;render();return false;},
+  userPwCancel:function(){U.pwUser=null;},
+  userEditOpen:function(d){U.editUser=d.id;U.pwUser=null;U.confirm=null;render();return false;},
+  userEditCancel:function(){U.editUser=null;},
+  userEditSave:function(){
+    var u=usersList().filter(function(x){return x.id===U.editUser;})[0];
+    if(!u){U.editUser=null;return false;}
+    var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
+    var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo');
+    if(!n){toast('اكتب اسم المستخدم');return false;}
+    if(!validUserCode(c)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
+    if(c.toLowerCase()!==String(u.code).toLowerCase()&&userCodeTaken(c,u.id)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
+    if((lf&&!lt)||(lt&&!lf)){toast('حدد بداية ونهاية الإجازة');return false;}
+    if(lf&&lt&&lt<lf){toast('نهاية الإجازة لازم تكون بعد البداية');return false;}
+    if(pw&&pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
+    var finish=function(){
+      var old=u.code;
+      if(c!==old)renameUserCode(old,c);
+      u.name=n;u.code=c;
+      u.leaveFrom=lf||null;u.leaveTo=lt||null;
+      U.editUser=null;U.pwUser=null;save();
+      toast('اتحفظت التعديلات'+(c!==old?' · الكود الجديد '+c:''));render();
+    };
+    if(!pw){finish();return false;}
+    var salt=randHex();
+    toast('جاري حفظ التعديلات...');
+    Promise.all([checkPin(pw),findUserByPw(pw),hexPbkdf2(pw,salt,200000)]).then(function(r){
+      if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
+      if(r[1]&&r[1].id!==u.id){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
+      u.salt=salt;u.h=r[2];u.iter=200000;
+      finish();
+    }).catch(function(){toast('حصل خطأ، جرّب تاني');});
+    return false;
+  },
+  userLeaveClear:function(){
+    ['uLeaveFrom','uLeaveTo'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     return false;
   },
   matPick:function(d){
