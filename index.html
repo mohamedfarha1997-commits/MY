@@ -3475,7 +3475,7 @@ function ordSheetHTML(){
 
 
 /* ---------- actions ---------- */
-function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}}
+function lockSettings(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}U.sBioTried=false;}
 function go(v){if(U.view==='settings'&&v!=='settings')lockSettings();U.view=v;U.rsearch='';try{location.hash=v;}catch(e){}window.scrollTo(0,0);}
 function toggle(a,i){a=(a||[]).slice();var k=a.indexOf(i);if(k>-1)a.splice(k,1);else a.push(i);return a;}
 function blankIng(){return {m:null,n:'',q:'',u:'جرام'};}
@@ -3609,6 +3609,8 @@ function settingsGate(){
   if(sUnlocked()&&!U.sChange)return settingsView();
   var st=sPwStored(),err=U.sErr?'<div class="note">'+U.sErr+'</div>':'',mode=!st?'setup':(U.sChange?'change':'unlock');
   var title,body,btn,extra='';
+  /* المالك بس: لو البصمة مفعّلة، تطلب تلقائي أول ما يدخل الإعدادات (مرة واحدة لكل دخول) */
+  if(mode==='unlock'&&!limited()&&bioSupported()&&localStorage.getItem(BIO_KEY)&&!U.sBioTried){U.sBioTried=true;setTimeout(function(){if(U.view==='settings'&&!sUnlocked())ACT.settingsBio();},50);}
   if(mode==='setup'){title='اختار PIN للإعدادات';body='<p class="meta" style="margin:0 0 8px">تنبيه: الـ PIN من 4 أرقام ضعيف، ممكن حد يعرفه بسهولة. استخدم 6 أرقام أو أكتر.</p>'+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN','new-password');btn='حفظ الـ PIN';}
   else if(mode==='change'){title='تغيير PIN الإعدادات';body='<p class="meta" style="margin:0 0 8px">تنبيه: الـ PIN من 4 أرقام ضعيف، ممكن حد يعرفه بسهولة. استخدم 6 أرقام أو أكتر.</p>'+pwField('spwOld','الـ PIN الحالي','current-password')+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN الجديد','new-password');btn='حفظ الـ PIN الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
   else{title='الإعدادات محمية';body=pwField('spw1','الـ PIN','current-password');btn='دخول';extra=settingsBioBtn()+'<p class="meta" style="margin:0">لو نسيت الـ PIN مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
@@ -3691,7 +3693,7 @@ var ACT={
   },
   sChangeStart:function(){U.sChange=true;U.sErr=null;render();return false;},
   sCancel:function(){U.sChange=false;U.sErr=null;render();return false;},
-  sLock:function(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}U.view='home';U.sErr=null;render();return false;},
+  sLock:function(){try{sessionStorage.removeItem('khat-set-ok');}catch(e){}U.sBioTried=false;U.view='home';U.sErr=null;render();return false;},
   toggleSeason:function(d){
     var a=hiddenSeasons(),i=a.indexOf(d.k);
     if(i>-1)a.splice(i,1);else a.push(d.k);
