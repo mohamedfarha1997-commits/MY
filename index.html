@@ -544,6 +544,11 @@ button,input{font-family:inherit}
 .top .ttlback:active{transform:scale(.94);box-shadow:inset 0 1px 2px rgb(16 28 40 / .15)}
 .top .ttlback:focus-visible{outline:2px solid var(--prep);outline-offset:2px}
 .top .hl{align-self:center}
+/* ترتيب الهيدر: الاسم في نص الهيدر بالكامل (رأسياً وأفقياً)، والتاريخ يمين والمزامنة شمال تحته */
+.top .greet,.top .ttlback,.top .hl{grid-row:1}
+.top .ttlname{grid-column:2;grid-row:1 / span 2;align-self:center;justify-self:center}
+.top .hdate{grid-column:1;grid-row:2;justify-self:start;font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.top .dstat{grid-column:3;grid-row:2;justify-self:end}
 .top .hl{gap:12px}
 .top .themebtn{width:36px;min-width:36px;height:36px;min-height:36px}
 .top .themebtn svg{width:20px;height:20px}
@@ -1572,7 +1577,7 @@ function titleHTML(){
 function topHTML(){
     return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
     '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
-    '<div class="hsub"><span>'+dateStr()+'</span>'+driveHTML()+'</div>'+
+    '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
