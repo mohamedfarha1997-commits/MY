@@ -512,6 +512,13 @@ button,input{font-family:inherit}
 @keyframes x-ring{0%{transform:scale(1);opacity:.75}100%{transform:scale(1.32);opacity:0}}
 @keyframes x-sheen{to{background-position:100% 0}}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
+/* هيدر بدون لوجو: العدد في الشمال والأزرار في اليمين، والتاريخ والحالة في الصف اللي تحتهم */
+.top{display:grid!important;grid-template-columns:1fr auto;align-items:center;gap:8px 12px;padding:14px 16px 12px!important}
+.top .today{justify-self:start;text-align:start}
+.top .today b{font-size:40px;line-height:1}
+.top .today span{display:block;margin-top:4px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.top .hl{justify-self:end;display:flex;align-items:center;gap:8px}
+.top .hsub{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:4px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 @keyframes x-swipe-fwd{from{opacity:0;transform:translateX(-64px)}to{opacity:1;transform:none}}
 @keyframes x-swipe-back{from{opacity:0;transform:translateX(64px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:no-preference){
@@ -1495,9 +1502,8 @@ function topHTML(){
   var todayKey=ymd(new Date());
   var total=(S.orders||[]).filter(function(o){return !o.deliveredAt&&o.due&&String(o.due).slice(0,10)===todayKey;}).length;
   return '<header class="top">'+
-    '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
-    '<img class="hlogo" src="icons/icon-192.png" alt="RMY Pro" width="44" height="44">'+
     '<div class="today"><b>'+f(total)+'</b><span>أوردرات خارجة اليوم</span></div>'+
+    '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<div class="hsub"><span>'+dateStr()+'</span>'+linkBadge()+'</div>'+
     '</header>';
 }
