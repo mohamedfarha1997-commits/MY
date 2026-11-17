@@ -2387,11 +2387,12 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+'<div class="meta" style="margin-top:8px">الموسم</div>'+seasonBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
-  var ft=U.fillTab||'run';
-  var tiles='<div class="fgcards" style="margin-bottom:12px">'+[
-      ['run','حشو','شغّل صنف محشو موجود من مخزن الإنتاج'],
-      ['add','إضافة أصناف جديدة','اعمل صنف محشو جديد بكود جديد']
-    ].map(function(x){
+  var opts=[];
+  if(!tabHidden('fillrun'))opts.push(['run','حشو','شغّل صنف محشو موجود من مخزن الإنتاج']);
+  if(!tabHidden('filladd'))opts.push(['add','إضافة أصناف جديدة','اعمل صنف محشو جديد بكود جديد']);
+  if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b><span>المالك لازم يفعّل لك تبويب من جدول التبويبات والصلاحيات.</span></div>';
+  var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
+  var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
       var on=ft===x[0];
       return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
     }).join('')+'</div>';
@@ -3746,12 +3747,13 @@ function saveSettingsPw(p){
 function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
 function tabsCardHTML(){
   var users=usersList();
-  var rows=navItems().map(function(t){
+  var TR=function(t){
     var hid=tabHidden(t.k);
     var ownerCell='<button class="tg'+(hid?'':' on')+'" data-act="'+'toggleTab'+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
     var userCells=users.map(function(u){var on=userTabs(u.code).indexOf(t.k)>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="'+t.k+'">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('');
     return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td>'+userCells+'</tr>';
-  }).join('');
+  };
+  var rows=navItems().map(function(t){return TR(t)+(t.k==='filling'?TR({k:'fillrun',l:'تحضير حشو ← حشو'})+TR({k:'filladd',l:'تحضير حشو ← إضافة أصناف جديدة'}):'');}).join('');
   rows+='<tr><td>اعتماد الإنتاج (بعد انتهاء الوقت)</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('approve')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="approve">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
   rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
