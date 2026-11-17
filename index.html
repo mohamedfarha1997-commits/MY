@@ -3380,14 +3380,19 @@ function usersCardHTML(){
   var list=usersList();
   var rows=list.map(function(u){
     var conf=U.confirm==='udel:'+u.id;
-    return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
+    return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ltr">'+esc(u.code)+'</span></td><td><button class="btn ghost sm" data-act="userPwOpen" data-id="'+u.id+'">غيّر الباسورد</button> <button class="btn ghost sm" data-act="userDel" data-id="'+u.id+'">'+(conf?'اضغط تاني للتأكيد':'احذف')+'</button></td></tr>';
   }).join('');
+  var pwBox='';
+  var pu=U.pwUser?list.filter(function(x){return x.id===U.pwUser;})[0]:null;
+  if(pu)pwBox='<div class="stack" style="margin-top:10px"><p class="meta" style="margin:0">باسورد جديد لـ <b>'+esc(pu.name)+'</b></p>'+
+    '<div class="fld"><label for="uPwNew">الباسورد الجديد</label><input id="uPwNew" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
+    '<div class="btns"><button class="btn" data-act="userPwSave">احفظ الباسورد</button><button class="btn ghost" data-act="userPwCancel">إلغاء</button></div></div>';
   var form='<div class="stack" style="margin-top:10px">'+
     '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس. الباسورد لازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود المختصر (3 أرقام) بيظهر للمراجعة في جدول الصلاحيات وجدول الإنتاج.</p>'+
-    (list.length?'<table class="ttab"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta">مفيش مستخدمين لسه.</div>')+form+'</section>';
+    (list.length?'<table class="ttab"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta">مفيش مستخدمين لسه.</div>')+pwBox+form+'</section>';
 }
 function prodSummaryHTML(log){
   var m={},ev=[];
@@ -3863,6 +3868,23 @@ var ACT={
       var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);
       var nu=document.getElementById('uName'),np=document.getElementById('uPw');if(nu)nu.value='';if(np)np.value='';
       toast('اتضاف المستخدم · الكود '+code);render();
+    }).catch(function(){toast('حصل خطأ، جرّب تاني');});
+    return false;
+  },
+  userPwOpen:function(d){U.pwUser=d.id;U.confirm=null;render();return false;},
+  userPwCancel:function(){U.pwUser=null;},
+  userPwSave:function(){
+    var u=usersList().filter(function(x){return x.id===U.pwUser;})[0];
+    if(!u){U.pwUser=null;return;}
+    var pw=(document.getElementById('uPwNew')||{}).value||'';
+    if(pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
+    var salt=randHex();
+    toast('جاري حفظ الباسورد...');
+    Promise.all([checkPin(pw),findUserByPw(pw),hexPbkdf2(pw,salt,200000)]).then(function(r){
+      if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
+      if(r[1]&&r[1].id!==u.id){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
+      u.salt=salt;u.h=r[2];u.iter=200000;U.pwUser=null;save();
+      toast('اتغيّر باسورد '+u.name);render();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
   },
