@@ -2780,7 +2780,10 @@ function onLeaveToday(){
   return userLeaveActive(u,cairoDateKey(ms));
 }
 /* true = مفتوح، false = برا المواعيد، null = مش عارفين الوقت (مفيش إنترنت) */
+/* مواعيد العمل بتتطبق على المستخدم إلا لو المالك استثناه من الجدول */
+function userHoursApply(){var u=sessionCode()?userByCode(sessionCode()):null;return !(u&&u.noHours);}
 function workOpenNow(){
+  if(!userHoursApply())return true;
   var h=pref('hours',null);
   if(!h||!Array.isArray(h))return true;
   var ms=trustedNow();
@@ -2832,14 +2835,17 @@ function restHTML(unknown,leave){
       (list.length||bl.length?'':'<p class="meta" style="margin-top:12px">مفيش طلبات ولا دفعات جديدة وقت الراحة.</p>'))+'</section>';
 }
 function hoursCardHTML(){
+  var ul=usersList();
+  var uRows=ul.map(function(u){var on=!u.noHours;return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ucode ltr">'+esc(u.code)+'</span></td><td><button class="tg'+(on?' on':'')+'" data-act="userHoursToggle" data-id="'+u.id+'">'+(on?'يتطبق':'لأ')+'</button></td></tr>';}).join('');
+  var uTable=ul.length?'<div class="grp" style="margin-top:14px">مين تتطبق عليه مواعيد العمل</div><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>المستخدم</th><th>الكود</th><th>مواعيد العمل</th></tr></thead><tbody>'+uRows+'</tbody></table></div>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>';
   var h=pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};});
   var rows=DAY_NAMES.map(function(n,i){
     var x=h[i]||{on:false,from:'09:00',to:'18:00'};
     return '<tr><td>'+n+'</td><td><button class="tg'+(x.on?' on':'')+'" data-act="hrToggle" data-d="'+i+'">'+(x.on?'مفتوح':'إجازة')+'</button></td>'+
       '<td>'+(x.on?'<input type="time" data-hr="from" data-d="'+i+'" value="'+esc(x.from)+'" aria-label="من"> - <input type="time" data-hr="to" data-d="'+i+'" value="'+esc(x.to)+'" aria-label="إلى">':'<span class="meta">—</span>')+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--settings)"><h3>مواعيد العمل للمستخدمين</h3><p class="meta" style="margin:0">المستخدمين مش هيقدروا يفتحوا التطبيق برا المواعيد دي. المالك دايمًا يقدر يفتح. لو مفيش مواعيد متظبطة، التطبيق مفتوح طول الوقت.</p>'+
-    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div></section>';
+  return '<section class="card" style="--c:var(--settings)"><h3>مواعيد العمل للمستخدمين</h3><p class="meta" style="margin:0">المواعيد دي بتتطبق على المستخدمين اللي علامتهم "يتطبق" بس. المستخدم اللي "لأ" يقدر يفتح التطبيق في أي وقت. المالك دايمًا يقدر يفتح. لو مفيش مواعيد متظبطة، التطبيق مفتوح طول الوقت.</p>'+
+    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -4703,6 +4709,12 @@ ACT.runMakeBatches=function(){
   if(!made){toast('مفيش نواقص تحتاج دفعات');return false;}
   toast('اتعمل '+made+' دفعة للنواقص');
   notifyNew('دفعات جديدة',made+' دفعة اتعملت للنواقص','newb-'+Date.now(),'prep');
+};
+ACT.userHoursToggle=function(d){
+  var u=usersList().filter(function(x){return x.id===d.id;})[0];
+  if(!u)return false;
+  u.noHours=!u.noHours;
+  toast(u.noHours?'مواعيد العمل مش هتتطبق على '+u.name:'مواعيد العمل هتتطبق على '+u.name);
 };
 ACT.prepBatches=function(){
   var lk=prepLackTotals(),ks=Object.keys(lk);
