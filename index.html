@@ -721,25 +721,18 @@ function stamp(){return new Date().toISOString().slice(0,10);}
 (function(){
 'use strict';
 var AUTH_KEY='khat-entaj-auth';
-var AUTH_SALT='4aaffca52d441df9997bc8958e7eb2c3',AUTH_HASH='dd4bb609652f9c98e79ea62b15f043fdd22e4306703aa4a10394808fce3aef70',AUTH_ITER=200000;
-async function checkPin(p){
-  var enc=new TextEncoder();
-  var key=await crypto.subtle.importKey('raw',enc.encode(p),'PBKDF2',false,['deriveBits']);
-  var bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(AUTH_SALT),iterations:AUTH_ITER,hash:'SHA-256'},key,256);
-  var hex=Array.from(new Uint8Array(bits)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-  return hex===AUTH_HASH;
+/* الـ PIN الرئيسي للمالك متخزن في S.auth (بيتزامن مع درايف)، مش في الكود */
+function checkPin(p){
+  if(!S.auth)return Promise.resolve(false);
+  return hexPbkdf2(p,S.auth.salt,S.auth.iter||200000).then(function(h){return h===S.auth.hash;});
 }
 function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
-var SEED_USERS=[
-    {id:'U512',name:'كريم',code:'512',salt:'865b1776b6f7fcae1bf38a89e9f0b192',h:'5eaa94d61dd481fdca6e30fb7d0f4972160bc270c8a0a4d6801f91d564d5e0bd',iter:200000}
-];
 /* حسابات اتشالت نهائياً: مش بتترجع من الحفظ القديم */
 var REMOVED_USER_CODES=['879'];
 function usersList(){
   S.users=(S.users||[]).filter(function(u){return REMOVED_USER_CODES.indexOf(u.code)<0;});
   if(S.prefs&&S.prefs.userTabs){REMOVED_USER_CODES.forEach(function(c){delete S.prefs.userTabs[c];});}
   try{var au=localStorage.getItem(AUTH_KEY)||'';if(au.indexOf('u:')===0&&REMOVED_USER_CODES.indexOf(au.slice(2))>-1)localStorage.removeItem(AUTH_KEY);}catch(e){}
-  SEED_USERS.forEach(function(u){if(!S.users.some(function(x){return x.code===u.code;}))S.users.push(Object.assign({},u));});
   return S.users;
 }
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
@@ -2533,6 +2526,17 @@ function loginHTML(){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">الخطوة الأولى: اربط جوجل درايف</p>'+(GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
       '<button data-act="gdConnect" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:8px;padding:12px 16px;font:500 15px inherit;cursor:pointer"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>تسجيل دخول جوجل</span></button></div></main>';
   }
+  if(!S.auth){
+    if(GD.on&&!GD.ok){
+      return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">استنى لحد ما البيانات تتحمّل من درايف</p>'+
+        '<button data-act="gdConnect" class="btn block">اربط جوجل درايف تاني</button></div></main>';
+    }
+    return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">أول مرة: اختار الرقم السري للمالك</p>'+err+
+      '<div class="fld"><label for="lpin1">الرقم السري الجديد</label><input id="lpin1" type="password" autocomplete="new-password"></div>'+
+      '<div class="fld"><label for="lpin2">تأكيد الرقم السري</label><input id="lpin2" type="password" autocomplete="new-password"></div>'+
+      '<p class="meta" style="margin:0 0 8px">استخدم 6 حروف أو أرقام أو أكتر.</p>'+
+      '<button class="btn block" data-act="ownerSetup">حفظ الرقم السري</button></div></main>';
+  }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     '<button class="btn block" data-act="login">دخول</button></div></main>';
@@ -3343,8 +3347,7 @@ function mkStage(kind,name){return {kind:kind,name:name||'',ings:[],steps:['']};
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
 function tabHidden(k){if(limited())return tabsFor().indexOf(k)<0;if(k==='settings')return false;return hiddenTabs().indexOf(k)>-1;}
-var SET_DEFAULT={salt:'9c0b6ff004cac3f989fd6c48d9e4e0a2',hash:'6ca208337a4f381bb1ce525283b474d5cb2a79884ec6da59fd833afc54ad522a',iter:200000};
-function sPwStored(){return pref('pw',SET_DEFAULT);}
+function sPwStored(){return pref('pw',null);}
 function sUnlocked(){try{return sessionStorage.getItem('khat-set-ok')==='1';}catch(e){return false;}}
 function hexPbkdf2(p,salt,iter){
   var enc=new TextEncoder();
@@ -3491,6 +3494,21 @@ function installHTML(){
 var ACT={
   theme:function(){var n=curTheme()==="dark"?"light":"dark";setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
+  ownerSetup:function(){
+    var a=(document.getElementById('lpin1')||{}).value||'',b=(document.getElementById('lpin2')||{}).value||'';
+    if(a.length<4){U.loginErr='الرقم السري لازم يكون 4 حروف أو أرقام على الأقل';render();return false;}
+    if(a!==b){U.loginErr='التأكيد مش مطابق للرقم السري';render();return false;}
+    var salt=randHex();
+    hexPbkdf2(a,salt,200000).then(function(h){
+      return findUserByPw(a).then(function(u){
+        if(u){U.loginErr='الرقم ده مستخدم لمستخدم تاني، اختار غيره';render();return;}
+        S.auth={salt:salt,hash:h,iter:200000};save();
+        lockSettings();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}
+        U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();
+      });
+    }).catch(function(){U.loginErr='حصل خطأ، جرّب تاني';render();});
+    return false;
+  },
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
     checkPin(p).then(function(ok){
@@ -4125,7 +4143,7 @@ var ACT={
 };
 var READ_ACTS={notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
-  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,recvClose:1,recv:1,
+  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,ownerSetup:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
