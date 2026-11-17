@@ -512,6 +512,12 @@ button,input{font-family:inherit}
 @keyframes x-ring{0%{transform:scale(1);opacity:.75}100%{transform:scale(1.32);opacity:0}}
 @keyframes x-sheen{to{background-position:100% 0}}
 @keyframes x-glow{50%{box-shadow:0 14px 34px -6px rgb(79 93 255 / .95)}}
+@keyframes x-swipe-fwd{from{opacity:0;transform:translateX(-64px)}to{opacity:1;transform:none}}
+@keyframes x-swipe-back{from{opacity:0;transform:translateX(64px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:no-preference){
+  #app.slide-fwd>main.view,#app.slide-fwd>.hgrid,#app.slide-fwd>.backbar{animation:x-swipe-fwd .26s cubic-bezier(.2,.8,.2,1) both}
+  #app.slide-back>main.view,#app.slide-back>.hgrid,#app.slide-back>.backbar{animation:x-swipe-back .26s cubic-bezier(.2,.8,.2,1) both}
+}
 @media (prefers-reduced-motion:no-preference){
   .fx-bg i:nth-child(1){animation:x-d1 20s ease-in-out infinite alternate}
   .fx-bg i:nth-child(2){animation:x-d2 24s ease-in-out infinite alternate}
@@ -2922,7 +2928,7 @@ function loginHTML(){
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
 var FX=(function(){
-  var lastKey=null,t0=0,tm=0,inited=false;
+  var lastKey=null,t0=0,tm=0,sl=0,inited=false;
   var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   function latin(s){return s.replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);});}
   function countUp(el){
@@ -2961,6 +2967,10 @@ var FX=(function(){
     var now=performance.now(),changed=o.key!==lastKey;
     if(changed){
       lastKey=o.key;t0=now;
+      /* الرجوع للرئيسية بينزلق من اليمين، أي شاشة تانية بتنزلق من الشمال */
+      var dirCls=o.key==='home'?'slide-back':'slide-fwd';
+      app.classList.remove('slide-fwd','slide-back');void app.offsetWidth;app.classList.add(dirCls);
+      clearTimeout(sl);sl=setTimeout(function(){app.classList.remove('slide-fwd','slide-back');},460);
       app.classList.add('enter');
       clearTimeout(tm);tm=setTimeout(function(){app.classList.remove('enter');app.style.removeProperty('--el');},1600);
     }
