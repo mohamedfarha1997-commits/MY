@@ -2583,11 +2583,6 @@ function workOpenNow(){
   if(yest&&yest.on){var a2=hrMins(yest.from),b2=hrMins(yest.to);if(b2<a2&&now<b2)ok=true;}
   return ok;
 }
-function hoursText(){
-  var h=pref('hours',null);
-  if(!h)return '';
-  return h.map(function(x,i){return DAY_NAMES[i]+': '+(x&&x.on?(x.from+' - '+x.to):'إجازة');}).join(' · ');
-}
 /* آخر وقت كان التطبيق فيه مفتوح للمستخدمين: أي أوردر بيتسجل بعده بيظهر في شاشة الراحة لحد ما التطبيق يفتح تاني */
 function markOpenSeen(){var n=trustedNow();if(n!==null){try{localStorage.setItem('khat-open-seen',String(n));}catch(e){}}}
 /* لو الجهاز ما اتفتحش وقت الشغل قبل كده، أول مرة يتقفل بنحفظ وقت الفتح دلوقتي عشان الطلبات اللي تيجي بعده تظهر */
