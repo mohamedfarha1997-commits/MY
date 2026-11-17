@@ -625,7 +625,7 @@ button,input{font-family:inherit}
 .fold.open .fold-b{display:flex;flex-direction:column;gap:12px}
 .fold.open>.fold-h{margin-bottom:0}
 /* شبكة كروت الإعدادات: ٤ في الصف على الشاشات العريضة، والكارت المفتوح والعناصر اللي مش كروت بتاخد الصف كله */
-.sgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start}
+.sgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
 @media (min-width:900px){.sgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .sgrid>.fold.open,.sgrid>:not(.fold){grid-column:1/-1}
 
