@@ -2531,11 +2531,8 @@ function loginHTML(){
       return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">استنى لحد ما البيانات تتحمّل من درايف</p>'+
         '<button data-act="gdConnect" class="btn block">اربط جوجل درايف تاني</button></div></main>';
     }
-    return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">أول مرة: اختار الرقم السري للمالك</p>'+err+
-      '<div class="fld"><label for="lpin1">الرقم السري الجديد</label><input id="lpin1" type="password" autocomplete="new-password"></div>'+
-      '<div class="fld"><label for="lpin2">تأكيد الرقم السري</label><input id="lpin2" type="password" autocomplete="new-password"></div>'+
-      '<p class="meta" style="margin:0 0 8px">استخدم 6 حروف أو أرقام أو أكتر.</p>'+
-      '<button class="btn block" data-act="ownerSetup">حفظ الرقم السري</button></div></main>';
+    return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta" style="margin-bottom:12px">الحساب ده مش مرتبط ببيانات التطبيق. سجّل بحساب Google اللي فيه البيانات.</p>'+
+      '<button class="btn ghost block" data-act="gdOff">سجّل بحساب Google تاني</button></div></main>';
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
@@ -3494,21 +3491,6 @@ function installHTML(){
 var ACT={
   theme:function(){var n=curTheme()==="dark"?"light":"dark";setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
-  ownerSetup:function(){
-    var a=(document.getElementById('lpin1')||{}).value||'',b=(document.getElementById('lpin2')||{}).value||'';
-    if(a.length<4){U.loginErr='الرقم السري لازم يكون 4 حروف أو أرقام على الأقل';render();return false;}
-    if(a!==b){U.loginErr='التأكيد مش مطابق للرقم السري';render();return false;}
-    var salt=randHex();
-    hexPbkdf2(a,salt,200000).then(function(h){
-      return findUserByPw(a).then(function(u){
-        if(u){U.loginErr='الرقم ده مستخدم لمستخدم تاني، اختار غيره';render();return;}
-        S.auth={salt:salt,hash:h,iter:200000};save();
-        lockSettings();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}
-        U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();
-      });
-    }).catch(function(){U.loginErr='حصل خطأ، جرّب تاني';render();});
-    return false;
-  },
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
     checkPin(p).then(function(ok){
@@ -4143,7 +4125,7 @@ var ACT={
 };
 var READ_ACTS={notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
-  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,ownerSetup:1,recvClose:1,recv:1,
+  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
