@@ -2325,6 +2325,46 @@ function prepReqView(){
     '<details data-fk="prepDetail"'+(FOLD_OPEN['prepDetail']===true?' open':'')+' style="margin-bottom:10px"><summary class="grp" style="cursor:pointer">تفصيل النواقص حسب الصنف النهائي ('+ids.length+')</summary><div class="list">'+cards+'</div></details>'+
     (legacyAny?'<div class="note">تنبيه: بعض سجلات حشو القديمة لا تحتوي على كمية الناتج لكل تشغيله؛ احتياج مكوناتها محسوب تقديريًا من البيانات القديمة. التشغيلات الجديدة تُسجل بناتجها الفعلي لحساب أدق.</div>':'');
 }
+/* تبويب "حشو": تشغيل صنف محشو موجود. الاسم بيختار، والمجموعة والكمية الناتجة والخامات بتتملى تلقائي من آخر تشغيل */
+function runPend(pid){var t=0;S.batches.forEach(function(b){if(b.p===pid)t+=pc(b);});return t;}
+function runNetLack(R,pid){return r3((num(R.q[pid])||0)-(S.ready[pid]||0)-runPend(pid));}
+function runSuggest(R){
+  var q=String((R&&R.name)||'').trim();
+  if(!q)return '';
+  var pk=R.pid?P(R.pid):null;
+  if(pk&&String(pk.name||'').trim()===q)return '';
+  var m=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&String(p.name||'').trim().indexOf(q)===0;}).slice(0,8);
+  if(!m.length)return '<div class="meta" style="margin-top:6px">مفيش صنف محشو بالاسم ده. الأصناف الجديدة اعملها من تبويب إضافة أصناف جديدة.</div>';
+  return '<div class="fdrop">'+m.map(function(p){return '<button data-act="runPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
+}
+function runBodyHTML(R){
+  var p=R&&R.pid?P(R.pid):null;
+  if(!p)return '<div class="meta" style="margin-top:8px">اكتب اسم الصنف واختاره من الاقتراحات عشان المجموعة والخامات تظهر تلقائي.</div>';
+  if(!(R.sel||[]).length)return '<div class="meta" style="margin-top:8px">الصنف ده ملوش تشغيل قبل كده، فمفيش خامات تتحسب تلقائي.</div>';
+  var needStock=false,redN=0;
+  var rows=R.sel.map(function(pid){
+    var sp=P(pid);if(!sp)return '';
+    var need=num(R.q[pid])||0,have=S.ready[pid]||0,pend=runPend(pid),net=runNetLack(R,pid);
+    if(need>have+1e-9)needStock=true;
+    var bad=net>0;if(bad)redN++;
+    var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
+    var style=bad?' style="border:1.5px solid var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))"':'';
+    return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small>مطلوب '+f(need)+' '+esc(sp.unit||'')+' · متاح '+f(have)+(pend?' · في التحضير '+f(pend):'')+'</small></div>'+st+'</div>';
+  }).join('');
+  var btns='<div class="btns" style="margin-top:12px">'+
+    (redN?'<button class="btn" data-act="runMakeBatches">إنشاء دفعة بالنواقص ('+redN+')</button>':'')+
+    '<button class="btn" data-act="runDo"'+(needStock?' disabled':'')+'>نفّذ الحشو</button></div>';
+  return '<div class="meta" style="margin-top:10px">المجموعة: <b>'+esc(p.grp||'-')+'</b> · الكود <span class="ltr">'+esc(p.code||'-')+'</span></div>'+
+    '<div class="meta" style="margin-top:8px">الخامات اللي هتتسحب من مخزن الإنتاج (تلقائي):</div><div class="list" style="margin-top:6px">'+rows+'</div>'+btns;
+}
+function runFillHTML(){
+  var R=U.run||(U.run={name:'',pid:null,grp:'',q:{},out:'',sel:[]});
+  return '<section class="card fillform" style="--c:var(--filling)"><h3>حشو صنف موجود</h3>'+
+    '<div class="fld"><label>اسم الصنف</label><input type="text" data-rn="1" value="'+esc(R.name||'')+'" placeholder="اكتب اسم الصنف المحشو"></div>'+
+    '<div id="runSug">'+runSuggest(R)+'</div>'+
+    '<div class="fld" style="margin-top:6px"><label>الكمية الناتجة</label><input type="text" inputmode="decimal" data-ro="1" value="'+esc(R.out||'')+'" placeholder="مثلاً 3"></div>'+
+    '<div id="runBody">'+runBodyHTML(R)+'</div></section>';
+}
 function fillingView(){
   var F=U.fill||(U.fill={name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]});
   var src=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived&&(S.ready[p.id]||0)>0;});
@@ -2359,7 +2399,10 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+'<div class="meta" style="margin-top:8px">الموسم</div>'+seasonBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" data-act="fillMake">اعمل الصنف</button></div></section>';
-  return head('تحضير حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+form+prodLogHTML('fill');
+  var ft=U.fillTab||'add';
+  var tabsH='<div class="seg" role="group" aria-label="تبويبات الحشو" style="margin-bottom:10px">'+[['add','إضافة أصناف جديدة'],['run','حشو']].map(function(x){return '<button class="'+(ft===x[0]?'on':'')+'" data-act="fillTab" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
+  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج',"")+tabsH+runFillHTML()+prodLogHTML('fill');
+  return head('تحضير حشو','دمج خامات من مخزن الإنتاج في صنف جديد بكود جديد','')+tabsH+form+prodLogHTML('fill');
 }
 
 function wasteCardHTML(p){
@@ -4631,6 +4674,39 @@ ACT.batchSuggestApply=function(){
   notifyNew('دفعات جديدة',made+' دفعة مقترحة اتعملت','newb-'+Date.now(),'prep');
   go('prep');
 };
+ACT.fillTab=function(d){U.fillTab=d.v;};
+ACT.runPick=function(d){
+  var p=P(d.id);if(!p)return false;
+  var lr=fillLastRun(p);
+  var R={name:p.name,pid:p.id,grp:p.grp||'',q:{},out:'',sel:[]};
+  if(lr){R.sel=lr.from.map(function(x){return x.p;});lr.from.forEach(function(x){R.q[x.p]=x.q;});R.out=String(lr.out);}
+  U.run=R;
+};
+ACT.runDo=function(){
+  var R=U.run;if(!R||!R.pid){toast('اختار الصنف المحشو الأول');return false;}
+  var p=P(R.pid);if(!p){toast('الصنف ده مش موجود');return false;}
+  if(!(num(R.out)>0)){toast('اكتب الكمية الناتجة');return false;}
+  if(!(R.sel||[]).length){toast('الصنف ده ملوش خامات');return false;}
+  var short=R.sel.some(function(pid){return (num(R.q[pid])||0)>(S.ready[pid]||0)+1e-9;});
+  if(short){toast('فيه خامات ناقصة في المخزن');return false;}
+  U.fill={name:String(p.name||'').trim(),kind:p.fill||'cust',q:Object.assign({},R.q),out:String(R.out),unit:p.unit||'قطعة',sel:R.sel.slice(),grp:p.grp||'',season:p.season||'normal'};
+  if(ACT.fillMake()===false){U.fill=null;return false;}
+  U.run=null;
+};
+ACT.runMakeBatches=function(){
+  var R=U.run;if(!R)return false;
+  var made=0;
+  (R.sel||[]).forEach(function(pid){
+    var lack=runNetLack(R,pid);if(!(lack>0))return;
+    var qty=Math.ceil(r3(lack/yieldOf(pid)));if(!(qty>0))return;
+    var id='B-'+nextBatchNo()+'-'+devId();
+    S.batches.push({id:id,p:pid,qty:qty,stage:'prep',withdrawn:false,checks:[],created:Date.now(),by:actorName(),byc:actorCode()});
+    made++;
+  });
+  if(!made){toast('مفيش نواقص تحتاج دفعات');return false;}
+  toast('اتعمل '+made+' دفعة للنواقص');
+  notifyNew('دفعات جديدة',made+' دفعة اتعملت للنواقص','newb-'+Date.now(),'prep');
+};
 ACT.prepBatches=function(){
   var lk=prepLackTotals(),ks=Object.keys(lk);
   if(!ks.length){toast('مفيش تحضيرات ناقصة');return false;}
@@ -4688,7 +4764,7 @@ ACT.rpPrint=function(){
   doPrint(recipePrintHTML(list,s.q>0?s.q:1));document.title=old;return false;
 };
 READ_ACTS.rpOpen=1;READ_ACTS.rpClose=1;READ_ACTS.rpToggle=1;READ_ACTS.rpAll=1;READ_ACTS.rpNone=1;READ_ACTS.rpPrint=1;
-READ_ACTS.plToggle=1;READ_ACTS.plAll=1;READ_ACTS.sTab=1;
+READ_ACTS.plToggle=1;READ_ACTS.plAll=1;READ_ACTS.sTab=1;READ_ACTS.fillTab=1;READ_ACTS.runPick=1;
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
@@ -4747,6 +4823,18 @@ function onField(e){
     }
     if(mt){U.fill.grp=mt.grp||'';var gi=document.querySelector('[data-fg]');if(gi)gi.value=mt.grp||'';}
     var sb=document.getElementById('fillSug');if(sb)sb.innerHTML=fillSuggest(U.fill);
+    return;
+  }
+  if(d.rn!==undefined){
+    U.run=U.run||{name:'',pid:null,grp:'',q:{},out:'',sel:[]};U.run.name=t.value;
+    var rpk=U.run.pid?P(U.run.pid):null;
+    if(rpk&&String(rpk.name||'').trim()!==String(t.value||'').trim()){U.run.pid=null;U.run.sel=[];U.run.q={};U.run.out='';var rbx=document.querySelector('[data-ro]');if(rbx)rbx.value='';var rbd=document.getElementById('runBody');if(rbd)rbd.innerHTML=runBodyHTML(U.run);}
+    var rsg=document.getElementById('runSug');if(rsg)rsg.innerHTML=runSuggest(U.run);
+    return;
+  }
+  if(d.ro!==undefined){
+    U.run=U.run||{name:'',pid:null,grp:'',q:{},out:'',sel:[]};U.run.out=t.value;fillRescale(U.run);
+    var rbd2=document.getElementById('runBody');if(rbd2)rbd2.innerHTML=runBodyHTML(U.run);
     return;
   }
   if(d.fq!==undefined){U.fill=U.fill||{name:'',kind:'cust',q:{}};var fv=num(t.value);U.fill.q[d.fq]=(isFinite(fv)&&fv>0)?r3(fv):0;return;}
