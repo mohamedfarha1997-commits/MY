@@ -879,7 +879,7 @@ var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
 if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1)U.view=h;
 
-function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
+function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){if(!i.m&&i.mid)i.m=i.mid;rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
 function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
 function shortOf(b){var n=need(b),out=[];if(!TRACK())return out;for(var k in n){var have=S.stock[k]||0;if(have+1e-9<n[k])out.push({k:k,lack:n[k]-have});}return out;}
 /* sub-recipes: finished pieces of other products taken from the production stock (per ONE meal of this product) */
@@ -2454,7 +2454,7 @@ function saveProd(F){
           mm=cp;fac=1;
         }
       }
-      ings.push({key:key,n:n,u:r.u,q:r3(q*fac),dq:q,du:r.u,mid:mm?mm.id:null});
+      ings.push({key:key,n:n,u:r.u,q:r3(q*fac),dq:q,du:r.u,m:mm?mm.id:null,mid:mm?mm.id:null});
     });
     var steps=g.steps.map(function(t){return t.trim();}).filter(Boolean);
     if(g.kind==='prep'){if(!ings.length&&!steps.length)return;gname='مرحلة '+(++pn);}
@@ -2817,7 +2817,7 @@ function prepItems(p,qty){
 }
 function syncProd(p){
   var rec={};
-  (p.stages||[]).forEach(function(g){(g.ings||[]).forEach(function(i){rec[i.m]=r3((rec[i.m]||0)+i.q);});});
+  (p.stages||[]).forEach(function(g){(g.ings||[]).forEach(function(i){if(!i.m&&i.mid)i.m=i.mid;rec[i.m]=r3((rec[i.m]||0)+i.q);});});
   p.recipe=rec;
   p.prep=prepItems(p,0).map(function(x){return x.t;});
 }
