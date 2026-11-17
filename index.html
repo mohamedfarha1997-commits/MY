@@ -1145,7 +1145,7 @@ function gdSync(){
 }
 function gdStart(){
   gdLoadCfg();
-  if(GD.on)gdLoadGis();
+  gdLoadGis();
   document.addEventListener('visibilitychange',function(){if(!document.hidden)gdSync();});
   if(GD.on&&!gdTokOk())gdArm();
 }
@@ -2528,7 +2528,13 @@ function footHTML(){
 
 function loginHTML(){
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
-  return '<main class="login" dir="rtl" lang="ar"><div class="lcard"><picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture><p class="meta">سجّل دخولك عشان تكمل</p>'+err+
+  var logo='<picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture>';
+  if(!GD.on&&!U.gdSkip){
+    return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">الخطوة الأولى: اربط جوجل درايف</p>'+(GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
+      '<button class="btn block" data-act="gdConnect">ربط جوجل درايف</button>'+
+      '<button class="btn ghost block" data-act="gdSkip" style="margin-top:8px">كمّل من غير درايف</button></div></main>';
+  }
+  return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     '<button class="btn block" data-act="login">دخول</button></div></main>';
 }
@@ -3452,8 +3458,8 @@ function settingsGate(){
   if(sUnlocked()&&!U.sChange)return settingsView();
   var st=sPwStored(),err=U.sErr?'<div class="note">'+U.sErr+'</div>':'',mode=!st?'setup':(U.sChange?'change':'unlock');
   var title,body,btn,extra='';
-  if(mode==='setup'){title='اختار PIN للإعدادات';body=pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN','new-password');btn='حفظ الـ PIN';}
-  else if(mode==='change'){title='تغيير PIN الإعدادات';body=pwField('spwOld','الـ PIN الحالي','current-password')+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN الجديد','new-password');btn='حفظ الـ PIN الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
+  if(mode==='setup'){title='اختار PIN للإعدادات';body='<p class="meta" style="margin:0 0 8px">تنبيه: الـ PIN من 4 أرقام ضعيف، ممكن حد يعرفه بسهولة. استخدم 6 أرقام أو أكتر.</p>'+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN','new-password');btn='حفظ الـ PIN';}
+  else if(mode==='change'){title='تغيير PIN الإعدادات';body='<p class="meta" style="margin:0 0 8px">تنبيه: الـ PIN من 4 أرقام ضعيف، ممكن حد يعرفه بسهولة. استخدم 6 أرقام أو أكتر.</p>'+pwField('spwOld','الـ PIN الحالي','current-password')+pwField('spw1','الـ PIN الجديد','new-password')+pwField('spw2','تأكيد الـ PIN الجديد','new-password');btn='حفظ الـ PIN الجديد';extra='<button class="btn ghost block" data-act="sCancel" style="margin-top:8px">إلغاء</button>';}
   else{title='الإعدادات محمية';body=pwField('spw1','الـ PIN','current-password');btn='دخول';extra=settingsBioBtn()+'<p class="meta" style="margin:0">لو نسيت الـ PIN مفيش طريقة تستعيده من التطبيق. الحل الوحيد إنك تمسح بيانات الموقع من المتصفح، وده هيمسح كل البيانات.</p>';}
   return '<section class="card" style="--c:var(--settings);max-width:420px;margin:24px auto"><h3>'+title+'</h3>'+err+body+'<button class="btn block" data-act="settingsSubmit">'+btn+'</button>'+extra+'</section>';
 }
@@ -3485,6 +3491,7 @@ var ACT={
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
     return false;
   },
+  gdSkip:function(){U.gdSkip=true;render();return false;},
   gdConnect:function(){
     if(!GD.tc){gdLoadGis();toast('استنى ثانية لحد ما جوجل يحمّل وجرّب تاني');return false;}
     GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
@@ -4089,7 +4096,7 @@ var ACT={
 };
 var READ_ACTS={notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
-  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,recvClose:1,recv:1,
+  printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdSkip:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
