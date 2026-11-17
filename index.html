@@ -887,7 +887,24 @@ var MATERIALS=[],PRODUCTS=[];
 /* كود الصنف: الأصناف العادية بتاخد P-001 وهكذا، والمحشوة ليها F-xxx. مفيش تكرار */
 function nextProdNo(){var mx=0;PRODUCTS.forEach(function(p){var m=/^P-(\d+)$/.exec(String(p.code||''));if(m&&+m[1]>mx)mx=+m[1];});return mx+1;}
 function ensureProdCodes(){PRODUCTS.forEach(function(p){if(p.code)return;if(p.fill){p.code='F-'+String(nextFillNo()).padStart(3,'0');S.fseq=+p.code.slice(2);}else p.code='P-'+String(nextProdNo()).padStart(3,'0');});}
-function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;PRODUCTS.forEach(function(p){if(p.stages)syncProd(p);});ensureProdCodes();}
+function bind(s){MATERIALS=s.materials;PRODUCTS=s.products;PRODUCTS.forEach(function(p){if(p.stages)syncProd(p);});ensureProdCodes();purgeProdLog(s);}
+/* سجل الإنتاج بيتمسح تلقائي بعد ٣٠ يوم من آخر حركة: الدفعات بتتمسح (مع شاهد الحذف عشان المزامنة مترجعهاش)، وتحضير الحشو بيتخفي من السجل بس والمخزون ما يتأثرش */
+var PROD_LOG_KEEP_MS=30*24*60*60*1000;
+function purgeProdLog(s){
+  var cut=Date.now()-PROD_LOG_KEEP_MS,log=s.plog||{};
+  Object.keys(log).forEach(function(id){
+    var e=log[id]||{},last=e.at||0;
+    (e.ev||[]).forEach(function(v){if((v.t||0)>last)last=v.t;});
+    if(last&&last<cut){
+      delete log[id];
+      s.plogTomb=s.plogTomb||{};s.plogTomb[id]=Date.now();
+    }
+  });
+  (s.products||[]).forEach(function(p){
+    if(!p.fill||!Array.isArray(p.fillRuns))return;
+    p.fillRuns.forEach(function(r){if(!r.logHidden&&r.at&&r.at<cut)r.logHidden=true;});
+  });
+}
 function fix(o){
   if(!o.materials)o.materials=[];
   if(!o.products)o.products=[];
@@ -3675,7 +3692,7 @@ function prodLogCardHTML(){
     var who=r.by.length?r.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' '):'<span class="meta">—</span>';
     return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td>'+tog+'</td><td><span class="bid ltr">'+esc(r.code)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(qtxt)+' · '+esc(tstr(r.at))+'</small></td><td><span class="pill '+(isFill?'warn':'c')+'">'+lbl+'</span></td><td>'+who+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة إنتاج وتحضير حشو، وكود كل واحد شارك فيهم. تقدر تحدد دفعات الإنتاج وتمسحها من السجل.</p>'+
+  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة إنتاج وتحضير حشو، وكود كل واحد شارك فيهم. تقدر تحدد دفعات الإنتاج وتمسحها من السجل. السجل بيتمسح تلقائي بعد ٣٠ يوم من آخر حركة.</p>'+
     prodSummaryHTML(runs)+
     '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+bar+
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اختيار</th><th>الدفعة</th><th>الصنف والتفاصيل</th><th>النوع</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
