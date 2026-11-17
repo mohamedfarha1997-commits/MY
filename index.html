@@ -1774,7 +1774,7 @@ function plRows(mode){
   return rows;
 }
 function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(r.d.by?'<br><span class="meta">عمل الدفعة: '+esc(r.d.by)+'</span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(r.d.by?'<br><span class="meta">عملها: '+esc(r.d.by)+'</span>':'')+(r.d.ap?'<br><span class="meta">اعتمدها: '+esc(r.d.ap)+'</span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
@@ -3907,7 +3907,7 @@ var ACT={
   approve:function(d){if(!canApprove()){toast('مش مسموح لك تعتمد الإنتاج');return false;}markBy(batch(d.id),'approve');
     var b=batch(d.id),p=P(b.p),rej=b.rej||0,good=pc(b)-rej;
     var stk=stkQty(b),toStk=stk;
-    S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o,by:b.by||''});
+    S.done.push({id:b.id,p:b.p,code:p?p.code:'',name:p?p.name:'',unit:p?p.unit:'',qty:pc(b),good:good,rej:rej,stk:stk,at:Date.now(),o:b.o,by:b.by||'',ap:actorName()});
     var ordA=b.o?S.orders.filter(function(x){return x.id===b.o;})[0]:null,itA=ordA?ordA.items.filter(function(x){return x.p===b.p;})[0]:null;
     if(itA){
       var toOrd=Math.min(stk,Math.max(0,r3(itA.qty-(itA.fs||0)-(itA.got||0))));
