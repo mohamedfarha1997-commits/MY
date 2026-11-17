@@ -610,6 +610,30 @@ button,input{font-family:inherit}
 .msug:empty{display:none}
 .msugBtn{border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer}
 .msugBtn:active{transform:scale(.97)}
+
+/* ---- responsive layer: يشتغل على الموبايل والتابلت والشاشات الكبيرة ---- */
+/* التصغير بالـ zoom للموبايل بس، والشاشات الكبيرة بحجم طبيعي */
+@media (max-width:640px){#app{zoom:.9}}
+@media (min-width:641px){#app{zoom:1}}
+/* العرض بيكبر مع الشاشة: 760 للموبايل، وحتى 1180 على الديسكتوب */
+@media (min-width:900px){.app{max-width:1180px}}
+/* شبكات الكروت بتتقاس على عرض الشاشة (عدد الأعمدة بيزيد تلقائي) */
+.pgrid,.pkgrid{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))!important}
+.fgcards{grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr))}
+/* الجداول والمحتوى العريض ما يكسرش الصفحة */
+.card table,.sheet table{display:block;overflow-x:auto;max-width:100%}
+.card table tbody,.sheet table tbody{display:table;width:100%}
+img,svg,canvas,video{max-width:100%;height:auto}
+/* الشاشات الكبيرة: خطوط ومسافات أوسع شوية */
+@media (min-width:1024px){
+  body{font-size:16px}
+  .top h1{font-size:34px}
+  .today b{font-size:34px}
+  .sheet{max-width:640px}
+}
+/* شاشات صغيرة جدًا أو عرضية قصيرة */
+@media (max-width:359px){.top h1{font-size:24px}.today b{font-size:24px}}
+@media (max-height:500px) and (orientation:landscape){.sheet{max-height:94%}.nav{padding-block:4px 6px}}
 </style>
 
 </head><body>
