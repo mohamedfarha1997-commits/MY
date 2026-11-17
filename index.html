@@ -3612,48 +3612,58 @@ function usersCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس. الباسورد لازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود المختصر (3 أرقام) بيظهر للمراجعة في جدول الصلاحيات وجدول الإنتاج.</p>'+
     (list.length?'<table class="ttab"><thead><tr><th>الاسم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta">مفيش مستخدمين لسه.</div>')+pwBox+form+'</section>';
 }
-function prodSummaryHTML(log){
-  var m={},ev=[];
+/* كل تشغيل: دفعات الإنتاج العادي + تحضير الحشو، مرتبين من الأحدث */
+function prodRunsAll(){
+  var log=S.plog||{},out=[];
   Object.keys(log).forEach(function(id){
     var e=log[id];
-    (e.by||[]).forEach(function(c){m[c]=m[c]||{c:c,batches:0,acts:0};m[c].batches++;});
-    (e.ev||[]).forEach(function(v){
-      m[v.c]=m[v.c]||{c:v.c,batches:0,acts:0};m[v.c].acts++;
-      ev.push({id:id,c:v.c,a:v.a,t:v.t});
+    out.push({id:id,type:'prod',p:e.p,qty:e.qty,at:e.at||0,by:e.by||[],ev:e.ev||[],code:sid(id)});
+  });
+  PRODUCTS.forEach(function(p){
+    if(!p.fill||!Array.isArray(p.fillRuns))return;
+    p.fillRuns.forEach(function(r,i){
+      var by=r.by?[r.by]:(i===0&&p.by?[p.by]:[]);
+      out.push({id:null,type:'fill',p:p.id,qty:r.out,at:r.at||0,by:by,ev:[],code:p.code||'—'});
     });
   });
-  var people=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.acts-a.acts;});
+  out.sort(function(x,y){return y.at-x.at;});
+  return out.slice(0,300);
+}
+function prodSummaryHTML(runs){
+  var m={};
+  runs.forEach(function(r){
+    r.by.forEach(function(c){m[c]=m[c]||{c:c,batches:0,acts:0};m[c].batches++;});
+  });
+  var people=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.batches-a.batches;});
   if(!people.length)return '';
-  ev.sort(function(a,b){return b.t-a.t;});
   var nm=function(c){var u=userByCode(c);return u?u.name:'';};
   var pills=people.map(function(x){
-    return '<span class="pill c">'+esc(x.c)+(nm(x.c)?' '+esc(nm(x.c)):'')+' · '+x.batches+' دفعة · '+x.acts+' حركة</span>';
+    return '<span class="pill c">'+esc(x.c)+(nm(x.c)?' '+esc(nm(x.c)):'')+' · '+x.batches+' دفعة</span>';
   }).join(' ');
-  var recent=ev.slice(0,20).map(function(v){
-    var lbl=ACT_LBL[v.a]||v.a;
-    return '<div class="rq"><div><b>'+esc(nm(v.c)||v.c)+'</b><small>'+esc(lbl)+' · '+sid(v.id)+'</small></div><span class="meta">'+esc(tstr(v.t))+'</span></div>';
-  }).join('');
-  return '<div class="fld" style="margin-top:10px"><span class="sec-l">ملخص الشغل</span><div style="display:flex;gap:6px;flex-wrap:wrap">'+pills+'</div></div>'+
-    (recent?'<div class="fld" style="margin-top:10px"><span class="sec-l">آخر الحركات</span><div class="stack">'+recent+'</div></div>':'');
+  return '<div class="fld" style="margin-top:10px"><span class="sec-l">ملخص الشغل</span><div style="display:flex;gap:6px;flex-wrap:wrap">'+pills+'</div></div>';
 }
 function prodLogCardHTML(){
-  var log=S.plog||{};
-  var ids=Object.keys(log).sort(function(a,b){return (log[b].at||0)-(log[a].at||0);}).slice(0,300);
-  if(!ids.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، هتظهر هنا مع كود كل اللي شاركوا فيها.</p></section>';
-  var sel=(U.plSel||[]).filter(function(id){return ids.indexOf(id)>-1;});
-  var allOn=sel.length===ids.length;
-  var bar='<div class="btns" style="margin-top:8px"><button class="btn ghost sm" data-act="plAll">'+(allOn?'إلغاء التحديد':'حدّد الكل')+'</button>'+
-    '<button class="btn quiet sm" data-act="plDel"'+(sel.length?'':' disabled')+'>'+(U.confirm==='pldel'?'اضغط تاني للتأكيد':'امسح المحدد ('+sel.length+')')+'</button></div>';
-  var rows=ids.map(function(id){
-    var e=log[id],p=P(e.p),on=sel.indexOf(id)>-1;
-    var names=e.by.map(function(c){var u=userByCode(c);return c+' '+(u?u.name:'');}).join(' ');
-    var q=[id,sid(id),p?p.name:'',String(e.qty||''),tstr(e.at),names,e.by.join(' ')].join(' ').toLowerCase();
-    return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td><button class="btn '+(on?'':'ghost ')+'sm" data-act="plToggle" data-id="'+id+'" style="min-width:64px">'+(on?'✓ محدد':'تحديد')+'</button></td><td><span class="bid ltr">'+sid(id)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(mealQ(e.qty||0,p))+' · '+esc(tstr(e.at))+'</small></td><td>'+e.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' ')+'</td></tr>';
+  var runs=prodRunsAll();
+  if(!runs.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، أو يتعمل تحضير حشو، هيظهر هنا مع كود كل اللي شاركوا فيه.</p></section>';
+  var batchIds=runs.filter(function(r){return r.type==='prod';}).map(function(r){return r.id;});
+  var sel=(U.plSel||[]).filter(function(id){return batchIds.indexOf(id)>-1;});
+  var allOn=batchIds.length>0&&sel.length===batchIds.length;
+  var bar=batchIds.length?'<div class="btns" style="margin-top:8px"><button class="btn ghost sm" data-act="plAll">'+(allOn?'إلغاء التحديد':'حدّد الكل')+'</button>'+
+    '<button class="btn quiet sm" data-act="plDel"'+(sel.length?'':' disabled')+'>'+(U.confirm==='pldel'?'اضغط تاني للتأكيد':'امسح المحدد ('+sel.length+')')+'</button></div>':'';
+  var rows=runs.map(function(r){
+    var p=P(r.p),isFill=r.type==='fill',on=!isFill&&sel.indexOf(r.id)>-1;
+    var lbl=isFill?'تحضير حشو':'إنتاج';
+    var names=r.by.map(function(c){var u=userByCode(c);return c+' '+(u?u.name:'');}).join(' ');
+    var qtxt=isFill?f(r.qty)+' '+(p?p.unit:''):mealQ(r.qty||0,p);
+    var q=[r.code,lbl,p?p.name:'',String(r.qty||''),tstr(r.at),names,r.by.join(' ')].join(' ').toLowerCase();
+    var tog=isFill?'<span class="meta">—</span>':'<button class="btn '+(on?'':'ghost ')+'sm" data-act="plToggle" data-id="'+r.id+'" style="min-width:64px">'+(on?'✓ محدد':'تحديد')+'</button>';
+    var who=r.by.length?r.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' '):'<span class="meta">—</span>';
+    return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td>'+tog+'</td><td><span class="bid ltr">'+esc(r.code)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(qtxt)+' · '+esc(tstr(r.at))+'</small></td><td><span class="pill '+(isFill?'warn':'c')+'">'+lbl+'</span></td><td>'+who+'</td></tr>';
   }).join('');
-  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة وكود كل واحد شارك فيها. تقدر تحدد دفعات وتمسحها من السجل.</p>'+
-    prodSummaryHTML(log)+
+  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة إنتاج وتحضير حشو، وكود كل واحد شارك فيهم. تقدر تحدد دفعات الإنتاج وتمسحها من السجل.</p>'+
+    prodSummaryHTML(runs)+
     '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+bar+
-    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اختيار</th><th>الدفعة</th><th>الصنف والتفاصيل</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
+    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اختيار</th><th>الدفعة</th><th>الصنف والتفاصيل</th><th>النوع</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
     '<div class="meta" id="plEmpty" hidden style="text-align:center;padding:8px 0">مفيش نتايج للبحث ده.</div></section>';
 }
 document.addEventListener('input',function(e){
@@ -4323,7 +4333,7 @@ var ACT={
         ex.legacyOutEstimate=ex.fromTotal||0; // تقدير للبيانات القديمة التي لم تسجل الناتج لكل تشغيله
         ex.fillRuns=[];
       }
-      ex.fillRuns.push({at:Date.now(),out:out,from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})});
+      ex.fillRuns.push({at:Date.now(),out:out,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})});
       S.ready[ex.id]=r3((S.ready[ex.id]||0)+out);
       ex.from=(ex.from||[]).concat(src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}));
       ex.fromTotal=r3((ex.fromTotal||0)+pulled);
@@ -4337,7 +4347,7 @@ var ACT={
     }
     var code=mergedCode();
     var np={id:'p'+Date.now().toString(36),name:name,code:code,srcCodes:codes,season:F.season||'normal',grp:(F.grp||'').trim(),unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),
-      from:src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}),fromTotal:pulled,outTotal:out,legacyFrom:[],legacyOutEstimate:0,fillRuns:[{at:Date.now(),out:out,from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})}]};
+      from:src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}),fromTotal:pulled,outTotal:out,legacyFrom:[],legacyOutEstimate:0,fillRuns:[{at:Date.now(),out:out,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})}]};
     S.products.push(np);S.ready[np.id]=r3(out);allocReady(np.id);
     bind(S);U.fill=null;
     toast('اتعمل '+name+' بكود '+code+' وكمية '+f(r3(out))+' '+unit);
@@ -4417,7 +4427,7 @@ ACT.plToggle=function(d){
   if(i>-1)U.plSel.splice(i,1);else U.plSel.push(d.id);
 };
 ACT.plAll=function(){
-  var ids=Object.keys(S.plog||{}).sort(function(a,b){return ((S.plog[b]||{}).at||0)-((S.plog[a]||{}).at||0);}).slice(0,300);
+  var ids=prodRunsAll().filter(function(r){return r.type==='prod';}).map(function(r){return r.id;});
   U.plSel=(U.plSel||[]).length===ids.length?[]:ids;
 };
 ACT.plDel=function(){
