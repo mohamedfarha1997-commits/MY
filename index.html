@@ -2388,7 +2388,7 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
   var opts=[];
-  if(!tabHidden('fillrun'))opts.push(['run','حشو','شغّل صنف محشو موجود من مخزن الإنتاج']);
+  if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
   if(!tabHidden('filladd'))opts.push(['add','إضافة أصناف جديدة','اعمل صنف محشو جديد بكود جديد']);
   if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b><span>المالك لازم يفعّل لك تبويب من جدول التبويبات والصلاحيات.</span></div>';
   var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
@@ -3753,7 +3753,7 @@ function tabsCardHTML(){
     var userCells=users.map(function(u){var on=userTabs(u.code).indexOf(t.k)>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="'+t.k+'">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('');
     return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td>'+userCells+'</tr>';
   };
-  var rows=navItems().map(function(t){return TR(t)+(t.k==='filling'?TR({k:'fillrun',l:'تحضير حشو ← حشو'})+TR({k:'filladd',l:'تحضير حشو ← إضافة أصناف جديدة'}):'');}).join('');
+  var rows=navItems().map(function(t){return TR(t)+(t.k==='filling'?TR({k:'fillrun',l:'تحضير حشو ← تسجيل إنتاج جديد'})+TR({k:'filladd',l:'تحضير حشو ← إضافة أصناف جديدة'}):'');}).join('');
   rows+='<tr><td>اعتماد الإنتاج (بعد انتهاء الوقت)</td><td><span class="meta">دايمًا ظاهر</span></td>'+
     users.map(function(u){var on=userTabs(u.code).indexOf('approve')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="approve">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
   rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
