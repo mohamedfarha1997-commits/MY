@@ -535,6 +535,15 @@ button,input{font-family:inherit}
 .top .ttlback{min-height:30px;padding:0 10px}
 .top .hsub{grid-column:1/-1;margin-top:2px;padding-top:4px;font-size:11px;line-height:1.3;border-top:none}
 .top::before{display:none}
+/* اسم القسم: أكبر ومتوسّط رأسياً وأفقياً في الهيدر */
+.top .ttlname{grid-row:1;align-self:center;justify-self:center;font-size:18px;font-weight:800;line-height:1.2;color:var(--ink);padding:0 2px}
+/* زرار الرجوع: كبسولة زجاجية مع سهم ملوّن بيتحرك لما تضغط */
+.top .ttlback{grid-row:1;align-self:center;display:inline-flex;align-items:center;gap:6px;height:36px;min-height:36px;padding:0 14px 0 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--ink) 12%,var(--line));background:linear-gradient(180deg,var(--surface),var(--surface-2));color:var(--ink);font-size:14px;font-weight:700;line-height:1;box-shadow:inset 0 1px 0 rgb(255 255 255 / .55),0 6px 14px -8px rgb(16 28 40 / .45);cursor:pointer;transition:transform .15s ease,box-shadow .2s ease}
+.top .ttlback svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--prep);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.top .ttlback:hover svg{transform:translateX(3px)}
+.top .ttlback:active{transform:scale(.94);box-shadow:inset 0 1px 2px rgb(16 28 40 / .15)}
+.top .ttlback:focus-visible{outline:2px solid var(--prep);outline-offset:2px}
+.top .hl{align-self:center}
 .top .hl{gap:12px}
 .top .themebtn{width:36px;min-width:36px;height:36px;min-height:36px}
 .top .themebtn svg{width:20px;height:20px}
@@ -1558,7 +1567,7 @@ function greetHTML(){
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
   var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب'}[U.view]||'';
-  return '<button class="btn ghost sm ttlback" data-act="tab" data-v="home">→ رجوع</button><b class="ttlname">'+esc(name)+'</b>';
+  return '<button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button><b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
     return '<header class="top">'+(U.view==='home'?greetHTML():titleHTML())+
