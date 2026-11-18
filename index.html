@@ -878,7 +878,8 @@ function mergeStates(a,b){
   });
   return M;
 }
-function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:u==='بيضة'?50:null;}
+/* البيضة مابتتحولش لجرام (ملغي التقدير 50 جرام) */
+function unitGrams(u){return u==='كجم'?1000:u==='جرام'?1:null;}
 function isWeightU(u){return u==='جرام'||u==='كجم';}
 function convK(ou,nu){var ao=unitGrams(ou),an=unitGrams(nu);if(ao&&an)return ao/an;return 1;}
 function isPieceU(u){return !u||['قطعة','صاج','كادر','تورته','بولة','كاس','سفنديش كبير','سفنديش صغير','سفنديش وسط','فورمة كبيرة','فورمة صغيرة','فخارة'].indexOf(u)>-1;}
@@ -1686,7 +1687,7 @@ function perMealHTML(p){
   var g=0,oth={},any=false;
   Object.keys(p.recipe||{}).forEach(function(k){
     var m=M(k),q=p.recipe[k];any=true;
-    if(m.unit==='جرام'||m.unit==='غطا')g+=q;else if(m.unit==='كجم')g+=q*1000;else if(m.unit==='بيضة')g+=q*50; /* البيضة = 50 جرام */
+    if(m.unit==='جرام'||m.unit==='غطا')g+=q;else if(m.unit==='كجم')g+=q*1000;
     else oth[m.unit]=r3((oth[m.unit]||0)+q);
   });
   if(!any)return '';
