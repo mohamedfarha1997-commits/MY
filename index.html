@@ -1220,7 +1220,12 @@ function gdLoadCfg(){
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
 function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
-function gdPaint(){var sg=(GD.ok?1:0)+'|'+GD.err+'|'+GD.on;if(sg!==GD.shown){GD.shown=sg;renderIdle();}}
+function gdPaint(){
+  var pill=document.querySelector('.top .dstat');
+  if(pill)pill.outerHTML=driveHTML();
+  var sg=(GD.ok?1:0)+'|'+GD.err+'|'+GD.on;
+  if(sg!==GD.shown){GD.shown=sg;renderIdle();}
+}
 function gdLoadGis(){
   if(GD.tc||GD.loading)return;
   if(window.google&&google.accounts&&google.accounts.oauth2){gdInitTc();return;}
@@ -1357,7 +1362,7 @@ function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
   if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
   GD.again=false;
-  GD.busy=true;GD.busyAt=Date.now();
+  GD.busy=true;GD.busyAt=Date.now();gdPaint();
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
     return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
@@ -1381,7 +1386,7 @@ function gdSync(){
       });
     });
   }).then(function(){GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();gdPaint();})
-    .catch(gdFail).then(function(){GD.busy=false;if(GD.again){GD.again=false;gdSync();}});
+    .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 function gdStart(){
   gdLoadCfg();
