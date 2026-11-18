@@ -333,7 +333,7 @@ button,input{font-family:inherit}
 .ps-title span{color:var(--muted);font-size:13px;font-weight:600}
 .ps-row{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:22px calc(50% - 90px) 26px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
 .ps-row::-webkit-scrollbar{display:none}
-.ps-row .tab{flex:0 0 180px;width:180px;height:180px;min-height:0;scroll-snap-align:center;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;transform:scale(.84);opacity:.55;filter:saturate(.7);transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,filter .4s ease,box-shadow .4s ease}
+.ps-row .tab{flex:0 0 180px!important;width:180px!important;min-width:180px!important;max-width:180px!important;height:180px;min-height:0;scroll-snap-align:center;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;transform:scale(.84);opacity:.7;filter:saturate(.7);transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,filter .4s ease,box-shadow .4s ease}
 .ps-row .tab::after{display:none}
 .ps-row .tab.focus{transform:scale(1.06);opacity:1;filter:none;box-shadow:0 26px 44px -20px rgb(16 28 40 / .55),0 0 0 2px color-mix(in srgb,var(--prep) 55%,transparent)}
 .ps-row .tab svg{width:40px;height:40px}
@@ -342,6 +342,19 @@ button,input{font-family:inherit}
 .ps-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}
 .ps-dots i{width:6px;height:6px;border-radius:999px;background:var(--line);transition:width .3s,background .3s}
 .ps-dots i.on{width:18px;background:var(--prep)}
+/* ---- واجهة الدخول بشكل PS5 ---- */
+.login .lcard{width:min(92vw,400px);padding:34px 26px 28px;border-radius:34px;background:color-mix(in srgb,var(--surface) 82%,transparent);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:0 40px 80px -30px rgb(16 28 40 / .55),inset 0 1px 0 rgb(255 255 255 / .35);text-align:center}
+.login .brand-logo{width:104px;height:104px;border-radius:30px;overflow:hidden;margin:0 auto 14px;display:block;box-shadow:0 18px 40px -14px var(--prep),0 0 0 6px color-mix(in srgb,var(--prep) 12%,transparent)}
+.login .lcard>.meta{font-family:var(--f-disp);font-size:18px;font-weight:700;color:var(--ink);margin:6px 0 18px}
+.login .fld{margin:0 0 14px}
+.login .fld label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
+.login .fld input{width:100%;height:58px;border-radius:999px;text-align:center;font-size:22px;letter-spacing:.35em;font-weight:700;border:1px solid color-mix(in srgb,var(--line) 80%,transparent);background:color-mix(in srgb,var(--surface) 92%,transparent);outline:none;transition:box-shadow .3s,border-color .3s}
+.login .fld input:focus{border-color:var(--prep);box-shadow:0 0 0 4px color-mix(in srgb,var(--prep) 22%,transparent),0 14px 30px -18px var(--prep)}
+.login .btn.block{height:56px;border-radius:999px;font-size:17px;font-weight:700;letter-spacing:.02em;background:linear-gradient(180deg,color-mix(in srgb,var(--prep) 88%,#fff),var(--prep));box-shadow:0 18px 34px -16px var(--prep);transition:transform .15s ease,box-shadow .25s ease}
+.login .btn.block:hover{box-shadow:0 22px 40px -14px var(--prep)}
+.login .btn.block:active{transform:scale(.97)}
+.login .note{border-radius:16px;margin-bottom:12px}
+
 
 @media (min-width:640px){.hgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .backbar{display:flex;align-items:center;gap:10px;margin:8px 0 4px;flex-wrap:wrap}
@@ -513,6 +526,24 @@ button,input{font-family:inherit}
 .lcard input:focus{outline:none;border-color:var(--b2);box-shadow:0 0 0 4px rgb(79 93 255 / .28)}
 .lcard .btn{min-height:54px;font-size:17px;border-radius:16px;background-color:var(--b2);background-image:linear-gradient(135deg,#4F5DFF,#293394);box-shadow:0 18px 38px -14px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35)}
 .lcard .note{background:rgb(185 28 28 / .08);color:var(--bad)}
+/* ---- شاشة الدخول بشكل PS5: خلفية داكنة، شعار كبير في النص، زرار أبيض عريض ---- */
+.login{background:radial-gradient(120% 70% at 50% 18%,#1d2c86 0%,#0c1233 48%,#05071a 100%)!important;color:#fff}
+.login::before{opacity:.35}
+.login::after{opacity:.5}
+.login .lcard{background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;width:min(92vw,420px);padding:0!important;text-align:center;align-items:center}
+.login .lcard .brand-logo{width:150px!important;height:150px!important;margin:0 auto 26px!important;border-radius:38px!important;display:block;box-shadow:0 0 0 1px rgb(255 255 255 / .12),0 34px 70px -24px rgb(79 93 255 / .9),0 0 110px 12px rgb(79 93 255 / .32)!important;animation:psFloat 4.5s ease-in-out infinite}
+@keyframes psFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.login .lcard>.meta,.login .lcard .meta{color:#fff!important;font-family:var(--f-disp);font-size:22px!important;font-weight:700;margin:4px 0 26px}
+.login .lcard .note{background:rgb(248 113 113 / .14)!important;color:#fecaca!important;border:1px solid rgb(248 113 113 / .3)}
+.login button[data-act="gdConnect"]{width:100%!important;height:64px!important;border-radius:999px!important;font-size:18px!important;font-weight:700!important;color:#111!important;background:#fff!important;border:0!important;box-shadow:0 22px 44px -16px rgb(0 0 0 / .65),0 0 0 0 rgb(255 255 255 / .6)!important;transition:transform .2s ease,box-shadow .3s ease!important}
+.login button[data-act="gdConnect"]:hover,.login button[data-act="gdConnect"]:focus-visible{transform:scale(1.03);box-shadow:0 26px 52px -16px rgb(0 0 0 / .7),0 0 0 6px rgb(255 255 255 / .18)!important;outline:none}
+.login button[data-act="gdConnect"]:active{transform:scale(.97)}
+.login .fld label{color:rgb(255 255 255 / .75)}
+.login .fld input{background:rgb(255 255 255 / .08)!important;color:#fff!important;border:1px solid rgb(255 255 255 / .22)!important;height:64px;border-radius:999px}
+.login .fld input:focus{border-color:#fff!important;box-shadow:0 0 0 5px rgb(255 255 255 / .18)!important}
+.login .btn.block{height:64px;border-radius:999px;font-size:18px;background:#fff!important;background-image:none!important;color:#111!important;box-shadow:0 22px 44px -16px rgb(0 0 0 / .65)!important}
+.login .btn.block:active{transform:scale(.97)}
+
 
 /* ---- الحركة (تُعطَّل تلقائيًا لمن يفضّل تقليل الحركة) ---- */
 @keyframes x-up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
@@ -1712,12 +1743,20 @@ function psSync(){
     var r=t.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-c);
     if(d<bd){bd=d;best=t;idx=i;}
   });
+  window.psPos=row.scrollLeft;
   Array.prototype.forEach.call(row.children,function(t){t.classList.toggle('focus',t===best);});
   var st=navItems().filter(function(x){return !tabHidden(x.k);});
   var it=st[idx]||{l:'',n:0,u:''};
   var nm=document.getElementById('psName'),mt=document.getElementById('psMeta');
   if(nm)nm.textContent=it.l;if(mt)mt.textContent=it.n+' '+it.u;
   Array.prototype.forEach.call(document.querySelectorAll('.ps-dots i'),function(d,i){d.classList.toggle('on',i===idx);});
+}
+/* بعد كل رسم للصفحة: نرجّع مكان الشريط زي ما كان، أو نبدأ من أول قسم في النص */
+function psRestore(){
+  var row=document.getElementById('psRow');if(!row||!row.children.length)return;
+  if(window.psPos!=null)row.scrollLeft=window.psPos;
+  else row.children[0].scrollIntoView({behavior:'auto',inline:'center',block:'nearest'});
+  psSync();
 }
 function psGo(dir){
   var row=document.getElementById('psRow');if(!row)return;
@@ -3145,7 +3184,7 @@ function footFine(){
 
 function loginHTML(){
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
-  var logo='<picture><source srcset="icons/img-aab4b2fb.webp" type="image/webp"><img class="brand-logo" src="icons/icon-512.png" alt="RMY Pro" width="96" height="96"></picture>';
+  var logo='<svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96" role="img" aria-label="RMY"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg>';
   if(!GD.on){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">الخطوة الأولى: اربط جوجل درايف</p>'+(GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
       '<button data-act="gdConnect" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:8px;padding:12px 16px;font:500 15px inherit;cursor:pointer"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg><span>تسجيل دخول جوجل</span></button></div></main>';
@@ -3293,6 +3332,7 @@ function render(){
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   hdrGlass();
+  psRestore();
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
   var nt=document.querySelector('[aria-label="أقسام الأصناف"]');if(nt)nt.scrollLeft=tsc;
   if(U.focus){var fe=document.querySelector(U.focus);if(fe)fe.focus();U.focus=null;}
