@@ -1353,10 +1353,45 @@ function gdDownload(){
   return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?alt=media').then(function(r){return r.text();})
     .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
 }
+/* ---------- ملفات الأقسام (المرحلة 1: بتتكتب جنب الملف الأساسي، والتطبيق لسه بيقرأ من الأساسي) ---------- */
+var SHARD_FILES=[
+  {f:'orders.json',keys:['orders']},
+  {f:'batches.json',keys:['batches']},
+  {f:'done.json',keys:['done']},
+  {f:'products.json',keys:['products','materials','stock']},
+  {f:'waste.json',keys:['waste']},
+  {f:'owner.json',keys:['users','prefs','auth']}
+];
+var GD_SHARD_IDS={};
+function gdShardBody(name,keys){
+  var d={};keys.forEach(function(k){if(S[k]!==undefined)d[k]=S[k];});
+  return JSON.stringify({app:'khat-entaj',v:1,shard:name,savedAt:Date.now(),data:d},null,2);
+}
+function gdShardLookup(name){
+  if(GD_SHARD_IDS[name])return Promise.resolve(GD_SHARD_IDS[name]);
+  var q=encodeURIComponent("name='"+name+"' and trashed=false");
+  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&pageSize=1&fields=files(id)&spaces=drive')
+    .then(function(r){return r.json();}).then(function(j){var id=j.files&&j.files[0]?j.files[0].id:null;if(id)GD_SHARD_IDS[name]=id;return id;});
+}
+function gdShardWrite(name,body){
+  return gdShardLookup(name).then(function(id){
+    if(id)return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:body});
+    var b='khat'+Date.now().toString(36);
+    var mp='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:name,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+body+'\r\n--'+b+'--';
+    return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:mp})
+      .then(function(r){return r.json();}).then(function(j){if(j.id)GD_SHARD_IDS[name]=j.id;});
+  });
+}
+/* بعد كل رفع ناجح للملف الأساسي، بنكتب نسخ الأقسام. أي فشل هنا مابيأثرش على الملف الأساسي */
+function gdWriteShards(){
+  SHARD_FILES.forEach(function(sf){
+    gdShardWrite(sf.f,gdShardBody(sf.f,sf.keys)).catch(function(){});
+  });
+}
 function gdUpload(){
   var at=S.savedAt||0;
   return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+GD.id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:gdBody()})
-    .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;});
+    .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;gdWriteShards();});
 }
 function gdFail(e){
   var c=e&&e.code;GD.ok=false;
