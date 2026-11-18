@@ -5401,7 +5401,7 @@ restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finis
   document.addEventListener('click',function(e){
     var t=e.target;if(!t||!t.closest)return;
     if(t.closest('.back,.ttlback,[data-act="formClose"],[data-act="sheetClose"],[data-act="oClose"],[data-act="rpClose"]')){sfx('back');return;}
-    if(t.closest('[data-act="tab"],.tab'))sfx('select');
+    if(t.closest('[data-act="tab"],.tab'))sfx('back');
     else if(t.closest('.btn,.chip,.pk,.tg,.stile,.ox,.fgc,.msugBtn'))sfx('move');
   },true);
 })();
