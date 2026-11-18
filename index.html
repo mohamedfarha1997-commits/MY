@@ -5400,9 +5400,8 @@ restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finis
   /* ---- أصوات التفاعل ---- */
   document.addEventListener('click',function(e){
     var t=e.target;if(!t||!t.closest)return;
-    if(t.closest('.back,.ttlback,[data-act="formClose"],[data-act="sheetClose"],[data-act="oClose"],[data-act="rpClose"]')){sfx('back');return;}
-    if(t.closest('[data-act="tab"],.tab'))sfx('back');
-    else if(t.closest('.btn,.chip,.pk,.tg,.stile,.ox,.fgc,.msugBtn'))sfx('move');
+    /* كل النقرات بنفس صوت تبويب الإعدادات (صوت الرجوع) */
+    if(t.closest('button,a,[role="button"],[data-act],.tab,.btn,.chip,.pk,.tg,.stile,.ox,.fgc,.msugBtn,.back,.ttlback'))sfx('back');
   },true);
 })();
 </script>
