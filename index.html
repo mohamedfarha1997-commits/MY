@@ -3164,30 +3164,55 @@ function loginHTML(){
 function waDigits(s){return String(s||'').replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/\D/g,'');}
 function findUserByCode(c){var k=String(c||'').trim().toLowerCase();if(!k)return null;return usersList().filter(function(x){return String(x.code).toLowerCase()===k;})[0]||null;}
 /* خانة آخر ٤ أرقام: زي الـ placeholder (01xxxxxxxxx)، والـ x الأخيرة بتتبدل بالأرقام اللي بتكتبها */
-function slotsInner(u,val){
+/* آخر ٤ أرقام: أربع خانات صغيرة، الكتابة بتنتقل لوحدها للخانة اللي بعدها، والكرسور بيظهر جواهم بس */
+function lastDigits(){return Array.prototype.map.call(document.querySelectorAll('.rslot'),function(i){return waDigits(i.value).slice(0,1);}).join('');}
+function paintBox(st){
+  var box=document.getElementById('rLastBox');if(!box)return;
+  var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
+  box.style.borderColor=c||'rgba(255,255,255,.22)';
+  var ic=document.getElementById('rLastIc');
+  if(!c){if(ic&&ic.parentNode)ic.parentNode.removeChild(ic);return;}
+  if(!ic){ic=document.createElement('span');ic.id='rLastIc';ic.style.cssText='position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);font-weight:700';box.appendChild(ic);}
+  ic.style.color=c;ic.textContent=st==='ok'?'✓':'✕';
+}
+function slotsField(st,val,u){
   var w=u?waDigits(u.wa):'';
   var head='01',mid='xxxxx';
   if(w.length>=6){head=w.slice(0,2);mid='x'.repeat(w.length-6);}
-  var typed=waDigits(val).slice(0,4),tail='';
-  for(var i=0;i<4;i++){tail+=i<typed.length?'<span>'+typed.charAt(i)+'</span>':'<span style="opacity:.45">x</span>';}
-  return '<span>'+esc(head)+'</span><span style="opacity:.45">'+esc(mid)+'</span>'+tail;
+  var typed=waDigits(val),c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
+  var slotStyle='width:1.1em!important;height:24px!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#fff!important;text-align:center!important;letter-spacing:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;caret-color:#fff;';
+  var slots='';
+  for(var i=0;i<4;i++){slots+='<input class="rslot" data-i="'+i+'" data-v="'+(typed.charAt(i)||'')+'" value="'+(typed.charAt(i)||'')+'" inputmode="numeric" autocomplete="off" placeholder="x" aria-label="رقم '+(i+1)+' من آخر ٤" style="'+slotStyle+'">';}
+  return '<div class="fld"><label>آخر ٤ أرقام من رقم الواتساب</label>'+
+    '<div id="rLastBox" style="position:relative;height:44px;box-sizing:border-box;border-radius:999px;border:1px solid '+(c||'rgba(255,255,255,.22)')+';background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;direction:ltr;color:#fff;font-size:16px;letter-spacing:.2em;padding:0 40px">'+
+    '<span>'+esc(head)+'</span><span style="opacity:.45">'+esc(mid)+'</span>'+
+    '<span style="display:inline-flex;gap:6px;margin-inline-start:6px">'+slots+'</span>'+
+    (c?'<span id="rLastIc" style="position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'')+
+    '</div></div>';
 }
-function slotsField(st,val,u){
-  var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
-  var ic=c?'<span id="rLastIc" style="position:absolute;inset-inline-end:20px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
-  /* الـ input نصه شفاف (بس الـ caret ظاهر) والنص اللي بيظهر هو الـ overlay، عشان الشكل يبقى زي الـ placeholder */
-  return '<div class="fld"><label for="rLast">آخر ٤ أرقام من رقم الواتساب</label><div style="position:relative;width:100%;min-width:0">'+
-    '<input id="rLast" inputmode="numeric" maxlength="4" autocomplete="off" value="'+esc(val||'')+'" style="padding:0 52px;text-align:center;direction:ltr;color:transparent!important;caret-color:#fff;box-sizing:border-box;width:100%;'+(c?'border-color:'+c+';':'')+'">'+
-    '<div id="rLastOv" aria-hidden="true" style="position:absolute;inset:0;box-sizing:border-box;border:1px solid transparent;padding:0 52px;display:flex;align-items:center;justify-content:center;direction:ltr;pointer-events:none;white-space:pre;overflow:hidden;color:#fff">'+slotsInner(u,val)+'</div>'+ic+'</div></div>';
+function syncSlots(){}
+function slotInput(e){
+  var t=e.target;if(!t||!t.classList||!t.classList.contains('rslot'))return;
+  var slots=document.querySelectorAll('.rslot'),i=Number(t.dataset.i),d=waDigits(t.value);
+  if(d.length===2&&d.charAt(0)===(t.dataset.v||''))d=d.charAt(1);
+  if(d.length>1){
+    for(var j=0;j<d.length&&i+j<4;j++){slots[i+j].value=d.charAt(j);slots[i+j].dataset.v=d.charAt(j);}
+    slots[Math.min(i+d.length,3)].focus();
+  }else{
+    t.value=d;t.dataset.v=d;
+    if(d&&i<3)slots[i+1].focus();
+  }
+  resetLiveCheck();
 }
-/* نفس خط وحجم وتباعد الحروف بتاعة الخانات التانية في الفورم */
-function syncSlots(){
-  var r=document.getElementById('rCode'),i=document.getElementById('rLast'),o=document.getElementById('rLastOv');
-  if(!r||!i||!o)return;
-  var cs=getComputedStyle(r),cl=getComputedStyle(i);
-  i.style.fontSize=cs.fontSize;i.style.fontFamily=cs.fontFamily;i.style.letterSpacing=cl.letterSpacing;
-  o.style.fontSize=cs.fontSize;o.style.fontFamily=cs.fontFamily;o.style.fontWeight=cs.fontWeight;o.style.letterSpacing=cl.letterSpacing;
+function slotKey(e){
+  var t=e.target;if(!t||!t.classList||!t.classList.contains('rslot'))return;
+  if(e.key==='Backspace'&&!t.value&&Number(t.dataset.i)>0){
+    var prev=document.querySelectorAll('.rslot')[Number(t.dataset.i)-1];
+    prev.value='';prev.dataset.v='';prev.focus();e.preventDefault();resetLiveCheck();
+  }
 }
+document.addEventListener('input',slotInput);
+document.addEventListener('keydown',slotKey);
 window.addEventListener('resize',function(){syncSlots();});
 function rField(id,label,attrs,st,val,withMask,mask){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
@@ -3207,7 +3232,18 @@ function resetHTML(){
   var err='<div id="rErr" class="note" style="display:none;margin-bottom:10px"></div>';
   setTimeout(syncSlots,0);
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
-  return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
+  return '<main class="login rst" dir="rtl" lang="ar"><style>'+
+    '.login.rst{display:flex;flex-direction:column;justify-content:safe center;align-items:center;overflow-y:auto;padding:16px}'+
+    '.login.rst .lcard{gap:8px;max-width:340px;width:100%}'+
+    '.login.rst .lcard h2{font-size:20px;margin:0;color:#fff}'+
+    '.login.rst .lcard .meta{font-size:13px!important;margin:0 0 6px!important;line-height:1.5}'+
+    '.login.rst .fld{gap:3px}'+
+    '.login.rst .fld label{font-size:12px}'+
+    '.login.rst .fld input{height:44px!important}'+
+    '.login.rst .btn{min-height:44px!important;font-size:15px!important}'+
+    '.login.rst .lcard .note{font-size:12px;padding:6px 10px!important;margin:0!important}'+
+    '.rslot::placeholder{color:rgba(255,255,255,.45);opacity:1}'+
+    '</style><div class="lcard">'+
     '<h2>إعادة تعيين الـ PIN</h2>'+
     '<p class="meta">اكتب الكود بتاعك، وآخر ٤ أرقام من رقم الواتساب المسجل عندنا، والـ PIN الجديد.</p>'+
     err+
@@ -5060,6 +5096,7 @@ var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 /* ألوان الحقول: أخضر مع علامة صح، أو أحمر مع علامة غلط */
 function paintField(id,st){
+  if(id==='rLast'){paintBox(st);return;}
   var inp=document.getElementById(id);if(!inp)return;
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=document.getElementById(id+'Ic');
@@ -5072,16 +5109,13 @@ function paintField(id,st){
 /* بيتنادى وإحنا بنكتب: بيلوّن ويعرض الرقم المخفي من غير ما يعيد رسم الفورم (عشان الـ PIN ميتمسحش) */
 function resetLiveCheck(){
   var code=((document.getElementById('rCode')||{}).value||'').trim();
-  var last=waDigits((document.getElementById('rLast')||{}).value);
+  var last=lastDigits();
   var u=findUserByCode(code);
   paintField('rCode',!code?'':(u?'ok':'bad'));
-  var ov=document.getElementById('rLastOv');
-  if(ov)ov.innerHTML=slotsInner(u,(document.getElementById('rLast')||{}).value);
-  syncSlots();
   if(!u||last.length<4){paintField('rLast','');return;}
   paintField('rLast',waDigits(u.wa).slice(-4)===last?'ok':'bad');
 }
-document.addEventListener('input',function(e){if(e.target&&(e.target.id==='rCode'||e.target.id==='rLast'))resetLiveCheck();});
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='rCode')resetLiveCheck();});
 /* الـ PIN بيتفحص وإنت بتكتبه: لو مستخدم قبل كده (عند حد تاني أو عند نفس المستخدم أو المالك) بيتلون أحمر فوراً */
 var PIN_T=null,PIN_SEQ=0;
 function setRErr(msg){var el=document.getElementById('rErr');if(el){el.textContent=msg||'';el.style.display=msg?'block':'none';}}
@@ -5094,15 +5128,15 @@ function pinReuseCands(u){
 function pinLiveCheck(){
   var pw=((document.getElementById('rPw')||{}).value||''),pw2=((document.getElementById('rPw2')||{}).value||'');
   var seq=++PIN_SEQ;clearTimeout(PIN_T);
-  if(pw2)paintField('rPw2',pw2===pw?'':'bad');
+  if(pw2)paintField('rPw2',pw2!==pw?'bad':(/^[0-9]{4,6}$/.test(pw)?'ok':''));
   if(!/^[0-9]{4,6}$/.test(pw)){paintField('rPw','');setRErr('');return;}
   var u=findUserByCode(((document.getElementById('rCode')||{}).value||'').trim());
   PIN_T=setTimeout(function(){
     var cands=pinReuseCands(u);
     Promise.all(cands.map(function(x){return hexPbkdf2(pw,x.salt,x.iter).then(function(h){return h===x.h;});})).then(function(hits){
       if(seq!==PIN_SEQ)return;
-      if(hits.some(Boolean)){paintField('rPw','bad');setRErr('الـ PIN ده مستخدم قبل كده، اختار PIN جديد غيره');}
-      else{paintField('rPw','ok');setRErr('');}
+      if(hits.some(Boolean)){paintField('rPw','bad');if(pw2)paintField('rPw2','bad');setRErr('الـ PIN ده مستخدم قبل كده، اختار PIN جديد غيره');}
+      else{paintField('rPw','ok');if(pw2&&pw2===pw)paintField('rPw2','ok');setRErr('');}
     });
   },400);
 }
@@ -5114,7 +5148,7 @@ function resetShowErr(msg){var el=document.getElementById('rErr');if(el){el.text
 function resetMarks(m){m=m||{};paintField('rCode',m.code||'');paintField('rLast',m.last||'');paintField('rPw',m.pw||'');paintField('rPw2',m.pw2||'');}
 ACT.resetSend=function(){
   var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
-  var code=g('rCode'),last=waDigits(g('rLast'));
+  var code=g('rCode'),last=lastDigits();
   var pw=(document.getElementById('rPw')||{}).value||'',pw2=(document.getElementById('rPw2')||{}).value||'';
   var u=findUserByCode(code);
   var fail=function(msg,mark){resetShowErr(msg);resetMarks(mark);return false;};
