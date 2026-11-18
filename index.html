@@ -5397,12 +5397,6 @@ restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finis
   document.addEventListener('rmy:loaded',function(){loaded=true;tryDone();});
   setTimeout(function(){loaded=true;tryDone();},15000);
 
-  /* ---- أصوات التفاعل ---- */
-  document.addEventListener('click',function(e){
-    var t=e.target;if(!t||!t.closest)return;
-    /* كل النقرات بنفس صوت تبويب الإعدادات (صوت الرجوع) */
-    if(t.closest('button,a,[role="button"],[data-act],.tab,.btn,.chip,.pk,.tg,.stile,.ox,.fgc,.msugBtn,.back,.ttlback'))sfx('back');
-  },true);
 })();
 </script>
 </body></html>
