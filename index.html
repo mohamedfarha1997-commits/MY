@@ -1349,9 +1349,34 @@ function gdEnsureFile(){
     return gdCreate();
   });
 }
-function gdDownload(){
+function gdDownloadMain(){
   return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?alt=media').then(function(r){return r.text();})
     .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
+}
+/* المرحلة 2: نقرأ ملفات الأقسام كلها. لو أي ملف ناقص أو قديم عن الملف الأساسي، بنرجع للأساسي */
+function gdDownloadShards(mainAt){
+  return Promise.all(SHARD_FILES.map(function(sf){
+    return gdShardLookup(sf.f).then(function(id){
+      if(!id)return null;
+      return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media').then(function(r){return r.text();})
+        .then(function(t){return t&&t.trim()?parseTolerant(t):null;});
+    }).catch(function(){return null;});
+  })).then(function(parts){
+    if(parts.some(function(p){return !p||!p.data||(p.savedAt||0)<(mainAt||0);}))return null;
+    var data={},at=0;
+    parts.forEach(function(p){Object.assign(data,p.data);at=Math.max(at,p.savedAt||0);});
+    return {data:data,savedAt:at};
+  });
+}
+function gdDownload(){
+  return gdDownloadMain().then(function(main){
+    var mainAt=main?(main.savedAt||0):0;
+    return gdDownloadShards(mainAt).then(function(sh){
+      if(!sh)return main;
+      var st=Object.assign({},sh.data,{savedAt:sh.savedAt});
+      return fix(st);
+    });
+  });
 }
 /* ---------- ملفات الأقسام (المرحلة 1: بتتكتب جنب الملف الأساسي، والتطبيق لسه بيقرأ من الأساسي) ---------- */
 var SHARD_FILES=[
@@ -1360,7 +1385,8 @@ var SHARD_FILES=[
   {f:'done.json',keys:['done']},
   {f:'products.json',keys:['products','materials','stock']},
   {f:'waste.json',keys:['waste']},
-  {f:'owner.json',keys:['users','prefs','auth']}
+  {f:'owner.json',keys:['users','prefs','auth']},
+  {f:'history.json',keys:['archive','locks','tomb','plog','plogTomb','ready','readyT','stockT','hours','seq','oseq','fseq','prefsK','prefsT','demo']}
 ];
 var GD_SHARD_IDS={};
 function gdShardBody(name,keys){
