@@ -1970,7 +1970,7 @@ function prodCard(b){
     (tt?'<span class="tempchip">'+flameHTML(run&&!fin)+'<span>'+esc(tt)+'</span></span>':'')+
     (whoOf(b.by,b.byc)?'<span>عملها: '+esc(whoOf(b.by,b.byc))+'</span>':'')+'</div>';
   var label=fin?svg('check'):(run?mmss(dur(b)-elapsed(b)):p.mins+' د');
-  var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">على النار</span>':'<span class="pill">بانتظار البدء</span>');
+  var state=fin?'<span class="pill ok">انتهى الوقت</span>':(run?'<span class="pill c">في الفرن</span>':'<span class="pill">بانتظار البدء</span>');
   var act;
   if(fin)act=canApprove()?approveBox(b,p):'<div class="meta">خلص الوقت · الاعتماد عند المسؤول</div>';
   else if(run)act='<button class="btn ghost sm" data-act="skipTimer" data-id="'+b.id+'">أنهِ المؤقت الآن</button>';
@@ -1986,7 +1986,7 @@ function prodBoard(){
   var out=head('إنتاج','شغّل الدفعات وتابع المؤقت لحد ما تخلص','<button class="btn ghost sm" data-act="testAlarm">جرّب الصوت</button>');
   if(!all.length)return out+'<div class="empty"><b>مفيش حاجة على الخط</b><span>الدفعات اللي تخلص تجهيزها بتظهر هنا.</span><button class="btn ghost" data-act="tab" data-v="prep">روح للتحضير</button></div>';
   function grp(t,a){return a.length?'<div class="grp">'+t+' ('+a.length+')</div><div class="list">'+a.map(prodCard).join('')+'</div>':'';}
-  return out+'<div class="list">'+grp('انتهى وقتها',ready)+grp('على النار الآن',running)+grp('بانتظار البدء',queued)+'</div>';
+  return out+'<div class="list">'+grp('انتهى وقتها',ready)+grp('في الفرن الآن',running)+grp('بانتظار البدء',queued)+'</div>';
 }
 
 /* ---------- سجل إنتاج الأصناف: كل صنف معتمد بكود التشغيل واسمه. الشهر بيتقفل مع الأرشفة ---------- */
