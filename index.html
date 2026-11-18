@@ -1733,7 +1733,7 @@ function titleHTML(){
 }
 function topHTML(){
     return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+
-    '<div class="hl">'+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
+    '<div class="hl">'+deepBtn()+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
@@ -3145,6 +3145,36 @@ function footFine(){
   return '<div class="fine"><span>الحفظ تلقائي على جوجل درايف · نسخة 13/11 · المجموعات والتعبئة الجديدة</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button><button class="btn quiet" data-act="resetAll">'+(U.confirm==='reset'?'اضغط تاني للتأكيد':'مسح كل البيانات')+'</button></div>';
 }
 
+/* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
+var APP_BUILD='20261118-1633';
+function deepRefresh(){
+  var go=function(){location.replace(location.pathname+'?v='+Date.now()+(location.hash||''));};
+  try{
+    var sw=('serviceWorker' in navigator)?navigator.serviceWorker.getRegistrations():Promise.resolve([]);
+    sw.then(function(regs){return Promise.all(regs.map(function(r){return r.unregister();}));})
+      .then(function(){return window.caches?caches.keys().then(function(ks){return Promise.all(ks.map(function(k){return caches.delete(k);}));}):null;})
+      .then(go,go);
+  }catch(e){go();}
+}
+function updCheck(){
+  fetch('index.html?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():'';}).then(function(t){
+    var m=t.match(/var APP_BUILD='([^']+)'/);
+    if(m&&m[1]!==APP_BUILD){window.UPD_NEEDED=true;render();}
+  }).catch(function(){});
+}
+function updOverlay(){
+  if(!window.UPD_NEEDED)return '';
+  return '<div class="updsys" role="alertdialog" aria-modal="true" aria-label="Update System"><style>'+
+    '.updsys{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:rgb(5 7 26 / .9);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}'+
+    '.updsys .updcard{width:min(92vw,340px);background:#fff;color:#111;border-radius:24px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;gap:12px;box-shadow:0 30px 60px -20px rgb(0 0 0 / .6)}'+
+    '.updsys h3{margin:0;font-size:20px;font-weight:800;letter-spacing:.3px;color:#2B3595}'+
+    '.updsys p{margin:0;font-size:14px;line-height:1.6;color:#444}'+
+    '.login .updsys .btn.upbtn{height:46px;min-height:46px;border-radius:999px;font-size:16px;background:#2B3595!important;background-image:none!important;color:#fff!important;box-shadow:none!important;margin-top:4px}'+
+    '</style><div class="updcard"><h3>Update System</h3>'+
+    '<p>فيه نسخة جديدة من التطبيق. لازم تحدّثه الأول قبل تسجيل الدخول.</p>'+
+    '<button class="btn upbtn" data-act="deepRefresh">تحديث الآن</button></div></div>';
+}
+function deepBtn(){return '<button class="btn ghost sm themebtn" data-act="deepRefresh" aria-label="تحديث عميق للصفحة" title="تحديث عميق للصفحة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>';}
 function loginHTML(){
   if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
@@ -3172,7 +3202,7 @@ function paintBox(st){
   box.style.borderColor=c||'rgba(255,255,255,.22)';
   var ic=document.getElementById('rLastIc');
   if(!c){if(ic&&ic.parentNode)ic.parentNode.removeChild(ic);return;}
-  if(!ic){ic=document.createElement('span');ic.id='rLastIc';ic.style.cssText='position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);font-weight:700';box.appendChild(ic);}
+  if(!ic){ic=document.createElement('span');ic.id='rLastIc';ic.style.cssText='position:absolute;right:14px;top:50%;transform:translateY(-50%);font-weight:700';box.appendChild(ic);}
   ic.style.color=c;ic.textContent=st==='ok'?'✓':'✕';
 }
 function slotsField(st,val,u){
@@ -3187,7 +3217,7 @@ function slotsField(st,val,u){
     '<div id="rLastBox" style="position:relative;width:100%;height:44px;margin:0;box-sizing:border-box;border-radius:999px;border:1px solid '+(c||'rgba(255,255,255,.22)')+';background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;direction:ltr;color:#fff;font-size:16px;letter-spacing:.08em;padding:0 40px">'+
     '<span>'+esc(head)+'</span><span style="opacity:.45">'+esc(mid)+'</span>'+
     '<span style="display:inline-flex;gap:2px;margin-inline-start:4px;letter-spacing:0">'+slots+'</span>'+
-    (c?'<span id="rLastIc" style="position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'')+
+    (c?'<span id="rLastIc" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'')+
     '</div></div>';
 }
 function syncSlots(){}
@@ -3213,11 +3243,20 @@ function slotKey(e){
 }
 document.addEventListener('input',slotInput);
 document.addEventListener('keydown',slotKey);
+function firstEmptySlot(){var sl=document.querySelectorAll('.rslot');for(var i=0;i<sl.length;i++){if(!sl[i].value)return sl[i];}return null;}
+document.addEventListener('focusin',function(e){
+  var t=e.target;if(!t||!t.classList||!t.classList.contains('rslot'))return;
+  var f=firstEmptySlot();if(f&&f!==t&&Number(t.dataset.i)>Number(f.dataset.i))f.focus();
+});
+document.addEventListener('click',function(e){
+  var box=e.target&&e.target.closest?e.target.closest('#rLastBox'):null;
+  if(box&&!(e.target.classList&&e.target.classList.contains('rslot'))){var f=firstEmptySlot();if(f)f.focus();}
+});
 window.addEventListener('resize',function(){syncSlots();});
 function rField(id,label,attrs,st,val,withMask,mask){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
-  var ic=c?'<span id="'+id+'Ic" style="position:absolute;'+(withMask?'inset-inline-start:14px':'inset-inline-end:12px')+';top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
-  var sty=(withMask?'direction:ltr;text-align:left;padding-inline-start:16px;padding-inline-end:112px;':'')+(c?'border-color:'+c+';'+(withMask?'':'padding-inline-end:38px'):'');
+  var ic=c?'<span id="'+id+'Ic" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
+  var sty=(withMask?'direction:ltr;text-align:left;padding-inline-start:16px;padding-inline-end:112px;':'')+(c?'border-color:'+c+';'+(withMask?'':'padding-inline-start:38px'):'');
   var pre=withMask?'<span id="rMask" class="ltr" style="position:absolute;inset-inline-end:16px;top:50%;transform:translateY(-50%);font:inherit;letter-spacing:1px;pointer-events:none;display:'+(mask?'inline':'none')+'">'+esc(mask||'')+'</span>':'';
   return '<div class="fld"><label for="'+id+'">'+label+'</label><div style="position:relative">'+'<input id="'+id+'" '+attrs+' value="'+esc(val||'')+'"'+(sty?' style="'+sty+'"':'')+'>'+pre+ic+'</div></div>';
 }
@@ -3369,7 +3408,8 @@ function render(){
   kickDeletedUser();
   var hadSheet=!!document.querySelector('#app .sheet');
   if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
-  if(!authed()){document.getElementById('app').innerHTML=loginHTML()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
+  if(!authed()&&!U.updChecked){U.updChecked=true;updCheck();}
+  if(!authed()){document.getElementById('app').innerHTML=loginHTML()+updOverlay()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
   if(limited()){
     var lv=onLeaveToday();
@@ -4326,6 +4366,7 @@ var ACT={
     if(!GD.tc){gdLoadGis();toast('استنى ثانية لحد ما جوجل يحمّل وجرّب تاني');return false;}
     GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
   },
+  deepRefresh:function(){deepRefresh();return false;},
   gdNow:function(){
     if(!GD.on)return false;
     if(!gdTokOk()){GD.needTap=false;gdRequest();return false;}
