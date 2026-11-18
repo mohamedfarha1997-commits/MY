@@ -520,6 +520,22 @@ button,input{font-family:inherit}
 .gbtn:active{transform:scale(.94)}
 .login button.gbtn[data-act="gdConnect"]{width:40px!important;height:40px!important;min-height:0!important;padding:0!important;border-radius:50%!important;box-shadow:0 14px 28px -12px rgb(0 0 0 / .6)!important;margin:18px auto 0!important;display:inline-flex!important}
 
+/* ---- واجهة PS5 للرئيسية: تتبع الوضع الليلي والنهاري من متغيرات الثيم، من غير ما يتغير الترتيب ---- */
+.top{background:linear-gradient(180deg,color-mix(in srgb,var(--surface) 94%,transparent),color-mix(in srgb,var(--surface-2) 88%,transparent))!important;border-color:color-mix(in srgb,var(--b2) 20%,transparent)!important;box-shadow:0 18px 40px -24px var(--glow),inset 0 1px 0 rgb(255 255 255 / .06)!important}
+.top .ttlname{background:linear-gradient(100deg,var(--ink) 0%,var(--b2) 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.ps{position:relative;isolation:isolate}
+.ps::before{content:"";position:absolute;inset:-28px -12px;z-index:-1;pointer-events:none;background:radial-gradient(60% 50% at 50% 40%,color-mix(in srgb,var(--b2) 20%,transparent),transparent 72%)}
+.ps-row .tab{background:linear-gradient(160deg,var(--surface) 0%,var(--surface-2) 100%)!important;border:1px solid color-mix(in srgb,var(--b2) 20%,transparent)!important;box-shadow:0 22px 40px -26px var(--glow),inset 0 1px 0 rgb(255 255 255 / .06)!important;color:var(--ink)}
+.ps-row .tab.focus{background:linear-gradient(160deg,var(--surface) 0%,var(--surface-2) 100%)!important;border:1px solid color-mix(in srgb,var(--b2) 20%,transparent)!important;box-shadow:0 22px 40px -26px var(--glow),inset 0 1px 0 rgb(255 255 255 / .06)!important}
+.ps-row .tab:hover{transform:translateY(-3px)!important;box-shadow:0 30px 50px -24px var(--glow),0 0 0 5px color-mix(in srgb,var(--b2) 20%,transparent)!important}
+.ps-row .tab:focus-visible{outline:2px solid var(--b2);outline-offset:3px}
+.ps-row .tab svg{stroke:var(--b2)!important;filter:drop-shadow(0 6px 10px color-mix(in srgb,var(--b2) 45%,transparent))}
+.ps-row .tab .cnt{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:var(--ink)!important}
+.ps-row .tab .tl{color:var(--ink)!important}
+.ps-row .tab small{color:var(--muted)}
+.ps-row .tab.live,.ps-row .tab.warn{box-shadow:0 0 0 2px var(--warn),0 22px 40px -22px var(--warn)!important}
+@media (prefers-reduced-motion:reduce){.ps-row .tab,.ps-row .tab::before{animation:none!important;transition:none!important}}
+
 /* ---- الحركة (تُعطَّل تلقائيًا لمن يفضّل تقليل الحركة) ---- */
 @keyframes x-up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
 @keyframes x-down{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:none}}
