@@ -82,7 +82,6 @@ body::before{ /* subtle dot texture */
   display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18)}
 .scratch .num{font:700 22px/1 var(--mono);letter-spacing:3px;direction:ltr;text-align:center;position:relative;z-index:0}
 .scratch canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:1}
-.wm{position:absolute;inset:0;pointer-events:none;z-index:0;background-repeat:repeat;background-size:170px 96px}
 .st{font:600 10px/1 var(--sans);letter-spacing:1.6px;text-transform:uppercase;display:inline-flex;align-items:center}
 .st::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-inline-end:6px;background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,.7)}
 .st.off::before{background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.7)}
@@ -176,9 +175,7 @@ function showCard(c){
   if(c.wa)fields+='<div class="field full"><div class="k">WhatsApp · واتساب</div><div class="v en">'+esc(c.wa)+'</div></div>';
 
   var act=c.active!==false;
-  var wmSvg='<svg xmlns="http://www.w3.org/2000/svg" width="170" height="96"><text x="85" y="58" transform="rotate(-22 85 48)" text-anchor="middle" font-family="Inter,sans-serif" font-weight="800" font-size="15" letter-spacing="2" fill="#ffffff" fill-opacity="0.07">RMY Pro</text></svg>';
-  var wm='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(wmSvg);
-  out.innerHTML='<div class="idc" id="card"><div class="wm" aria-hidden="true" style="background-image:url(\''+wm+'\')"></div>'+
+  out.innerHTML='<div class="idc" id="card">'+
     '<div class="head">'+
       '<div class="mark">'+LOGO+'<div><b>RMY</b><small>Identification</small></div></div>'+
       '<span class="tag">Verified</span>'+
@@ -252,8 +249,9 @@ function initScratch(){
   function checkDone(){
     if(done)return;
     var d=ctx.getImageData(0,0,cv.width,cv.height).data,n=0,t=0;
-    for(var i=3;i<d.length;i+=32){t++;if(d[i]<128)n++;}
-    if(t&&n/t>0.5){done=true;cv.remove();}
+    for(var i=3;i<d.length;i+=4){t++;if(d[i]<128)n++;}
+    /* الطبقة بتفضل لحد ما تتخربش كلها تقريباً، ومفيش جزء متخربش يفضل */
+    if(t&&n/t>0.998){done=true;cv.remove();}
   }
   cv.addEventListener('pointerdown',function(e){
     if(done)return;
