@@ -34,8 +34,11 @@ button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;backg
 </head>
 <body>
 <div class="wrap"><div id="out"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 var DATA={cards:[],updated:null};
+var currentCid='';
 var out=document.getElementById('out');
 var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
 
@@ -45,6 +48,7 @@ function findCard(id){return DATA.cards.filter(function(c){return norm(c.cid)===
 
 function showCard(c){
   var initial=String(c.name||'?').trim().charAt(0);
+  currentCid=c.cid;
   var upd=DATA.updated?new Date(DATA.updated).toLocaleDateString('ar-EG'):'';
   out.innerHTML='<div class="idc">'+
     '<div class="top"><div class="brand"><span>RMY</span><small>بطاقة هوية</small></div><div class="ava">'+esc(initial)+'</div></div>'+
@@ -56,9 +60,27 @@ function showCard(c){
     '<div class="idbox"><div class="k">رقم الـ ID</div><div class="v">'+esc(c.cid)+'</div></div>'+
     (upd?'<div class="foot">آخر تحديث: '+esc(upd)+'</div>':'')+
     '</div></div>'+
-    '<div class="noprint"><button class="ghost" id="printBtn">طباعة / حفظ PDF</button>'+
+    '<div class="noprint"><button id="pdfBtn">تحميل PDF</button><button class="ghost" id="printBtn">طباعة</button>'+
     '<p class="center"><a href="card.html" style="font-size:14px;color:var(--brand)">تحقق من ID تاني</a></p></div>';
   document.getElementById('printBtn').onclick=function(){window.print();};
+  document.getElementById('pdfBtn').onclick=downloadPdf;
+}
+
+function downloadPdf(){
+  var el=document.querySelector('.idc');
+  var btn=document.getElementById('pdfBtn');
+  if(!el||!window.html2canvas||!window.jspdf){window.print();return;}
+  btn.disabled=true;btn.textContent='جاري تجهيز الملف...';
+  html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    var w=canvas.width/2, h=canvas.height/2, m=24;
+    var pdf=new window.jspdf.jsPDF({unit:'px',format:[w+m*2,h+m*2],orientation:w>h?'l':'p'});
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',m,m,w,h);
+    pdf.save('ID-'+currentCid+'.pdf');
+  }).catch(function(){
+    window.print();
+  }).then(function(){
+    btn.disabled=false;btn.textContent='تحميل PDF';
+  });
 }
 
 function askId(msg){
