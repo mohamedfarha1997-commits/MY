@@ -987,6 +987,8 @@ function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a
 var REMOVED_USER_CODES=['879'];
 function usersList(){
   S.users=(S.users||[]).filter(function(u){return REMOVED_USER_CODES.indexOf(u.code)<0;});
+  var fxCid=false;S.users.forEach(function(u){if(!u.cid){u.cid=nextCardId();fxCid=true;}});
+  if(fxCid){try{persistLocal();}catch(e){}}
   if(S.prefs&&S.prefs.userTabs){REMOVED_USER_CODES.forEach(function(c){delete S.prefs.userTabs[c];});}
   try{var au=localStorage.getItem(AUTH_KEY)||'';if(au.indexOf('u:')===0&&REMOVED_USER_CODES.indexOf(au.slice(2))>-1)localStorage.removeItem(AUTH_KEY);}catch(e){}
   return S.users;
@@ -1049,6 +1051,9 @@ function findUserByPw(p){
   return next(0);
 }
 function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});REMOVED_USER_CODES.forEach(function(c){used[c]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
+/* رقم الـ ID الثابت للمستخدم: بيتولد مرة واحدة ومش بيتغير حتى لو الاسم أو الكود اتعدل */
+function nextCardId(){var used={};(S.users||[]).forEach(function(u){if(u.cid)used[u.cid]=1;});for(var i=0;i<1000;i++){var c='RMY-'+String(10000+Math.floor(Math.random()*90000));if(!used[c])return c;}return 'RMY-'+Date.now().toString(36).toUpperCase();}
+function maskWa(w){w=String(w||'');return w.length>=6?w.slice(0,3)+'••••'+w.slice(-4):'';}
 function markBy(b,act){
   if(!b)return;
   S.plog=S.plog||{};
@@ -1587,6 +1592,16 @@ function exportBackup(){
   a.download='khat-entaj-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
+}
+function exportCards(){
+  var list=usersList().map(function(u){return {cid:u.cid,name:u.name,code:u.code,wa:maskWa(u.wa)};});
+  var body=JSON.stringify({app:'rmy-cards',v:1,updated:new Date().toISOString(),cards:list},null,2);
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([body],{type:'application/json'}));
+  a.download='cards.json';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
+  toast('اتصدّر cards.json · ارفعه جنب card.html');
 }
 /* restore: refresh the source first, so a stale cached copy (Google Drive on some phones) is never used */
 function parseBackupText(t){
@@ -4215,7 +4230,7 @@ function usersCardHTML(){
     var conf=U.confirm==='udel:'+u.id;
     var onLv=userLeaveActive(u,todayK);
     return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><b>'+esc(u.name)+'</b>'+(onLv?'<span class="upill">في إجازة</span>':'')+'</div></td>'+
-      '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+
+      '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+'<td><span class="ltr">'+esc(u.cid||'')+'</span></td>'+
       '<td class="uact"><button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button></td></tr>';
   }).join('');
   var editBox='';
@@ -4224,7 +4239,7 @@ function usersCardHTML(){
     var onNow=userLeaveActive(eu,todayK);
     var period=(eu.leaveFrom&&eu.leaveTo)?('من '+eu.leaveFrom+' إلى '+eu.leaveTo):'مفيش فترة إجازة';
     editBox='<div class="uedit">'+
-      '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
+      '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span> · الـ ID <span class="ltr">'+esc(eu.cid||'')+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
       '<div class="ugrp"><span class="sec-l">البيانات</span>'+
         '<div class="urow"><div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
         '<div class="fld"><label for="uEditCode">الكود</label><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'"></div></div>'+
@@ -4252,7 +4267,8 @@ function usersCardHTML(){
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
-    resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
+    '<div class="ubtns" style="margin-top:10px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button></div>'+
+    resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th>الـ ID</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
 }
 function resetReqsHTML(){
   var rs=pref('resetReqs',[]).filter(function(r){return !r.owner;});
@@ -4754,6 +4770,7 @@ var ACT={
     os.added.push(d.p);
     U.focus='[data-oq="'+d.p+'"]';
   },
+  cardsExport:function(){exportCards();return false;},
   userAdd:function(){
     var n=((document.getElementById('uName')||{}).value||'').trim();
     var pw=(document.getElementById('uPw')||{}).value||'';
@@ -4770,7 +4787,7 @@ var ACT={
       if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
       if(r[1]){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
       if(userCodeTaken(code,null)){toast('الكود ده اتاخد للتو، جرّب كود تاني');return;}
-      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000,wa:wIn||null});
+      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000,wa:wIn||null,cid:nextCardId()});
       var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);var e0=Object.assign({},pref('userEdit',{}));e0[code]=STAFF_DEFAULT.slice();setPref('userEdit',e0);
       var nu=document.getElementById('uName'),np=document.getElementById('uPw'),nc=document.getElementById('uCode');if(nu)nu.value='';if(np)np.value='';if(nc)nc.value='';var nwa=document.getElementById('uWa');if(nwa)nwa.value='';
       toast('اتضاف المستخدم · الكود '+code);render();

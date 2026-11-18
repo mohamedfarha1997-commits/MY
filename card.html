@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2B3594">
+<title>بطاقة الهوية · RMY</title>
+<style>
+:root{--brand:#2B3594;--brand2:#0c1233;--ink:#14183a;--mut:#6b7090;--bg:#eef0f7;--card:#fff;--line:#e3e6f1}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--ink);display:flex;align-items:center;justify-content:center;padding:24px 16px}
+.wrap{width:100%;max-width:380px}
+.idc{background:var(--card);border-radius:20px;overflow:hidden;box-shadow:0 12px 40px rgba(12,18,51,.18)}
+.top{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;padding:18px 20px 52px;position:relative}
+.brand{display:flex;justify-content:space-between;align-items:center;font-weight:800;letter-spacing:.5px;font-size:18px}
+.brand small{font-weight:400;opacity:.85;letter-spacing:0;font-size:13px}
+.ava{position:absolute;right:20px;bottom:-40px;width:84px;height:84px;border-radius:50%;background:#fff;color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;border:4px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.body{padding:54px 22px 22px}
+.name{font-size:22px;font-weight:800;margin:0 0 14px;word-break:break-word}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid var(--line);padding-top:16px}
+.k{font-size:12px;color:var(--mut);margin-bottom:3px}
+.v{font-weight:700;font-size:15px;direction:ltr;text-align:right;unicode-bidi:plaintext}
+.idbox{margin-top:16px;background:var(--bg);border-radius:12px;padding:12px;text-align:center}
+.idbox .v{font-size:20px;letter-spacing:1px;direction:ltr;text-align:center}
+.foot{text-align:center;font-size:12px;color:var(--mut);margin-top:14px}
+.center{text-align:center}
+.role{color:var(--mut);font-size:14px;margin:0 0 14px}
+input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;direction:ltr;text-align:center;margin-top:6px}
+button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
+.ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
+.err{color:#b91c1c;font-size:14px;margin:6px 0 0}
+@media print{body{background:#fff;padding:0}.noprint{display:none}.idc{box-shadow:none;border:1px solid #ccc}}
+</style>
+</head>
+<body>
+<div class="wrap"><div id="out"></div></div>
+<script>
+var DATA={cards:[],updated:null};
+var out=document.getElementById('out');
+var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
+
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function norm(s){return String(s||'').trim().toUpperCase();}
+function findCard(id){return DATA.cards.filter(function(c){return norm(c.cid)===norm(id);})[0]||null;}
+
+function showCard(c){
+  var initial=String(c.name||'?').trim().charAt(0);
+  var upd=DATA.updated?new Date(DATA.updated).toLocaleDateString('ar-EG'):'';
+  out.innerHTML='<div class="idc">'+
+    '<div class="top"><div class="brand"><span>RMY</span><small>بطاقة هوية</small></div><div class="ava">'+esc(initial)+'</div></div>'+
+    '<div class="body"><p class="name">'+esc(c.name)+'</p>'+
+    '<div class="grid">'+
+      '<div><div class="k">الكود</div><div class="v">'+esc(c.code)+'</div></div>'+
+      '<div><div class="k">واتساب</div><div class="v">'+esc(c.wa||'—')+'</div></div>'+
+    '</div>'+
+    '<div class="idbox"><div class="k">رقم الـ ID</div><div class="v">'+esc(c.cid)+'</div></div>'+
+    (upd?'<div class="foot">آخر تحديث: '+esc(upd)+'</div>':'')+
+    '</div></div>'+
+    '<div class="noprint"><button class="ghost" id="printBtn">طباعة / حفظ PDF</button>'+
+    '<p class="center"><a href="card.html" style="font-size:14px;color:var(--brand)">تحقق من ID تاني</a></p></div>';
+  document.getElementById('printBtn').onclick=function(){window.print();};
+}
+
+function askId(msg){
+  out.innerHTML='<div class="idc"><div class="body">'+
+    '<p class="name center">التحقق من بطاقة الـ ID</p>'+
+    '<p class="role center">'+esc(msg||'اكتب رقم الـ ID الموجود على الكارت')+'</p>'+
+    '<input id="q" placeholder="RMY-00000" autocomplete="off" autocapitalize="characters">'+
+    '<button id="go">عرض البطاقة</button>'+
+    '</div></div>';
+  var q=document.getElementById('q');
+  document.getElementById('go').onclick=function(){go(q.value);};
+  q.onkeydown=function(e){if(e.key==='Enter')go(q.value);};
+  q.focus();
+}
+
+function go(v){
+  var c=findCard(v);
+  if(!c){askId('الـ ID ده مش موجود، اتأكد منه وجرّب تاني');return;}
+  history.replaceState(null,'','?id='+encodeURIComponent(c.cid));
+  showCard(c);
+}
+
+fetch('cards.json',{cache:'no-store'})
+  .then(function(r){if(!r.ok)throw new Error('http');return r.json();})
+  .then(function(j){
+    DATA.cards=j.cards||[];
+    DATA.updated=j.updated||null;
+    if(qid){
+      var c=findCard(qid);
+      if(c){showCard(c);return;}
+      askId('الـ ID ده مش موجود، اتأكد منه وجرّب تاني');
+      return;
+    }
+    askId();
+  })
+  .catch(function(){
+    out.innerHTML='<div class="idc"><div class="body center"><p class="name">تعذّر تحميل البيانات</p><p class="role">اتأكد إن ملف cards.json موجود في نفس مكان الصفحة، وإن الصفحة متفتحة من رابط (مش من ملف على الجهاز).</p></div></div>';
+  });
+</script>
+</body>
+</html>
