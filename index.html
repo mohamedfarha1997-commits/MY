@@ -326,6 +326,23 @@ button,input{font-family:inherit}
 .hgrid .tab svg{width:30px;height:30px}
 .hgrid .tab .cnt{font-size:30px}
 .hgrid .tab .tl{font-size:15px}
+/* ---- الرئيسية بشكل PS5 ---- */
+.ps{padding:6px 0 4px}
+.ps-title{text-align:center;margin:4px 0 14px}
+.ps-title b{display:block;font-family:var(--f-disp);font-size:24px;font-weight:700;color:var(--ink);transition:opacity .2s}
+.ps-title span{color:var(--muted);font-size:13px;font-weight:600}
+.ps-row{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:22px calc(50% - 90px) 26px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.ps-row::-webkit-scrollbar{display:none}
+.ps-row .tab{flex:0 0 180px;width:180px;height:180px;min-height:0;scroll-snap-align:center;border-radius:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;transform:scale(.84);opacity:.55;filter:saturate(.7);transition:transform .4s cubic-bezier(.2,.8,.2,1),opacity .4s ease,filter .4s ease,box-shadow .4s ease}
+.ps-row .tab::after{display:none}
+.ps-row .tab.focus{transform:scale(1.06);opacity:1;filter:none;box-shadow:0 26px 44px -20px rgb(16 28 40 / .55),0 0 0 2px color-mix(in srgb,var(--prep) 55%,transparent)}
+.ps-row .tab svg{width:40px;height:40px}
+.ps-row .tab .cnt{font-size:30px}
+.ps-row .tab .tl{font-size:14px;text-align:center}
+.ps-dots{display:flex;justify-content:center;gap:6px;margin-top:4px}
+.ps-dots i{width:6px;height:6px;border-radius:999px;background:var(--line);transition:width .3s,background .3s}
+.ps-dots i.on{width:18px;background:var(--prep)}
+
 @media (min-width:640px){.hgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .backbar{display:flex;align-items:center;gap:10px;margin:8px 0 4px;flex-wrap:wrap}
 .bbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
@@ -1676,7 +1693,49 @@ function topHTML(){
     '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
-function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
+/* الرئيسية بشكل PS5: صف أفقي من البلاطات، البلاطة اللي في النص هي المختارة، واسمها بيظهر فوق بخط كبير */
+function homeHTML(){
+  var st=navItems().filter(function(x){return !tabHidden(x.k);});
+  var tiles=st.map(function(x){return navTab(x);}).join('');
+  var first=st[0]||{l:'',n:0,u:''};
+  return '<div class="ps">'+
+    '<div class="ps-title"><b id="psName">'+esc(first.l)+'</b><span id="psMeta">'+first.n+' '+esc(first.u)+'</span></div>'+
+    '<div class="ps-row" id="psRow">'+tiles+'</div>'+
+    '<div class="ps-dots">'+st.map(function(x,i){return '<i'+(i===0?' class="on"':'')+'></i>';}).join('')+'</div>'+
+    '</div>';
+}
+/* اختيار البلاطة المتوسطة وتحديث العنوان والنقط */
+function psSync(){
+  var row=document.getElementById('psRow');if(!row)return;
+  var rr=row.getBoundingClientRect(),c=rr.left+rr.width/2,best=null,bd=1e9,idx=0;
+  Array.prototype.forEach.call(row.children,function(t,i){
+    var r=t.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-c);
+    if(d<bd){bd=d;best=t;idx=i;}
+  });
+  Array.prototype.forEach.call(row.children,function(t){t.classList.toggle('focus',t===best);});
+  var st=navItems().filter(function(x){return !tabHidden(x.k);});
+  var it=st[idx]||{l:'',n:0,u:''};
+  var nm=document.getElementById('psName'),mt=document.getElementById('psMeta');
+  if(nm)nm.textContent=it.l;if(mt)mt.textContent=it.n+' '+it.u;
+  Array.prototype.forEach.call(document.querySelectorAll('.ps-dots i'),function(d,i){d.classList.toggle('on',i===idx);});
+}
+function psGo(dir){
+  var row=document.getElementById('psRow');if(!row)return;
+  var kids=row.children,cur=row.querySelector('.tab.focus'),idx=Array.prototype.indexOf.call(kids,cur);
+  var next=Math.max(0,Math.min(kids.length-1,idx+dir));
+  if(kids[next])kids[next].scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
+}
+document.addEventListener('scroll',function(e){if(e.target&&e.target.id==='psRow')psSync();},true);
+document.addEventListener('click',function(e){
+  var t=e.target&&e.target.closest?e.target.closest('#psRow .tab'):null;
+  if(!t)return;
+  if(!t.classList.contains('focus')){e.stopPropagation();e.preventDefault();t.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});}
+},true);
+document.addEventListener('keydown',function(e){
+  if(!document.getElementById('psRow'))return;
+  if(e.key==='ArrowLeft'){psGo(1);e.preventDefault();}
+  else if(e.key==='ArrowRight'){psGo(-1);e.preventDefault();}
+});
 /* زرار الرجوع بيتعرض في صف تحت الهيدر */
 function backHTML(){
   return '<div class="backrow"><button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button></div>';
