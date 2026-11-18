@@ -3178,9 +3178,9 @@ function deepBtn(){return '<button class="btn ghost sm themebtn" data-act="deepR
 /* زرار الدخول + زرار البصمة جنبه (بيظهر بس لو البصمة متفعلة على الجهاز ده) */
 function loginBtnsHTML(){
   var bio=bioSupported()&&!!localStorage.getItem(BIO_KEY);
-  var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 11a3 3 0 0 0-3 3v1.5"/><path d="M7.5 9.5A6 6 0 0 1 18 12v2"/><path d="M5 12a7 7 0 0 1 .6-2.9"/><path d="M9 17.5c.4 1.2.9 2.3 1.5 3.2"/><path d="M12 14v2.5a6 6 0 0 0 .8 3"/><path d="M15 14.5v1a8 8 0 0 1-.4 2.5"/><path d="M12 8.5a5 5 0 0 1 5 5"/></svg></button>';
+  var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>';
   return '<style>.bioRow{display:flex;gap:10px;align-items:center;width:100%}.bioRow .btn.block{flex:1 1 auto;min-width:0}'+
-    '.bioFp{flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:1px solid rgb(255 255 255 / .35);background:rgb(255 255 255 / .12);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}</style>'+
+    '.bioFp{flex:0 0 96px;width:96px;height:46px;border-radius:999px;border:0;padding:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#5b68ff 0%,#293394 100%);box-shadow:0 12px 26px -12px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35);transition:transform .15s ease,box-shadow .2s ease}.bioFp:active{transform:scale(.96)}.bioFp:focus-visible{outline:2px solid #fff;outline-offset:3px}</style>'+
     '<div class="bioRow"><button class="btn block" data-act="login">دخول</button>'+(bio?fp:'')+'</div>';
 }
 function loginHTML(){
