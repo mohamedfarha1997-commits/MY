@@ -1051,7 +1051,7 @@ function findUserByPw(p){
 function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]=1;});REMOVED_USER_CODES.forEach(function(c){used[c]=1;});for(var i=0;i<900;i++){var c=String(100+Math.floor(Math.random()*900));if(!used[c])return c;}return String(Date.now()).slice(-6);}
 /* رقم الـ ID الثابت للمستخدم: بيتولد مرة واحدة ومش بيتغير حتى لو الاسم أو الكود اتعدل */
 function nextCardId(){var used={};(S.users||[]).forEach(function(u){if(u.cid)used[u.cid]=1;});for(var i=0;i<1000;i++){var c='RMY-'+String(10000+Math.floor(Math.random()*90000));if(!used[c])return c;}return 'RMY-'+Date.now().toString(36).toUpperCase();}
-function maskWa(w){w=String(w||'');return w.length>=6?'•'.repeat(w.length-4)+w.slice(-4):'';}
+function maskWa(w){w=String(w||'');return w.length>=6?w.slice(0,-4)+'****':'';}
 function markBy(b,act){
   if(!b)return;
   S.plog=S.plog||{};
