@@ -1055,6 +1055,7 @@ function purgeProdLog(s){
 function fix(o){
   if(!o.materials)o.materials=[];
   if(!o.products)o.products=[];
+  migrateEggRecipes(o);
   migrateProducts(o.products);
   if(!o.ready)o.ready={};if(!o.waste)o.waste=[];
   if(!o.orders)o.orders=[];
@@ -1112,8 +1113,6 @@ function M(id){var m=MATERIALS.filter(function(m){return m.id===id;})[0];
 var S=load();
 /* ترحيل وصفات البيض: المكوّنات اللي اتسجلت بالجرام واتحولت لعدد بيض (البيضة = 50 جرام)، بترجع للخامة بالجرام بالكمية اللي اتكتبت أصلاً. بيتعمل مرة واحدة */
 function migrateEggRecipes(st){
-  if(st.migEgg2)return;
-  st.migEgg2=1;
   (st.products||[]).forEach(function(p){(p.stages||[]).forEach(function(g){(g.ings||[]).forEach(function(i){
     if(i.du!=='جرام'||!i.dq)return;
     var mm=(st.materials||[]).filter(function(x){return x.id===(i.m||i.mid);})[0];
@@ -1123,7 +1122,6 @@ function migrateEggRecipes(st){
     i.m=cp.id;i.mid=cp.id;i.q=i.dq;i.u='جرام';
   });});});
 }
-migrateEggRecipes(S);
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
 if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1)U.view=h;
