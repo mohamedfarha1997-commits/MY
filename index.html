@@ -3163,10 +3163,14 @@ function loginHTML(){
 /* صفحة إعادة تعيين الـ PIN: بتتأكد من الكود وآخر ٤ أرقام من الواتساب، ولو صح بيتغير الـ PIN فوراً */
 function waDigits(s){return String(s||'').replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/\D/g,'');}
 function findUserByCode(c){var k=String(c||'').trim().toLowerCase();if(!k)return null;return usersList().filter(function(x){return String(x.code).toLowerCase()===k;})[0]||null;}
-function rField(id,label,attrs,st,val){
+/* الرقم متخبي: بنعرض أول رقمين وبعدهم نجوم، والخانة بتاعة آخر ٤ أرقام جنبه */
+function maskWa(u){var w=u?waDigits(u.wa):'';if(w.length<6)return '';return w.slice(0,2)+'*'.repeat(w.length-6);}
+function rField(id,label,attrs,st,val,withMask,mask){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=c?'<span id="'+id+'Ic" style="position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
-  return '<div class="fld"><label for="'+id+'">'+label+'</label><div style="position:relative"><input id="'+id+'" '+attrs+' value="'+esc(val||'')+'"'+(c?' style="border-color:'+c+';padding-inline-end:38px"':'')+'>'+ic+'</div></div>';
+  var sty=(withMask?'flex:1;min-width:0;':'')+(c?'border-color:'+c+';padding-inline-end:38px':'');
+  var pre=withMask?'<span id="rMask" class="ltr" style="white-space:nowrap;font-weight:700;letter-spacing:1px;display:'+(mask?'inline':'none')+'">'+esc(mask||'')+'</span>':'';
+  return '<div class="fld"><label for="'+id+'">'+label+'</label><div style="position:relative;display:flex;align-items:center;gap:8px">'+pre+'<input id="'+id+'" '+attrs+' value="'+esc(val||'')+'"'+(sty?' style="'+sty+'"':'')+'>'+ic+'</div></div>';
 }
 function resetHTML(){
   if(U.resetDone){
@@ -3176,16 +3180,17 @@ function resetHTML(){
       '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
   }
   var m=U.rMark||{},v=U.rv||{};
-  var err=U.resetErr?'<div class="note">'+U.resetErr+'</div>':'';
+  var err=U.resetErr?'<div class="note" style="margin-bottom:10px">'+esc(U.resetErr)+'</div>':'';
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
+  var mask=maskWa(findUserByCode(v.code));
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
     '<h2>إعادة تعيين الـ PIN</h2>'+
     '<p class="meta">اكتب الكود بتاعك، وآخر ٤ أرقام من رقم الواتساب المسجل عندنا، والـ PIN الجديد.</p>'+
     err+
-    rField('rCode','الكود بتاعك','autocomplete="off"',m.code,v.code)+
-    rField('rLast','آخر ٤ أرقام من رقم الواتساب','inputmode="numeric" maxlength="4" autocomplete="off"',m.last,v.last)+
-    rField('rPw','الـ PIN الجديد (4 لـ 6 أرقام)',pinAttrs,m.pw,'')+
-    rField('rPw2','اكتب الـ PIN تاني',pinAttrs,m.pw2,'')+
+    rField('rCode','الكود بتاعك','autocomplete="off"',m.code,v.code,false,'')+
+    rField('rLast','آخر ٤ أرقام من رقم الواتساب','inputmode="numeric" maxlength="4" autocomplete="off" placeholder="0000"',m.last,v.last,true,mask)+
+    rField('rPw','الـ PIN الجديد (4 لـ 6 أرقام)',pinAttrs,m.pw,v.pw,false,'')+
+    rField('rPw2','اكتب الـ PIN تاني',pinAttrs,m.pw2,v.pw2,false,'')+
     '<button class="btn block" data-act="resetSend">تغيير الـ PIN</button>'+
     '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
 }
@@ -5037,11 +5042,14 @@ function paintField(id,st){
   if(!ic){ic=document.createElement('span');ic.id=id+'Ic';ic.style.cssText='position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-weight:700';inp.parentNode.appendChild(ic);}
   ic.style.color=c;ic.textContent=st==='ok'?'✓':'✕';
 }
+/* بيتنادى وإحنا بنكتب: بيلوّن ويعرض الرقم المخفي من غير ما يعيد رسم الفورم (عشان الـ PIN ميتمسحش) */
 function resetLiveCheck(){
   var code=((document.getElementById('rCode')||{}).value||'').trim();
   var last=waDigits((document.getElementById('rLast')||{}).value);
   var u=findUserByCode(code);
   paintField('rCode',!code?'':(u?'ok':'bad'));
+  var mk=document.getElementById('rMask');
+  if(mk){var t=maskWa(u);mk.textContent=t;mk.style.display=t?'inline':'none';}
   if(!u||last.length<4){paintField('rLast','');return;}
   paintField('rLast',waDigits(u.wa).slice(-4)===last?'ok':'bad');
 }
@@ -5053,7 +5061,8 @@ ACT.resetSend=function(){
   var code=g('rCode'),last=waDigits(g('rLast'));
   var pw=(document.getElementById('rPw')||{}).value||'',pw2=(document.getElementById('rPw2')||{}).value||'';
   var u=findUserByCode(code);
-  var fail=function(msg,mark){U.resetErr=msg;U.rMark=mark||{};U.rv={code:code,last:last};render();return false;};
+  /* بنحتفظ بالقيم اللي اتكتبت عشان متتمسحش لما الفورم يتعاد رسمه */
+  var fail=function(msg,mark){U.resetErr=msg;U.rMark=mark||{};U.rv={code:code,last:last,pw:pw,pw2:pw2};toast(msg);render();return false;};
   if(!code)return fail('اكتب الكود بتاعك');
   if(!u)return fail('الكود ده مش موجود',{code:'bad'});
   var waD=waDigits(u.wa);
@@ -5067,7 +5076,11 @@ ACT.resetSend=function(){
   (u.hist||[]).forEach(function(x){cands.push(x);});
   if(S.auth&&S.auth.salt&&S.auth.hash)cands.push({salt:S.auth.salt,h:S.auth.hash,iter:S.auth.iter||200000});
   Promise.all(cands.map(function(x){return hexPbkdf2(pw,x.salt,x.iter).then(function(h){return h===x.h;});})).then(function(hits){
-    if(hits.some(Boolean)){U.resetErr='الـ PIN ده مستخدم قبل كده، اختار PIN جديد';U.rMark={code:'ok',last:'ok',pw:'bad',pw2:'bad'};U.rv={code:code,last:last};render();return;}
+    if(hits.some(Boolean)){
+      U.resetErr='الـ PIN ده مستخدم قبل كده (عند حد تاني أو عندك قبل كده)، اختار PIN جديد';
+      U.rMark={code:'ok',last:'ok',pw:'bad',pw2:'bad'};U.rv={code:code,last:last,pw:pw,pw2:pw2};
+      toast(U.resetErr);render();return;
+    }
     var salt=randHex();
     return hexPbkdf2(pw,salt,200000).then(function(h){
       if(u.salt&&u.h)u.hist=(u.hist||[]).concat([{salt:u.salt,h:u.h,iter:u.iter||200000}]).slice(-5);
