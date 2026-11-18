@@ -849,6 +849,9 @@ img,svg,canvas,video{max-width:100%;height:auto}
 .is-scrolling::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#8f9bff,#4F5DFF);box-shadow:0 0 8px rgb(79 93 255 / .55)}
 /* خلفية الصفحة كلها تتبع الثيم (نهاري/ليلي) بدل الكحلي الغامق اللي كان ظاهر تحت المحتوى القصير */
 html{background:var(--bg)!important}
+/* النهاري: الخلفية تغطي الشاشة كلها، والطبقة الزخرفية الغامقة تتشال منه */
+html[data-theme="light"] body{min-height:100vh;min-height:100dvh}
+html[data-theme="light"] .fx-bg{display:none!important}
 /* صفحات محتواها مش محتاج سكرول، أو شاشة الدخول: مفيش سكرول خالص */
 [data-fit],.login{overflow:hidden!important;scrollbar-width:none!important}
 [data-fit]::-webkit-scrollbar,.login::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
