@@ -19,16 +19,18 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ta
 .name{font-size:22px;font-weight:800;margin:0 0 14px;word-break:break-word}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid var(--line);padding-top:16px}
 .k{font-size:12px;color:var(--mut);margin-bottom:3px}
-.v{font-weight:700;font-size:15px;direction:ltr;text-align:right;unicode-bidi:plaintext}
+.v{font-weight:700;font-size:15px;text-align:right;unicode-bidi:plaintext}
+.ltr{direction:ltr;unicode-bidi:plaintext}
 .idbox{margin-top:16px;background:var(--bg);border-radius:12px;padding:12px;text-align:center}
 .idbox .v{font-size:20px;letter-spacing:1px;direction:ltr;text-align:center}
-.foot{text-align:center;font-size:12px;color:var(--mut);margin-top:14px}
 .center{text-align:center}
 .role{color:var(--mut);font-size:14px;margin:0 0 14px}
+.upd{text-align:center;font-size:12px;color:var(--mut);margin-top:14px}
 input{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:16px;direction:ltr;text-align:center;margin-top:6px}
 button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-size:16px;font-weight:700;cursor:pointer}
 .ghost{background:transparent;color:var(--brand);border:1px solid var(--brand)}
-.err{color:#b91c1c;font-size:14px;margin:6px 0 0}
+.full{grid-column:1/-1}
+.link{display:block;text-align:center;font-size:14px;color:var(--brand);margin-top:10px}
 @media print{body{background:#fff;padding:0}.noprint{display:none}.idc{box-shadow:none;border:1px solid #ccc}}
 </style>
 </head>
@@ -38,30 +40,38 @@ button{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;backg
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 var DATA={cards:[],updated:null};
-var currentCid='';
+var currentCode='';
 var out=document.getElementById('out');
 var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
+var DATA_URL=new URL('cards.json',location.href).href;
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function norm(s){return String(s||'').trim().toUpperCase();}
-function findCard(id){return DATA.cards.filter(function(c){return norm(c.cid)===norm(id);})[0]||null;}
+function findCard(id){return DATA.cards.filter(function(c){return norm(c.code)===norm(id);})[0]||null;}
+function fmtDate(d){
+  if(!d)return '';
+  var t=new Date(d+'T00:00:00');
+  return isNaN(t)?d:t.toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'});
+}
 
 function showCard(c){
-  var initial=String(c.name||'?').trim().charAt(0);
-  currentCid=c.cid;
+  currentCode=c.code;
+  var initial=String(c.name||c.code||'?').trim().charAt(0);
   var upd=DATA.updated?new Date(DATA.updated).toLocaleDateString('ar-EG'):'';
+  var cells='';
+  if(c.job)cells+='<div><div class="k">الوظيفة</div><div class="v">'+esc(c.job)+'</div></div>';
+  if(c.joinDate)cells+='<div><div class="k">تاريخ الانضمام</div><div class="v">'+esc(fmtDate(c.joinDate))+'</div></div>';
+  if(c.wa)cells+='<div class="full"><div class="k">واتساب</div><div class="v ltr">'+esc(c.wa)+'</div></div>';
+
   out.innerHTML='<div class="idc">'+
     '<div class="top"><div class="brand"><span>RMY</span><small>بطاقة هوية</small></div><div class="ava">'+esc(initial)+'</div></div>'+
-    '<div class="body"><p class="name">'+esc(c.name)+'</p>'+
-    '<div class="grid">'+
-      '<div><div class="k">الكود</div><div class="v">'+esc(c.code)+'</div></div>'+
-      '<div><div class="k">واتساب</div><div class="v">'+esc(c.wa||'—')+'</div></div>'+
-    '</div>'+
-    '<div class="idbox"><div class="k">رقم الـ ID</div><div class="v">'+esc(c.cid)+'</div></div>'+
-    (upd?'<div class="foot">آخر تحديث: '+esc(upd)+'</div>':'')+
+    '<div class="body">'+(c.name?'<p class="name">'+esc(c.name)+'</p>':'')+
+    (cells?'<div class="grid">'+cells+'</div>':'')+
+    '<div class="idbox"><div class="k">رقم الـ ID (الكود)</div><div class="v">'+esc(c.code)+'</div></div>'+
+    (upd?'<div class="upd">آخر تحديث: '+esc(upd)+'</div>':'')+
     '</div></div>'+
     '<div class="noprint"><button id="pdfBtn">تحميل PDF</button><button class="ghost" id="printBtn">طباعة</button>'+
-    '<p class="center"><a href="card.html" style="font-size:14px;color:var(--brand)">تحقق من ID تاني</a></p></div>';
+    '<a class="link" href="card.html">تحقق من ID تاني</a></div>';
   document.getElementById('printBtn').onclick=function(){window.print();};
   document.getElementById('pdfBtn').onclick=downloadPdf;
 }
@@ -75,7 +85,7 @@ function downloadPdf(){
     var w=canvas.width/2, h=canvas.height/2, m=24;
     var pdf=new window.jspdf.jsPDF({unit:'px',format:[w+m*2,h+m*2],orientation:w>h?'l':'p'});
     pdf.addImage(canvas.toDataURL('image/png'),'PNG',m,m,w,h);
-    pdf.save('ID-'+currentCid+'.pdf');
+    pdf.save('ID-'+currentCode+'.pdf');
   }).catch(function(){
     window.print();
   }).then(function(){
@@ -86,8 +96,8 @@ function downloadPdf(){
 function askId(msg){
   out.innerHTML='<div class="idc"><div class="body">'+
     '<p class="name center">التحقق من بطاقة الـ ID</p>'+
-    '<p class="role center">'+esc(msg||'اكتب رقم الـ ID الموجود على الكارت')+'</p>'+
-    '<input id="q" placeholder="RMY-00000" autocomplete="off" autocapitalize="characters">'+
+    '<p class="role center">'+esc(msg||'اكتب رقم الـ ID (الكود) الموجود على الكارت')+'</p>'+
+    '<input id="q" placeholder="الكود" autocomplete="off" autocapitalize="characters">'+
     '<button id="go">عرض البطاقة</button>'+
     '</div></div>';
   var q=document.getElementById('q');
@@ -99,12 +109,12 @@ function askId(msg){
 function go(v){
   var c=findCard(v);
   if(!c){askId('الـ ID ده مش موجود، اتأكد منه وجرّب تاني');return;}
-  history.replaceState(null,'','?id='+encodeURIComponent(c.cid));
+  history.replaceState(null,'','?id='+encodeURIComponent(c.code));
   showCard(c);
 }
 
-fetch('cards.json',{cache:'no-store'})
-  .then(function(r){if(!r.ok)throw new Error('http');return r.json();})
+fetch(DATA_URL,{cache:'no-store'})
+  .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
   .then(function(j){
     DATA.cards=j.cards||[];
     DATA.updated=j.updated||null;
@@ -116,8 +126,11 @@ fetch('cards.json',{cache:'no-store'})
     }
     askId();
   })
-  .catch(function(){
-    out.innerHTML='<div class="idc"><div class="body center"><p class="name">تعذّر تحميل البيانات</p><p class="role">اتأكد إن ملف cards.json موجود في نفس مكان الصفحة، وإن الصفحة متفتحة من رابط (مش من ملف على الجهاز).</p></div></div>';
+  .catch(function(err){
+    out.innerHTML='<div class="idc"><div class="body center"><p class="name">تعذّر تحميل البيانات</p>'+
+      '<p class="role">الملف المطلوب: <span class="ltr">'+esc(DATA_URL)+'</span></p>'+
+      '<p class="role">السبب: '+esc(String(err&&err.message||'غير معروف'))+'</p>'+
+      '<p class="role">اتأكد إن cards.json مرفوع في نفس المكان اللي فيه card.html، وإن تصدير الكروت اتعمل بعد آخر تعديل.</p></div></div>';
   });
 </script>
 </body>

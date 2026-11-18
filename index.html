@@ -987,8 +987,6 @@ function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a
 var REMOVED_USER_CODES=['879'];
 function usersList(){
   S.users=(S.users||[]).filter(function(u){return REMOVED_USER_CODES.indexOf(u.code)<0;});
-  var fxCid=false;S.users.forEach(function(u){if(!u.cid){u.cid=nextCardId();fxCid=true;}});
-  if(fxCid){try{persistLocal();}catch(e){}}
   if(S.prefs&&S.prefs.userTabs){REMOVED_USER_CODES.forEach(function(c){delete S.prefs.userTabs[c];});}
   try{var au=localStorage.getItem(AUTH_KEY)||'';if(au.indexOf('u:')===0&&REMOVED_USER_CODES.indexOf(au.slice(2))>-1)localStorage.removeItem(AUTH_KEY);}catch(e){}
   return S.users;
@@ -1593,8 +1591,23 @@ function exportBackup(){
   document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000);
 }
+function cardShow(u,k){var s=u.show||{};return s[k]===undefined?(k!=='wa'):!!s[k];}
+var CARD_FIELDS=[['name','الاسم'],['job','الوظيفة'],['joinDate','تاريخ الانضمام'],['wa','رقم الواتساب (مخفي جزئياً)']];
+function cardFieldBoxes(u){
+  return '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" checked disabled> الكود (هو الـ ID)</label>'+
+    CARD_FIELDS.map(function(f){return '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-cf="'+f[0]+'"'+(cardShow(u,f[0])?' checked':'')+'> '+f[1]+'</label>';}).join('');
+}
+/* اللي بيتصدر بس: الحقول المتعلّمة. الحقول المش متعلّمة مش بتتصدر خالص */
+function cardData(u){
+  var c={code:u.code};
+  if(cardShow(u,'name')&&u.name)c.name=u.name;
+  if(cardShow(u,'job')&&u.job)c.job=u.job;
+  if(cardShow(u,'joinDate')&&u.joinDate)c.joinDate=u.joinDate;
+  if(cardShow(u,'wa')&&u.wa)c.wa=maskWa(u.wa);
+  return c;
+}
 function exportCards(){
-  var list=usersList().map(function(u){return {cid:u.cid,name:u.name,code:u.code,wa:maskWa(u.wa)};});
+  var list=usersList().map(cardData);
   var body=JSON.stringify({app:'rmy-cards',v:1,updated:new Date().toISOString(),cards:list},null,2);
   var a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([body],{type:'application/json'}));
@@ -4230,7 +4243,7 @@ function usersCardHTML(){
     var conf=U.confirm==='udel:'+u.id;
     var onLv=userLeaveActive(u,todayK);
     return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><b>'+esc(u.name)+'</b>'+(onLv?'<span class="upill">في إجازة</span>':'')+'</div></td>'+
-      '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+'<td><span class="ltr">'+esc(u.cid||'')+'</span></td>'+
+      '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+
       '<td class="uact"><button class="btn ghost sm" data-act="cardOpen" data-id="'+u.id+'">الكرت</button> <button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button></td></tr>';
   }).join('');
   var editBox='';
@@ -4239,13 +4252,18 @@ function usersCardHTML(){
     var onNow=userLeaveActive(eu,todayK);
     var period=(eu.leaveFrom&&eu.leaveTo)?('من '+eu.leaveFrom+' إلى '+eu.leaveTo):'مفيش فترة إجازة';
     editBox='<div class="uedit">'+
-      '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span> · الـ ID <span class="ltr">'+esc(eu.cid||'')+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
+      '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
       '<div class="ugrp"><span class="sec-l">البيانات</span>'+
         '<div class="urow"><div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
         '<div class="fld"><label for="uEditCode">الكود</label><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'"></div></div>'+
         '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small>'+
         '<div class="fld"><label for="uEditWa">رقم الواتساب</label><input id="uEditWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx" value="'+esc(eu.wa||'')+'"></div>'+
         '<small class="uhint">رقم الواتساب ده بيتستخدم في استعادة الـ PIN (آخر ٤ أرقام منه).</small></div>'+
+      '<div class="ugrp"><span class="sec-l">بيانات الشغل</span>'+
+        '<div class="urow"><div class="fld"><label for="uEditJob">الوظيفة</label><input id="uEditJob" autocomplete="off" value="'+esc(eu.job||'')+'"></div>'+
+        '<div class="fld"><label for="uEditJoin">تاريخ الانضمام</label><input id="uEditJoin" type="date" value="'+esc(eu.joinDate||'')+'"></div></div></div>'+
+      '<div class="ugrp"><span class="sec-l">بيانات الكارت</span>'+
+        '<small class="uhint">علّم بس اللي عايز يظهر للمستخدم في صفحة الكارت.</small>'+cardFieldBoxes(eu)+'</div>'+
       '<div class="ugrp"><span class="sec-l">الباسورد</span>'+
         '<div class="fld"><label for="uEditPw">باسورد جديد</label><input id="uEditPw" type="password" autocomplete="new-password" placeholder="اتركه فاضي لو مش عايز تغيّره"></div></div>'+
       '<div class="ugrp"><span class="sec-l">يوم الإجازة الأسبوعي</span>'+
@@ -4264,12 +4282,14 @@ function usersCardHTML(){
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
     '<div class="fld"><label for="uCode">الكود (اختياري)</label><input id="uCode" autocomplete="off" maxlength="12" placeholder="يتولد تلقائي لو فاضي"></div>'+
     '<div class="fld"><label for="uWa">رقم الواتساب (اختياري)</label><input id="uWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx"></div>'+
-    '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
+    '<div class="fld"><label for="uJob">الوظيفة (اختياري)</label><input id="uJob" autocomplete="off" placeholder="مثال: عامل إنتاج"></div>'+
+     '<div class="fld"><label for="uJoin">تاريخ الانضمام (اختياري)</label><input id="uJoin" type="date"></div>'+
+     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
     '<div class="fld" style="margin-top:12px"><label for="cardBase">رابط صفحة الكروت</label><input id="cardBase" autocomplete="off" dir="ltr" placeholder="https://your-site/card.html" value="'+esc(pref('cardsBase','card.html'))+'"></div>'+
     '<div class="ubtns"><button class="btn ghost sm" data-act="cardBaseSave">حفظ الرابط</button><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button></div>'+
-    resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th>الـ ID</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
+    resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
 }
 function resetReqsHTML(){
   var rs=pref('resetReqs',[]).filter(function(r){return !r.owner;});
@@ -4774,9 +4794,8 @@ var ACT={
   cardOpen:function(d){
     var u=usersList().filter(function(x){return x.id===d.id;})[0];
     if(!u){toast('المستخدم ده مش موجود');return false;}
-    if(!u.cid){toast('المستخدم ده مالوش ID لسه');return false;}
     var base=pref('cardsBase','card.html')||'card.html';
-    window.open(base+(base.indexOf('?')>-1?'&':'?')+'id='+encodeURIComponent(u.cid),'_blank');
+    window.open(base+(base.indexOf('?')>-1?'&':'?')+'id='+encodeURIComponent(u.code),'_blank');
     return false;
   },
   cardBaseSave:function(){
@@ -4795,6 +4814,7 @@ var ACT={
     if(cIn&&!validUserCode(cIn)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
     if(cIn&&userCodeTaken(cIn,null)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
     var wIn=waDigits((document.getElementById('uWa')||{}).value);if(wIn&&!/^[0-9]{10,15}$/.test(wIn)){toast('اكتب رقم الواتساب صح');return false;}
+    var jobIn=((document.getElementById('uJob')||{}).value||'').trim(),joinIn=((document.getElementById('uJoin')||{}).value||'');
     var code=cIn||nextUserCode(),salt=randHex();
     toast('جاري إضافة المستخدم...');
     /* الفحوصات الثلاثة بتشتغل مع بعض بدل ما تستنى بعض */
@@ -4802,9 +4822,10 @@ var ACT={
       if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
       if(r[1]){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
       if(userCodeTaken(code,null)){toast('الكود ده اتاخد للتو، جرّب كود تاني');return;}
-      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000,wa:wIn||null,cid:nextCardId()});
+      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000,wa:wIn||null,job:jobIn||null,joinDate:joinIn||null});
       var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);var e0=Object.assign({},pref('userEdit',{}));e0[code]=STAFF_DEFAULT.slice();setPref('userEdit',e0);
       var nu=document.getElementById('uName'),np=document.getElementById('uPw'),nc=document.getElementById('uCode');if(nu)nu.value='';if(np)np.value='';if(nc)nc.value='';var nwa=document.getElementById('uWa');if(nwa)nwa.value='';
+      ['uJob','uJoin'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       toast('اتضاف المستخدم · الكود '+code);render();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
@@ -4840,6 +4861,7 @@ var ACT={
     if(!u){U.editUser=null;return false;}
     var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
     var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo'),wo=g('uWeekOff');
+    var jb=g('uEditJob'),jd=g('uEditJoin');
     var wa=waDigits(g('uEditWa'));
     if(wa&&!/^[0-9]{10,15}$/.test(wa)){toast('اكتب رقم الواتساب صح');return false;}
     if(!n){toast('اكتب اسم المستخدم');return false;}
@@ -4851,7 +4873,8 @@ var ACT={
     var finish=function(){
       var old=u.code;
       if(c!==old)renameUserCode(old,c);
-      u.name=n;u.code=c;u.wa=wa||null;
+      u.name=n;u.code=c;u.wa=wa||null;u.job=jb||null;u.joinDate=jd||null;
+      var sh={};document.querySelectorAll('[data-cf]').forEach(function(el){sh[el.getAttribute('data-cf')]=el.checked;});u.show=sh;
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
       u.weekOff=wo===''?null:Number(wo);
       U.editUser=null;U.pwUser=null;save();
