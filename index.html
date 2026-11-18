@@ -839,6 +839,19 @@ img,svg,canvas,video{max-width:100%;height:auto}
 
 @media (prefers-reduced-motion:reduce){#psBoot::before,.psb-bar i,.psb-mark{animation:none!important}}
 
+/* ---- سكرول جديد: مخفي تماماً، ويظهر كخيط رفيع بلون التطبيق وإنت بتتحرك بس ---- */
+*{scrollbar-width:thin;scrollbar-color:transparent transparent}
+*::-webkit-scrollbar{width:4px;height:4px;background:transparent}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-corner{background:transparent}
+*::-webkit-scrollbar-thumb{background:transparent;border-radius:99px;transition:background .25s ease}
+.is-scrolling{scrollbar-color:rgb(79 93 255 / .6) transparent}
+.is-scrolling::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#8f9bff,#4F5DFF);box-shadow:0 0 8px rgb(79 93 255 / .55)}
+/* خلفية الصفحة كلها تتبع الثيم (نهاري/ليلي) بدل الكحلي الغامق اللي كان ظاهر تحت المحتوى القصير */
+html{background:var(--bg)!important}
+/* صفحات محتواها مش محتاج سكرول، أو شاشة الدخول: مفيش سكرول خالص */
+[data-fit],.login{overflow:hidden!important;scrollbar-width:none!important}
+[data-fit]::-webkit-scrollbar,.login::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 </style>
 
 </head><body>
@@ -5665,6 +5678,53 @@ restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finis
   document.addEventListener('rmy:loaded',function(){loaded=true;tryDone();});
   setTimeout(function(){loaded=true;tryDone();},15000);
 
+})();
+</script>
+<script>
+(function(){
+  var pending=0;
+  function show(el){
+    if(!el)return;
+    el.classList.add('is-scrolling');
+    clearTimeout(el._scT);
+    el._scT=setTimeout(function(){el.classList.remove('is-scrolling');},900);
+  }
+  document.addEventListener('scroll',function(ev){
+    var t=ev.target;
+    if(!t)return;
+    show(t.nodeType===9?document.documentElement:t);
+  },{capture:true,passive:true});
+
+  function fit(){
+    pending=0;
+    var root=document.documentElement;
+    if(root.scrollHeight>window.innerHeight+1)root.removeAttribute('data-fit');
+    else root.setAttribute('data-fit','');
+    var els=document.body?document.body.querySelectorAll('*'):[];
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.clientHeight===0&&e.clientWidth===0)continue;
+      if(!e.hasAttribute('data-fit')){
+        var cs=getComputedStyle(e);
+        if(!/(auto|scroll)/.test(cs.overflowX+' '+cs.overflowY))continue;
+      }
+      var needs=(e.scrollHeight>e.clientHeight+1)||(e.scrollWidth>e.clientWidth+1);
+      if(needs)e.removeAttribute('data-fit');else e.setAttribute('data-fit','');
+    }
+  }
+  function schedule(){ if(!pending)pending=requestAnimationFrame(fit); }
+
+  var mo=new MutationObserver(schedule);
+  function startObserving(){
+    if(document.body)mo.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['style','hidden']});
+  }
+  window.addEventListener('resize',schedule);
+  window.addEventListener('orientationchange',schedule);
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',schedule);
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){startObserving();schedule();});
+  }else{startObserving();schedule();}
+  window.addEventListener('load',schedule);
 })();
 </script>
 </body></html>
