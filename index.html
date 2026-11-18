@@ -3175,6 +3175,14 @@ function updOverlay(){
     '<button class="btn upbtn" data-act="deepRefresh">تحديث الآن</button></div></div>';
 }
 function deepBtn(){return '<button class="btn ghost sm themebtn" data-act="deepRefresh" aria-label="تحديث عميق للصفحة" title="تحديث عميق للصفحة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>';}
+/* زرار الدخول + زرار البصمة جنبه (بيظهر بس لو البصمة متفعلة على الجهاز ده) */
+function loginBtnsHTML(){
+  var bio=bioSupported()&&!!localStorage.getItem(BIO_KEY);
+  var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 11a3 3 0 0 0-3 3v1.5"/><path d="M7.5 9.5A6 6 0 0 1 18 12v2"/><path d="M5 12a7 7 0 0 1 .6-2.9"/><path d="M9 17.5c.4 1.2.9 2.3 1.5 3.2"/><path d="M12 14v2.5a6 6 0 0 0 .8 3"/><path d="M15 14.5v1a8 8 0 0 1-.4 2.5"/><path d="M12 8.5a5 5 0 0 1 5 5"/></svg></button>';
+  return '<style>.bioRow{display:flex;gap:10px;align-items:center;width:100%}.bioRow .btn.block{flex:1 1 auto;min-width:0}'+
+    '.bioFp{flex:0 0 46px;width:46px;height:46px;border-radius:50%;border:1px solid rgb(255 255 255 / .35);background:rgb(255 255 255 / .12);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}</style>'+
+    '<div class="bioRow"><button class="btn block" data-act="login">دخول</button>'+(bio?fp:'')+'</div>';
+}
 function loginHTML(){
   if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
@@ -3187,7 +3195,7 @@ function loginHTML(){
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
-    '<button class="btn block" data-act="login">دخول</button>'+
+    loginBtnsHTML()+
     '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>';
 }
 /* صفحة إعادة تعيين الـ PIN: بتتأكد من الكود وآخر ٤ أرقام من الواتساب، ولو صح بيتغير الـ PIN فوراً */
@@ -3407,7 +3415,7 @@ function render(){
   if(U.view!=='filling')U.fillTab=null;
   kickDeletedUser();
   var hadSheet=!!document.querySelector('#app .sheet');
-  if(bioLocked()){document.getElementById('app').innerHTML=bioHTML();if(!U.bioAutoTried){U.bioAutoTried=true;setTimeout(bioAuto,50);}return;}
+  if(bioLocked()){document.getElementById('app').innerHTML=loginHTML()+updOverlay();FX.after({key:'login',hadSheet:false});return;}
   if(!authed()&&!U.updChecked){U.updChecked=true;updCheck();}
   if(!authed()){document.getElementById('app').innerHTML=loginHTML()+updOverlay()+(bioSupported()&&!localStorage.getItem(BIO_KEY)?'<div style="text-align:center;margin-top:12px"><button class="btn ghost sm" data-act="bioEnableAct">فعّل فتح التطبيق بالبصمة على الجهاز ده</button></div>':'');FX.after({key:'login',hadSheet:false});return;}
   if(U.bioPrompt){document.getElementById('app').innerHTML=bioPromptHTML();return;}
@@ -4353,9 +4361,9 @@ var ACT={
   login:function(){
     var p=(document.getElementById('lpin')||{}).value||'';
     checkPin(p).then(function(ok){
-      if(ok){lockSettings();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
+      if(ok){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
       return findUserByPw(p).then(function(u){
-        if(u){lockSettings();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
+        if(u){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
         else{U.loginErr='الباسورد غلط';}
         render();
       });
