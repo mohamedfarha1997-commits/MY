@@ -554,8 +554,8 @@ button,input{font-family:inherit}
 .top .hdate{grid-column:1;grid-row:2;justify-self:start;font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
 /* الهيدر ثابت فوق وشفاف (زجاجي) عشان المحتوى يبان تحته وهو بيتحرك، مع إن النص يفضل واضح */
 .top{position:sticky!important;top:env(safe-area-inset-top,0px);z-index:25;margin-top:0!important;overflow:visible!important;background:color-mix(in srgb,var(--surface) 70%,transparent)!important;backdrop-filter:blur(16px) saturate(1.6);-webkit-backdrop-filter:blur(16px) saturate(1.6);border-color:color-mix(in srgb,var(--line) 75%,transparent)!important;border-top-left-radius:0!important;border-top-right-radius:0!important;border-bottom-left-radius:18px!important;border-bottom-right-radius:18px!important;box-shadow:0 10px 24px -18px var(--glow)}
-.top .ttlname{font-size:20px;font-weight:400}
-.top .greet{font-family:var(--f-disp);font-weight:400}
+.top .ttlname{font-size:20px;font-weight:700}
+.top .greet{font-family:var(--f-disp);font-weight:700}
 /* عادي وإنت فوق */
 .top{background:color-mix(in srgb,var(--surface) 94%,transparent)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;transition:background .25s ease,backdrop-filter .25s ease}
 /* زجاجي بلور لما تنزل للأسفل */
@@ -784,7 +784,7 @@ img,svg,canvas,video{max-width:100%;height:auto}
 </head><body>
 <title>RMY Pro</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Lalezar&family=Cairo:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Lalezar&family=Cairo:wght@500;600;700&display=swap"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'"><noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Cairo:wght@400;500;600;700;800&display=swap"></noscript>
 
 
 
@@ -3596,8 +3596,9 @@ function monthsHTML(){
     return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل الشهور ('+(kind==='shop'?'أوردرات المحل':'الأوردرات')+')</h3></div>'+
       '<p class="meta" style="margin:0">القفل بيلم كل بيانات التطبيق (الأوردرات والدفعات والإنتاج المنتهي والخامات) ويأرشفها ويمسحها من مكانها. مخزون الإنتاج الجاهز والوصفات والأصناف المحشوة (حشو) بيفضلوا زي ما هما. صدّر تقرير PDF قبل القفل لو محتاج.</p>'+
       keys.map(function(k){
-        var m=months[k],locked=closedMonth(k,kind),conf=U.confirm==='lock:'+lockKey(kind,k);
+        var m=months[k],locked=closedMonth(k,kind),conf=U.confirm==='lock:'+lockKey(kind,k),delConf=U.confirm==='delarch:'+lockKey(kind,k);
         var act=(locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':'')+
+          ((locked&&!limited())?'<button class="btn ghost sm" data-act="monthDelArchive" data-kind="'+kind+'" data-k="'+k+'" style="color:var(--bad)">'+(delConf?'اضغط تاني للتأكيد':'حذف من الأرشيف')+'</button>':'')+
           ((!locked||m.live)?'<button class="btn ghost sm" data-act="lockMonth" data-kind="'+kind+'" data-k="'+k+'"'+(anyOpen?' disabled':'')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>':'');
         return '<div class="hist" style="align-items:center"><span><b>'+k+'</b> <span class="meta">· '+m.n+' أوردر'+(m.und?' · لسه '+m.und+' مش متسلّم':'')+'</span></span><span class="acts">'+(locked?'<span class="pill ok">مقفول</span>':'')+act+'</span></div>';
       }).join('')+'</section>';
@@ -4671,6 +4672,20 @@ var ACT={
     if(!allOk(o)){toast('علّم كل الأصناف في صفحة تحت التشغيل الأول');return false;}
     o.deliveredAt=Date.now();toast('تم تسليم '+o.id+' وأرشفته');
   },
+  monthDelArchive:function(d){
+    if(limited())return false;
+    var key=lockKey(d.kind,d.k);
+    if(U.confirm!=='delarch:'+key){
+      U.confirm='delarch:'+key;
+      setTimeout(function(){if(U.confirm==='delarch:'+key){U.confirm=null;render();}},4000);
+      return;
+    }
+    U.confirm=null;
+    /* الأرشيف ده النسخة الوحيدة من بيانات الشهر، فبنمسحه بس بعد تأكيد المالك */
+    Object.keys(S.archive||{}).forEach(function(x){if(S.archive[x]&&S.archive[x].month===d.k)delete S.archive[x];});
+    if(S.locks){delete S.locks[lockKey('cust',d.k)];delete S.locks[lockKey('shop',d.k)];}
+    save();render();toast('الشهر اتحذف من الأرشيف');return false;
+  },
   lockMonth:function(d){
     var key=lockKey(d.kind,d.k);
     if(S.orders.some(function(o){return !o.deliveredAt;})){toast('فيه أوردرات لسه مش متسلّمة، سلّمها الأول');return false;}
@@ -4793,7 +4808,17 @@ var ACT={
   oDelete:function(d){
     var lo=S.orders.filter(function(x){return x.id===d.id;})[0];
     if(!lo)return false;
-    if(isLocked(lo)){toast('الشهر ده اتقفل، الأوردر مش ينفع يتحذف');return false;}
+    if(isLocked(lo)){
+      /* الشهر المقفول: المالك بس يقدر يحذف، وبعد تأكيد تاني */
+      if(limited()){toast('الشهر ده اتقفل، الأوردر مش ينفع يتحذف');return false;}
+      if(U.confirm!=='dellock'+d.id){
+        U.confirm='dellock'+d.id;
+        setTimeout(function(){if(U.confirm==='dellock'+d.id){U.confirm=null;render();}},4000);
+        toast('الشهر ده متقفل. الحذف هيشيل الأوردر من القايمة. اضغط حذف تاني للتأكيد');
+        return false;
+      }
+      U.confirm='del'+d.id;
+    }
     var key='del'+d.id,bs=S.batches.filter(function(b){return b.o===d.id;});
     if(bs.length){toast('الأوردر فيه دفعات في الإنتاج، ما ينفعش يتحذف');return false;}
     if(U.confirm!==key){U.confirm=key;setTimeout(function(){if(U.confirm===key){U.confirm=null;render();}},3000);return;}
