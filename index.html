@@ -566,6 +566,24 @@ button,input{font-family:inherit}
 .ps-row .tab svg{width:34px!important;height:34px!important}
 .ps-row .tab .cnt{font-size:30px!important}
 .ps-row .tab .tl{font-size:15px!important}
+/* ---- ستايل PS5 للرئيسية والهيدر والأيقونات والحركات ---- */
+.top{background:linear-gradient(180deg,rgb(255 255 255 / .92),rgb(240 243 255 / .86))!important;border:1px solid rgb(79 93 255 / .18)!important;box-shadow:0 18px 40px -22px rgb(41 51 148 / .55),inset 0 1px 0 rgb(255 255 255 / .8)!important}
+.top .themebtn,.top .ttlback{transition:transform .2s ease,box-shadow .25s ease}
+.top .themebtn:hover{box-shadow:0 0 0 4px rgb(79 93 255 / .18)}
+.top .themebtn:active{transform:scale(.92)}
+.top .ttlname{background:linear-gradient(100deg,#101C28 0%,#293394 55%,#4F5DFF 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+.ps-row{perspective:900px}
+.ps-row .tab{position:relative;overflow:hidden;border-radius:30px!important;background:linear-gradient(160deg,#ffffff 0%,#eef1ff 60%,#dfe5ff 100%)!important;border:1px solid rgb(79 93 255 / .14)!important;box-shadow:0 22px 40px -26px rgb(41 51 148 / .7),inset 0 1px 0 rgb(255 255 255 / .9)!important;animation:psIn .55s cubic-bezier(.2,.8,.2,1) both}
+.ps-row .tab:nth-child(2){animation-delay:.05s}.ps-row .tab:nth-child(3){animation-delay:.1s}.ps-row .tab:nth-child(4){animation-delay:.15s}.ps-row .tab:nth-child(5){animation-delay:.2s}.ps-row .tab:nth-child(6){animation-delay:.25s}.ps-row .tab:nth-child(7){animation-delay:.3s}.ps-row .tab:nth-child(8){animation-delay:.35s}.ps-row .tab:nth-child(n+9){animation-delay:.4s}
+@keyframes psIn{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+.ps-row .tab::before{content:"";position:absolute;inset:-40% -60%;background:linear-gradient(115deg,transparent 40%,rgb(255 255 255 / .55) 50%,transparent 60%);transform:translateX(-100%);pointer-events:none}
+.ps-row .tab:hover::before,.ps-row .tab:focus-visible::before{transform:translateX(100%);transition:transform .9s ease}
+.ps-row .tab:hover{box-shadow:0 30px 50px -24px rgb(41 51 148 / .8),0 0 0 6px rgb(79 93 255 / .12)!important;transform:translateY(-3px)!important}
+.ps-row .tab svg{width:40px!important;height:40px!important;stroke:#293394!important;stroke-width:2.2!important;filter:drop-shadow(0 6px 10px rgb(79 93 255 / .35))}
+.ps-row .tab .cnt{background:linear-gradient(180deg,#101C28,#293394);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ps-row .tab .tl{color:#1b2350;font-weight:700}
+.ps-row .tab.live,.ps-row .tab.warn{box-shadow:0 0 0 2px rgb(245 158 11 / .55),0 22px 40px -22px rgb(245 158 11 / .8)!important}
+@media (prefers-reduced-motion:reduce){.ps-row .tab,.ps-row .tab::before{animation:none!important;transition:none!important}}
 .login .btn.block:active{transform:scale(.97)}
 
 
