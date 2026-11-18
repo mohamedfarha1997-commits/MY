@@ -3160,26 +3160,33 @@ function loginHTML(){
     '<button class="btn block" data-act="login">دخول</button>'+
     '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>';
 }
-/* صفحة إعادة تعيين كلمة السر: بتبعت طلب للمالك، ويتعتمد من الإعدادات */
+/* صفحة إعادة تعيين الـ PIN: بتتأكد من الكود وآخر ٤ أرقام من الواتساب، ولو صح بيتغير الـ PIN فوراً */
+function waDigits(s){return String(s||'').replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/\D/g,'');}
+function findUserByCode(c){var k=String(c||'').trim().toLowerCase();if(!k)return null;return usersList().filter(function(x){return String(x.code).toLowerCase()===k;})[0]||null;}
+function rField(id,label,attrs,st,val){
+  var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
+  var ic=c?'<span id="'+id+'Ic" style="position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
+  return '<div class="fld"><label for="'+id+'">'+label+'</label><div style="position:relative"><input id="'+id+'" '+attrs+' value="'+esc(val||'')+'"'+(c?' style="border-color:'+c+';padding-inline-end:38px"':'')+'>'+ic+'</div></div>';
+}
 function resetHTML(){
   if(U.resetDone){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
-      '<h2>تم تسجيل الطلب</h2>'+
-      '<p class="meta">تم ارسال الطلب وهيتم اعلامك علي الواتساب بعد اعتماد البسورد الجديد</p>'+
+      '<h2>تم تغيير الـ PIN</h2>'+
+      '<p class="meta">تم تغيير الـ PIN بتاعك بنجاح، ادخل بيه دلوقتي.</p>'+
       '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
   }
+  var m=U.rMark||{},v=U.rv||{};
   var err=U.resetErr?'<div class="note">'+U.resetErr+'</div>':'';
-  var pinMode=' inputmode="numeric" maxlength="6" pattern="[0-9]*"';
+  var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
     '<h2>إعادة تعيين الـ PIN</h2>'+
-    '<p class="meta">اكتب الكود بتاعك، والـ PIN الجديد، ورقم الواتساب، وهيتبعت طلب للمالك يعتمده.</p>'+
+    '<p class="meta">اكتب الكود بتاعك، وآخر ٤ أرقام من رقم الواتساب المسجل عندنا، والـ PIN الجديد.</p>'+
     err+
-    '<div class="fld"><label for="rCode">الكود بتاعك</label><input id="rCode" autocomplete="off"></div>'+
-    '<div id="rCodeSt" class="meta" style="min-height:1.4em;margin:-4px 0 8px"></div>'+
-    '<div class="fld"><label for="rPw">الـ PIN الجديد (4 لـ 6 أرقام)</label><input id="rPw" type="password"'+pinMode+' autocomplete="new-password"></div>'+
-    '<div class="fld"><label for="rPw2">اكتب الـ PIN تاني</label><input id="rPw2" type="password"'+pinMode+' autocomplete="new-password"></div>'+
-    '<div class="fld"><label for="rWa">رقم الواتساب</label><input id="rWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx"></div>'+
-    '<button class="btn block" data-act="resetSend">إرسال الطلب</button>'+
+    rField('rCode','الكود بتاعك','autocomplete="off"',m.code,v.code)+
+    rField('rLast','آخر ٤ أرقام من رقم الواتساب','inputmode="numeric" maxlength="4" autocomplete="off"',m.last,v.last)+
+    rField('rPw','الـ PIN الجديد (4 لـ 6 أرقام)',pinAttrs,m.pw,'')+
+    rField('rPw2','اكتب الـ PIN تاني',pinAttrs,m.pw2,'')+
+    '<button class="btn block" data-act="resetSend">تغيير الـ PIN</button>'+
     '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
@@ -4089,7 +4096,9 @@ function usersCardHTML(){
       '<div class="ugrp"><span class="sec-l">البيانات</span>'+
         '<div class="urow"><div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
         '<div class="fld"><label for="uEditCode">الكود</label><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'"></div></div>'+
-        '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small></div>'+
+        '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small>'+
+        '<div class="fld"><label for="uEditWa">رقم الواتساب</label><input id="uEditWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx" value="'+esc(eu.wa||'')+'"></div>'+
+        '<small class="uhint">رقم الواتساب ده بيتستخدم في استعادة الـ PIN (آخر ٤ أرقام منه).</small></div>'+
       '<div class="ugrp"><span class="sec-l">الباسورد</span>'+
         '<div class="fld"><label for="uEditPw">باسورد جديد</label><input id="uEditPw" type="password" autocomplete="new-password" placeholder="اتركه فاضي لو مش عايز تغيّره"></div></div>'+
       '<div class="ugrp"><span class="sec-l">يوم الإجازة الأسبوعي</span>'+
@@ -4107,6 +4116,7 @@ function usersCardHTML(){
     '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
     '<div class="fld"><label for="uCode">الكود (اختياري)</label><input id="uCode" autocomplete="off" maxlength="12" placeholder="يتولد تلقائي لو فاضي"></div>'+
+    '<div class="fld"><label for="uWa">رقم الواتساب (اختياري)</label><input id="uWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx"></div>'+
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
@@ -4619,6 +4629,7 @@ var ACT={
     var cIn=((document.getElementById('uCode')||{}).value||'').trim();
     if(cIn&&!validUserCode(cIn)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
     if(cIn&&userCodeTaken(cIn,null)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
+    var wIn=waDigits((document.getElementById('uWa')||{}).value);if(wIn&&!/^[0-9]{10,15}$/.test(wIn)){toast('اكتب رقم الواتساب صح');return false;}
     var code=cIn||nextUserCode(),salt=randHex();
     toast('جاري إضافة المستخدم...');
     /* الفحوصات الثلاثة بتشتغل مع بعض بدل ما تستنى بعض */
@@ -4626,9 +4637,9 @@ var ACT={
       if(r[0]){toast('الباسورد ده بتاع المالك، اختار غيره');return;}
       if(r[1]){toast('الباسورد ده مستخدم قبل كده، اختار غيره');return;}
       if(userCodeTaken(code,null)){toast('الكود ده اتاخد للتو، جرّب كود تاني');return;}
-      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000});
+      usersList().push({id:'U'+Date.now().toString(36),name:n,code:code,salt:salt,h:r[2],iter:200000,wa:wIn||null});
       var m=Object.assign({},pref('userTabs',{}));m[code]=STAFF_DEFAULT.slice();setPref('userTabs',m);var e0=Object.assign({},pref('userEdit',{}));e0[code]=STAFF_DEFAULT.slice();setPref('userEdit',e0);
-      var nu=document.getElementById('uName'),np=document.getElementById('uPw'),nc=document.getElementById('uCode');if(nu)nu.value='';if(np)np.value='';if(nc)nc.value='';
+      var nu=document.getElementById('uName'),np=document.getElementById('uPw'),nc=document.getElementById('uCode');if(nu)nu.value='';if(np)np.value='';if(nc)nc.value='';var nwa=document.getElementById('uWa');if(nwa)nwa.value='';
       toast('اتضاف المستخدم · الكود '+code);render();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
     return false;
@@ -4664,6 +4675,8 @@ var ACT={
     if(!u){U.editUser=null;return false;}
     var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
     var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo'),wo=g('uWeekOff');
+    var wa=waDigits(g('uEditWa'));
+    if(wa&&!/^[0-9]{10,15}$/.test(wa)){toast('اكتب رقم الواتساب صح');return false;}
     if(!n){toast('اكتب اسم المستخدم');return false;}
     if(!validUserCode(c)){toast('الكود لازم يكون من ٣ لـ ١٢ حرف أو رقم');return false;}
     if(c.toLowerCase()!==String(u.code).toLowerCase()&&userCodeTaken(c,u.id)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
@@ -4673,7 +4686,7 @@ var ACT={
     var finish=function(){
       var old=u.code;
       if(c!==old)renameUserCode(old,c);
-      u.name=n;u.code=c;
+      u.name=n;u.code=c;u.wa=wa||null;
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
       u.weekOff=wo===''?null:Number(wo);
       U.editUser=null;U.pwUser=null;save();
@@ -5014,39 +5027,53 @@ var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
-/* فحص الكود وهو بيتكتب: أخضر لو موجود، أحمر لو مش موجود */
-function resetCodeCheck(){
-  var el=document.getElementById('rCodeSt');if(!el)return;
-  var c=((document.getElementById('rCode')||{}).value||'').trim();
-  if(!c){el.textContent='';el.style.color='';return;}
-  var ok=!!usersList().filter(function(x){return String(x.code).toLowerCase()===c.toLowerCase();})[0];
-  el.textContent=ok?'✓ الكود صح':'✕ الكود ده مش موجود';
-  el.style.color=ok?'#22c55e':'#ef4444';
+/* ألوان الحقول: أخضر مع علامة صح، أو أحمر مع علامة غلط */
+function paintField(id,st){
+  var inp=document.getElementById(id);if(!inp)return;
+  var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
+  var ic=document.getElementById(id+'Ic');
+  inp.style.borderColor=c;inp.style.paddingInlineEnd=c?'38px':'';
+  if(!c){if(ic&&ic.parentNode)ic.parentNode.removeChild(ic);return;}
+  if(!ic){ic=document.createElement('span');ic.id=id+'Ic';ic.style.cssText='position:absolute;inset-inline-end:12px;top:50%;transform:translateY(-50%);font-weight:700';inp.parentNode.appendChild(ic);}
+  ic.style.color=c;ic.textContent=st==='ok'?'✓':'✕';
 }
-document.addEventListener('input',function(e){if(e.target&&e.target.id==='rCode')resetCodeCheck();});
-ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;};
-ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;};
+function resetLiveCheck(){
+  var code=((document.getElementById('rCode')||{}).value||'').trim();
+  var last=waDigits((document.getElementById('rLast')||{}).value);
+  var u=findUserByCode(code);
+  paintField('rCode',!code?'':(u?'ok':'bad'));
+  if(!u||last.length<4){paintField('rLast','');return;}
+  paintField('rLast',waDigits(u.wa).slice(-4)===last?'ok':'bad');
+}
+document.addEventListener('input',function(e){if(e.target&&(e.target.id==='rCode'||e.target.id==='rLast'))resetLiveCheck();});
+ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
+ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
 ACT.resetSend=function(){
   var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
-  var code=g('rCode');
+  var code=g('rCode'),last=waDigits(g('rLast'));
   var pw=(document.getElementById('rPw')||{}).value||'',pw2=(document.getElementById('rPw2')||{}).value||'';
-  var wa=g('rWa').replace(/[\s+\-]/g,'');
-  var u=code?usersList().filter(function(x){return String(x.code).toLowerCase()===code.toLowerCase();})[0]:null;
-  if(!code){U.resetErr='اكتب الكود بتاعك';render();return false;}
-  if(!u){U.resetErr='الكود ده مش موجود';render();return false;}
-  if(!/^[0-9]{4,6}$/.test(pw)){U.resetErr='الـ PIN لازم يكون من 4 لـ 6 أرقام بس';render();return false;}
-  if(pw!==pw2){U.resetErr='التأكيد مش مطابق';render();return false;}
-  if(!/^[0-9]{10,15}$/.test(wa)){U.resetErr='اكتب رقم الواتساب صح';render();return false;}
-  if(wa.charAt(0)==='0')wa='20'+wa.slice(1);
-  var salt=randHex();
-  var others=usersList().filter(function(x){return x!==u&&x.salt&&x.h;});
-  if(S.auth&&S.auth.salt&&S.auth.hash)others.push({salt:S.auth.salt,h:S.auth.hash,iter:S.auth.iter,owner:true});
-  Promise.all(others.map(function(x){return hexPbkdf2(pw,x.salt,x.iter||200000).then(function(h){return h===x.h;});})).then(function(hits){
-    if(hits.some(Boolean)){U.resetErr='الـ PIN ده مستخدم قبل كده، اختار PIN تاني';render();return;}
+  var u=findUserByCode(code);
+  var fail=function(msg,mark){U.resetErr=msg;U.rMark=mark||{};U.rv={code:code,last:last};render();return false;};
+  if(!code)return fail('اكتب الكود بتاعك');
+  if(!u)return fail('الكود ده مش موجود',{code:'bad'});
+  var waD=waDigits(u.wa);
+  if(!waD)return fail('المستخدم ده مش متسجل عنده رقم واتساب، كلم المالك',{code:'ok'});
+  if(!/^[0-9]{4}$/.test(last))return fail('اكتب آخر ٤ أرقام من رقم الواتساب',{code:'ok'});
+  if(waD.slice(-4)!==last)return fail('آخر ٤ أرقام مش مطابقة لرقم الواتساب المسجل',{code:'ok',last:'bad'});
+  if(!/^[0-9]{4,6}$/.test(pw))return fail('الـ PIN لازم يكون من 4 لـ 6 أرقام بس',{code:'ok',last:'ok',pw:'bad'});
+  if(pw!==pw2)return fail('التأكيد مش مطابق',{code:'ok',last:'ok',pw2:'bad'});
+  /* الـ PIN ميكونش مستخدم: لا عند حد تاني ولا عند المستخدم نفسه قبل كده، ولا عند المالك */
+  var cands=usersList().filter(function(x){return x.salt&&x.h;}).map(function(x){return {salt:x.salt,h:x.h,iter:x.iter||200000};});
+  (u.hist||[]).forEach(function(x){cands.push(x);});
+  if(S.auth&&S.auth.salt&&S.auth.hash)cands.push({salt:S.auth.salt,h:S.auth.hash,iter:S.auth.iter||200000});
+  Promise.all(cands.map(function(x){return hexPbkdf2(pw,x.salt,x.iter).then(function(h){return h===x.h;});})).then(function(hits){
+    if(hits.some(Boolean)){U.resetErr='الـ PIN ده مستخدم قبل كده، اختار PIN جديد';U.rMark={code:'ok',last:'ok',pw:'bad',pw2:'bad'};U.rv={code:code,last:last};render();return;}
+    var salt=randHex();
     return hexPbkdf2(pw,salt,200000).then(function(h){
-    var req={id:'R'+Date.now().toString(36),name:u.name,code:u.code,wa:wa,owner:false,salt:salt,h:h,iter:200000,at:Date.now()};
-    setPref('resetReqs',pref('resetReqs',[]).concat([req]));
-    U.resetErr=null;U.resetDone=true;render();
+      if(u.salt&&u.h)u.hist=(u.hist||[]).concat([{salt:u.salt,h:u.h,iter:u.iter||200000}]).slice(-5);
+      u.salt=salt;u.h=h;u.iter=200000;
+      save();
+      U.resetErr=null;U.rMark=null;U.rv=null;U.resetDone=true;render();
     });
   }).catch(function(){U.resetErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
   return false;
