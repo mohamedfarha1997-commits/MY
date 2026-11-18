@@ -2166,6 +2166,13 @@ function plRows(mode){
 }
 function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
 /* اسم الشخص من الكود لو متاح، وإلا الاسم المحفوظ، ولو المحفوظ كود بيترجم لاسم */
+/* للمالك: الكود + الاسم. لغير المالك: الاسم بس (الكود سرّي) */
+function personLbl(c){
+  var u=userByCode(c);
+  if(!limited())return c+(u?' '+u.name:'');
+  if(u)return u.name;
+  return c==='CHEF MYF'?'المالك':'—';
+}
 function whoOf(n,c){
   if(c==='CHEF MYF'||n==='CHEF MYF')return 'المالك';
   if(c){var u=userByCode(c);if(u&&u.name)return u.name;}
@@ -2179,7 +2186,7 @@ function codeOf(n,c){
   var u=usersList().filter(function(x){return x.name===n;})[0];
   return u?u.code:(n||'');
 }
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(codeOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: <span class="ltr">'+esc(codeOf(r.d.ap,r.d.apc))+'</span></span>':'')+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(limited()?(whoOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: '+esc(whoOf(r.d.ap,r.d.apc))+'</span>':''):(codeOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: <span class="ltr">'+esc(codeOf(r.d.ap,r.d.apc))+'</span></span>':''))+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
@@ -3124,8 +3131,8 @@ function restHTML(unknown,leave){
 }
 function hoursCardHTML(){
   var ul=usersList();
-  var uRows=ul.map(function(u){var on=!u.noHours;return '<tr><td><b>'+esc(u.name)+'</b></td><td><span class="ucode ltr">'+esc(u.code)+'</span></td><td><button class="tg'+(on?' on':'')+'" data-act="userHoursToggle" data-id="'+u.id+'">'+(on?'يتطبق':'لأ')+'</button></td></tr>';}).join('');
-  var uTable=ul.length?'<div class="grp" style="margin-top:14px">مين تتطبق عليه مواعيد العمل</div><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>المستخدم</th><th>الكود</th><th>مواعيد العمل</th></tr></thead><tbody>'+uRows+'</tbody></table></div>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>';
+  var uRows=ul.map(function(u){var on=!u.noHours;return '<tr><td><b>'+esc(u.name)+'</b></td><td>'+(limited()?'':'<span class="ucode ltr">'+esc(u.code)+'</span>')+'</td><td><button class="tg'+(on?' on':'')+'" data-act="userHoursToggle" data-id="'+u.id+'">'+(on?'يتطبق':'لأ')+'</button></td></tr>';}).join('');
+  var uTable=ul.length?'<div class="grp" style="margin-top:14px">مين تتطبق عليه مواعيد العمل</div><div style="overflow-x:auto"><table class="ttab"><thead><tr><th>المستخدم</th>'+(limited()?'':'<th>الكود</th>')+'<th>مواعيد العمل</th></tr></thead><tbody>'+uRows+'</tbody></table></div>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>';
   var h=pref('hours',null)||DAY_NAMES.map(function(){return {on:false,from:'09:00',to:'18:00'};});
   var rows=DAY_NAMES.map(function(n,i){
     var x=h[i]||{on:false,from:'09:00',to:'18:00'};
@@ -4216,6 +4223,7 @@ function saveSettingsPw(p){
 }
 function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
 function tabsCardHTML(){
+  if(limited())return '';
   var users=usersList();
   var TR=function(t){
     var hid=tabHidden(t.k);
@@ -4238,13 +4246,17 @@ function weekdayOfKey(k){return new Date(k+'T12:00:00Z').getUTCDay();}
 function weekOffOptions(cur){return '<option value="">بدون</option>'+WEEK_DAYS_AR.map(function(n,i){return '<option value="'+i+'"'+(String(cur)===String(i)?' selected':'')+'>'+n+'</option>';}).join('');}
 function usersCardHTML(){
   var list=usersList();
+  if(limited()){
+    var nl=list.map(function(u){return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><b>'+esc(u.name)+'</b></div></td></tr>';}).join('');
+    return '<section class="card" style="--c:var(--settings)"><h3>المستخدمين</h3>'+(nl?'<table class="ttab utable"><thead><tr><th>المستخدم</th></tr></thead><tbody>'+nl+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+'</section>';
+  }
   var nowMs=trustedNow(),todayK=nowMs===null?null:cairoDateKey(nowMs);
   var rows=list.map(function(u){
     var conf=U.confirm==='udel:'+u.id;
     var onLv=userLeaveActive(u,todayK);
     return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><b>'+esc(u.name)+'</b>'+(onLv?'<span class="upill">في إجازة</span>':'')+'</div></td>'+
       '<td><span class="ucode ltr">'+esc(u.code)+'</span></td>'+
-      '<td class="uact"><button class="btn ghost sm" data-act="cardOpen" data-id="'+u.id+'">الكرت</button> <button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button></td></tr>';
+      '<td class="uact"><button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> <button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button></td></tr>';
   }).join('');
   var editBox='';
   var eu=U.editUser?list.filter(function(x){return x.id===U.editUser;})[0]:null;
@@ -4287,8 +4299,7 @@ function usersCardHTML(){
      '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
-    '<div class="fld" style="margin-top:12px"><label for="cardBase">رابط صفحة الكروت</label><input id="cardBase" autocomplete="off" dir="ltr" placeholder="https://your-site/card.html" value="'+esc(pref('cardsBase','card.html'))+'"></div>'+
-    '<div class="ubtns"><button class="btn ghost sm" data-act="cardBaseSave">حفظ الرابط</button><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button></div>'+
+    '<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button></div>'+
     resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
 }
 function resetReqsHTML(){
@@ -4328,7 +4339,7 @@ function prodSummaryHTML(runs){
   if(!people.length)return '';
   var nm=function(c){var u=userByCode(c);return u?u.name:'';};
   var pills=people.map(function(x){
-    return '<span class="pill c">'+esc(x.c)+(nm(x.c)?' '+esc(nm(x.c)):'')+' · '+x.batches+' دفعة</span>';
+    return '<span class="pill c">'+esc(personLbl(x.c))+' · '+x.batches+' دفعة</span>';
   }).join(' ');
   return '<div class="fld" style="margin-top:10px"><span class="sec-l">ملخص الشغل</span><div style="display:flex;gap:6px;flex-wrap:wrap">'+pills+'</div></div>';
 }
@@ -4343,11 +4354,11 @@ function prodLogCardHTML(){
   var rows=runs.map(function(r){
     var p=P(r.p),isFill=r.type==='fill',on=sel.indexOf(r.id)>-1;
     var lbl=isFill?'تحضير حشو':'إنتاج';
-    var names=r.by.map(function(c){var u=userByCode(c);return c+' '+(u?u.name:'');}).join(' ');
+    var names=r.by.map(function(c){return personLbl(c);}).join(' ');
     var qtxt=isFill?f(r.qty)+' '+(p?p.unit:''):mealQ(r.qty||0,p);
-    var q=[r.code,lbl,p?p.name:'',String(r.qty||''),tstr(r.at),names,r.by.join(' ')].join(' ').toLowerCase();
+    var q=[r.code,lbl,p?p.name:'',String(r.qty||''),tstr(r.at),names].join(' ').toLowerCase();
     var tog='<button class="btn '+(on?'':'ghost ')+'sm" data-act="plToggle" data-id="'+esc(r.id)+'" style="min-width:64px">'+(on?'✓ محدد':'تحديد')+'</button>';
-    var who=r.by.length?r.by.map(function(c){return '<span class="pill ltr">'+esc(c)+'</span>';}).join(' '):'<span class="meta">—</span>';
+    var who=r.by.length?r.by.map(function(c){return '<span class="pill ltr">'+esc(limited()?personLbl(c):c)+'</span>';}).join(' '):'<span class="meta">—</span>';
     return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td>'+tog+'</td><td><span class="bid ltr">'+esc(r.code)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(qtxt)+' · '+esc(tstr(r.at))+'</small></td><td><span class="pill '+(isFill?'warn':'c')+'">'+lbl+'</span></td><td>'+who+'</td></tr>';
   }).join('');
   return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة إنتاج وتحضير حشو، وكود كل واحد شارك فيهم. تقدر تحدد دفعات الإنتاج وتمسحها من السجل. السجل بيتمسح تلقائي بعد ٣٠ يوم من آخر حركة.</p>'+
@@ -4790,19 +4801,6 @@ var ACT={
     if(k>-1){os.added.splice(k,1);delete os.items[d.p];if(os.box)delete os.box[d.p];return;}
     os.added.push(d.p);
     U.focus='[data-oq="'+d.p+'"]';
-  },
-  cardOpen:function(d){
-    var u=usersList().filter(function(x){return x.id===d.id;})[0];
-    if(!u){toast('المستخدم ده مش موجود');return false;}
-    var base=pref('cardsBase','card.html')||'card.html';
-    window.open(base+(base.indexOf('?')>-1?'&':'?')+'id='+encodeURIComponent(u.code),'_blank');
-    return false;
-  },
-  cardBaseSave:function(){
-    var v=((document.getElementById('cardBase')||{}).value||'').trim();
-    setPref('cardsBase',v||'card.html');
-    toast('اتحفظ رابط صفحة الكروت');
-    return false;
   },
   cardsExport:function(){exportCards();return false;},
   userAdd:function(){

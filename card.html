@@ -78,6 +78,10 @@ body::before{ /* subtle dot texture */
 }
 .idrow .k{font:600 9.5px/1 var(--sans);letter-spacing:2px;text-transform:uppercase;opacity:.6;display:flex;justify-content:space-between}
 .idrow .num{font:700 22px/1 var(--mono);letter-spacing:2px;margin-top:10px;direction:ltr;text-align:left}
+.scratch{position:relative;margin-top:14px;height:64px;border-radius:12px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18)}
+.scratch .num{font:700 22px/1 var(--mono);letter-spacing:3px;direction:ltr;text-align:center;position:relative;z-index:0}
+.scratch canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair;z-index:1}
 .barcode{
   height:30px;margin-top:12px;border-radius:4px;opacity:.85;
   background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 4px,#fff 4px 5px,transparent 5px 8px,#fff 8px 11px,transparent 11px 13px,#fff 13px 14px,transparent 14px 18px);
@@ -131,6 +135,7 @@ body::before{ /* subtle dot texture */
   body::before{display:none}
   .noprint{display:none !important}
   .idc{box-shadow:none;border:1px solid #cfd3e6}
+  .scratch canvas{display:none}
 }
 </style>
 </head>
@@ -176,7 +181,7 @@ function showCard(c){
     '</div>'+
     (fields?'<div class="fields">'+fields+'</div>':'')+
     '<div class="idrow"><div class="k"><span>Employee ID · رقم الـ ID</span><span>● Active</span></div>'+
-      '<div class="num">'+esc(c.code)+'</div>'+
+      '<div class="scratch"><span class="num">'+esc(c.code)+'</span><canvas id="scratchC" aria-label="اخربش لكشف الـ ID"></canvas></div>'+
       '<div class="barcode" aria-hidden="true"></div>'+
     '</div>'+
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
@@ -186,6 +191,61 @@ function showCard(c){
 
   document.getElementById('printBtn').onclick=function(){window.print();};
   document.getElementById('pdfBtn').onclick=downloadPdf;
+  initScratch();
+}
+
+/* طبقة فضية تتمسح بالإيد أو الماوس، ولما أغلب المساحة تتمسح بتختفي خالص */
+function initScratch(){
+  var cv=document.getElementById('scratchC');
+  if(!cv||!cv.getContext)return;
+  var box=cv.parentNode,w=box.offsetWidth,h=box.offsetHeight,dpr=window.devicePixelRatio||1;
+  if(!w||!h)return;
+  cv.width=w*dpr;cv.height=h*dpr;
+  var ctx=cv.getContext('2d');
+  ctx.scale(dpr,dpr);
+  var g=ctx.createLinearGradient(0,0,w,h);
+  g.addColorStop(0,'#d9dce6');g.addColorStop(.5,'#f7f8fc');g.addColorStop(1,'#b7bdcf');
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='rgba(11,16,48,.5)';
+  ctx.font='700 13px Tajawal, Tahoma, sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('خربش هنا',w/2,h/2);
+  ctx.globalCompositeOperation='destination-out';
+  ctx.lineWidth=26;ctx.lineCap='round';ctx.lineJoin='round';
+
+  var drawing=false,last=null,done=false;
+  function pt(e){var r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
+  function scratchTo(p){
+    ctx.beginPath();
+    ctx.moveTo(last?last.x:p.x,last?last.y:p.y);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+    last=p;
+  }
+  function checkDone(){
+    if(done)return;
+    var d=ctx.getImageData(0,0,cv.width,cv.height).data,n=0,t=0;
+    for(var i=3;i<d.length;i+=32){t++;if(d[i]<128)n++;}
+    if(t&&n/t>0.5){done=true;cv.remove();}
+  }
+  cv.addEventListener('pointerdown',function(e){
+    if(done)return;
+    drawing=true;last=null;
+    if(cv.setPointerCapture)cv.setPointerCapture(e.pointerId);
+    scratchTo(pt(e));
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove',function(e){
+    if(!drawing||done)return;
+    scratchTo(pt(e));
+  });
+  function end(){
+    if(!drawing)return;
+    drawing=false;last=null;
+    checkDone();
+  }
+  cv.addEventListener('pointerup',end);
+  cv.addEventListener('pointercancel',end);
 }
 
 function downloadPdf(){
