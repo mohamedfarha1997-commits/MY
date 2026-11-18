@@ -4795,7 +4795,17 @@ var ACT={
   },
   oCancel:function(d){
     var lo=S.orders.filter(function(x){return x.id===d.id;})[0];
-    if(lo&&isLocked(lo)){toast('الشهر ده اتقفل، الأوردر مش ينفع يتلغي');return false;}
+    if(lo&&isLocked(lo)){
+      /* الشهر المقفول: المالك بس يقدر يلغي، وبعد تأكيد تاني */
+      if(limited()){toast('الشهر ده اتقفل، الأوردر مش ينفع يتلغي');return false;}
+      if(U.confirm!=='cancellock'+d.id){
+        U.confirm='cancellock'+d.id;
+        setTimeout(function(){if(U.confirm==='cancellock'+d.id){U.confirm=null;render();}},4000);
+        toast('الشهر ده متقفل. الإلغاء هيشيل الأوردر من القايمة. اضغط إلغاء تاني للتأكيد');
+        return false;
+      }
+      U.confirm='o'+d.id;
+    }
     var key='o'+d.id,bs=S.batches.filter(function(b){return b.o===d.id;});
     if(bs.some(function(b){return b.stage!=='prep';})){toast('في دفعات دخلت الإنتاج، ما ينفعش تلغي الطلبية');return false;}
     if(U.confirm!==key){U.confirm=key;setTimeout(function(){if(U.confirm===key){U.confirm=null;render();}},3000);return;}
