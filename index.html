@@ -542,6 +542,30 @@ button,input{font-family:inherit}
 .login .fld input{background:rgb(255 255 255 / .08)!important;color:#fff!important;border:1px solid rgb(255 255 255 / .22)!important;height:64px;border-radius:999px}
 .login .fld input:focus{border-color:#fff!important;box-shadow:0 0 0 5px rgb(255 255 255 / .18)!important}
 .login .btn.block{height:64px;border-radius:999px;font-size:18px;background:#fff!important;background-image:none!important;color:#111!important;box-shadow:0 22px 44px -16px rgb(0 0 0 / .65)!important}
+
+/* ---- الرئيسية PS5 (النسخة النهائية للحجم والمسافات) ---- */
+.ps{min-height:calc(100dvh - 240px);display:flex;flex-direction:column;justify-content:center;padding:12px 0 24px}
+.ps-title{margin:0 0 18px}
+.ps-title b{font-size:30px!important;letter-spacing:.01em}
+.ps-title span{font-size:14px!important}
+.ps-row{gap:26px!important;padding:40px calc(50% - 80px) 44px!important;overflow-y:visible}
+.ps-row .tab{width:160px!important;min-width:160px!important;max-width:160px!important;height:160px!important;flex:0 0 160px!important;border-radius:34px!important;transform:scale(.78)!important;opacity:.62!important;background:linear-gradient(180deg,#ffffff,#eef1fb)!important;border:1px solid rgb(17 28 40 / .08)!important}
+.ps-row .tab.focus{transform:scale(1.18)!important;opacity:1!important;background:linear-gradient(180deg,#ffffff,#f3f5ff)!important;border:2px solid #4F5DFF!important;box-shadow:0 40px 70px -28px rgb(41 51 148 / .7),0 0 0 8px rgb(79 93 255 / .14)!important}
+.ps-row .tab svg{width:44px!important;height:44px!important}
+.ps-row .tab .cnt{font-size:34px!important}
+.ps-row .tab .tl{font-size:15px!important;font-weight:700}
+.ps-dots{margin-top:22px}
+/* ---- الرئيسية شبكة بشكل PS5 (بدون تمرير) ---- */
+.ps{min-height:0;display:block;padding:6px 0 14px}
+.ps-title,.ps-dots{display:none!important}
+.ps-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;overflow:visible!important;padding:4px 0!important;scroll-snap-type:none!important}
+@media (min-width:640px){.ps-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ps-row .tab{width:auto!important;min-width:0!important;max-width:none!important;height:auto!important;min-height:118px!important;flex:none!important;transform:none!important;opacity:1!important;filter:none!important;border-radius:26px!important;padding:18px 10px!important;justify-content:center!important;transition:transform .25s ease,box-shadow .25s ease!important}
+.ps-row .tab:active{transform:scale(.96)!important}
+.ps-row .tab.focus{transform:none!important;box-shadow:none!important;border:1px solid rgb(17 28 40 / .08)!important;background:linear-gradient(180deg,#ffffff,#eef1fb)!important}
+.ps-row .tab svg{width:34px!important;height:34px!important}
+.ps-row .tab .cnt{font-size:30px!important}
+.ps-row .tab .tl{font-size:15px!important}
 .login .btn.block:active{transform:scale(.97)}
 
 
@@ -1768,7 +1792,7 @@ document.addEventListener('scroll',function(e){if(e.target&&e.target.id==='psRow
 document.addEventListener('click',function(e){
   var t=e.target&&e.target.closest?e.target.closest('#psRow .tab'):null;
   if(!t)return;
-  if(!t.classList.contains('focus')){e.stopPropagation();e.preventDefault();t.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});}
+  /* العرض شبكة: الضغط على البلاطة بيفتح القسم على طول */
 },true);
 document.addEventListener('keydown',function(e){
   if(!document.getElementById('psRow'))return;
