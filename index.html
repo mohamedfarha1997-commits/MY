@@ -1595,11 +1595,12 @@ function cardShow(u,k){var s=u.show||{};return s[k]===undefined?(k!=='wa'):!!s[k
 var CARD_FIELDS=[['name','الاسم'],['job','الوظيفة'],['joinDate','تاريخ الانضمام'],['wa','رقم الواتساب (مخفي جزئياً)']];
 function cardFieldBoxes(u){
   return '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" checked disabled> الكود (هو الـ ID)</label>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-cactive'+(u.cardActive!==false?' checked':'')+'> الكارت Active (نقطة خضراء) · لو مش متعلّم يبقى Inactive (نقطة حمرا)</label>'+
     CARD_FIELDS.map(function(f){return '<label style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" data-cf="'+f[0]+'"'+(cardShow(u,f[0])?' checked':'')+'> '+f[1]+'</label>';}).join('');
 }
 /* اللي بيتصدر بس: الحقول المتعلّمة. الحقول المش متعلّمة مش بتتصدر خالص */
 function cardData(u){
-  var c={code:u.code};
+  var c={code:u.code,active:u.cardActive!==false};
   if(cardShow(u,'name')&&u.name)c.name=u.name;
   if(cardShow(u,'job')&&u.job)c.job=u.job;
   if(cardShow(u,'joinDate')&&u.joinDate)c.joinDate=u.joinDate;
@@ -4874,6 +4875,7 @@ var ACT={
       u.name=n;u.code=c;u.wa=wa||null;u.job=jb||null;u.joinDate=jd||null;
       var sh={};document.querySelectorAll('[data-cf]').forEach(function(el){sh[el.getAttribute('data-cf')]=el.checked;});u.show=sh;
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
+      var ca=document.querySelector('[data-cactive]');if(ca)u.cardActive=ca.checked;
       u.weekOff=wo===''?null:Number(wo);
       U.editUser=null;U.pwUser=null;save();
       toast('اتحفظت التعديلات'+(c!==old?' · الكود الجديد '+c:''));render();
