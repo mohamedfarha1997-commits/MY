@@ -5142,8 +5142,8 @@ function paintField(id,st){
   var inp=document.getElementById(id);if(!inp)return;
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=document.getElementById(id+'Ic');
-  var side=id==='rLast'?'inset-inline-end:20px':'inset-inline-end:12px';
-  inp.style.borderColor=c;if(id!=='rLast')inp.style.paddingInlineEnd=c?'38px':'';
+  var side=id==='rLast'?'right:20px':'right:14px';
+  inp.style.borderColor=c;if(id!=='rLast')inp.style.paddingInlineStart=c?'38px':'';inp.style.paddingInlineEnd='';
   if(!c){if(ic&&ic.parentNode)ic.parentNode.removeChild(ic);return;}
   if(!ic){ic=document.createElement('span');ic.id=id+'Ic';ic.style.cssText='position:absolute;'+side+';top:50%;transform:translateY(-50%);font-weight:700';inp.parentNode.appendChild(ic);}
   ic.style.color=c;ic.textContent=st==='ok'?'✓':'✕';
