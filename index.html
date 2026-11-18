@@ -2787,7 +2787,8 @@ function saveProd(F){
       if(mm&&r.u&&r.u!==mm.unit){
         var al2=(mm.alts||[]).filter(function(a){return a.u===r.u;})[0];
         if(al2){fac=al2.f;}
-        else if(unitGrams(r.u)&&unitGrams(mm.unit)){fac=r3(unitGrams(r.u)/unitGrams(mm.unit));mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);}
+        /* البيضة مابتتحولش من وزن لعدد أو العكس تلقائياً (البيضة = 50 جرام تقدير)، لو الكمية وصلت بالجرام تتسجل كخامة بالجرام */
+        else if(unitGrams(r.u)&&unitGrams(mm.unit)&&r.u!=='بيضة'&&mm.unit!=='بيضة'){fac=r3(unitGrams(r.u)/unitGrams(mm.unit));mm.alts=(mm.alts||[]).concat([{u:r.u,f:fac}]);}
         else{
           /* مفيش تحويل معروف: بنعمل نسخة من الخامة بالوحدة الجديدة (أو بنستخدم نسخة موجودة) */
           var cp=MATERIALS.filter(function(x){return norm(unesc(x.name))===norm(unesc(mm.name))&&x.unit===r.u;})[0];
