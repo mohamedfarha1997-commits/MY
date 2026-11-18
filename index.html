@@ -8,7 +8,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 /* RMY Pro styles: extracted from index.html in order (cascade preserved). */
 
 /* ---- block 1 ---- */
-:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.fgcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px);background:#05071a}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.fgcards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fgc{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer}
 .fgc .mtop{display:flex;justify-content:space-between;align-items:center;gap:6px}
 .fgn{font-size:26px;font-weight:700;line-height:1.1}
@@ -850,10 +850,10 @@ img,svg,canvas,video{max-width:100%;height:auto}
 
 
 <div class="fx-bg" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="psBoot" aria-hidden="true"><div class="psb-wrap"><div class="psb-mark"><svg class="psb-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96" role="img" aria-label="RMY"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg></div><div class="psb-bar"><i></i></div></div></div>
 <div class="app" id="app" dir="rtl" lang="ar"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="printArea" dir="rtl" lang="ar"></div>
-<div id="psBoot" aria-hidden="true"><div class="psb-wrap"><div class="psb-mark"><svg class="psb-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96" role="img" aria-label="RMY"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg></div><div class="psb-bar"><i></i></div></div></div>
 
 <script>
 // Pure helpers shared by the app. No DOM, no app state.
