@@ -3146,6 +3146,7 @@ function footFine(){
 }
 
 function loginHTML(){
+  if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
   var logo='<svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96" role="img" aria-label="RMY"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg>';
   /* مافيش خطوة ربط درايف في الدخول: لو مفيش بيانات على الجهاز بنقول الحالة من غير أزرار */
@@ -3156,7 +3157,27 @@ function loginHTML(){
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
-    '<button class="btn block" data-act="login">دخول</button></div></main>';
+    '<button class="btn block" data-act="login">دخول</button>'+
+    '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>';
+}
+/* صفحة إعادة تعيين كلمة السر: بتبعت طلب للمالك، ويتعتمد من الإعدادات */
+function resetHTML(){
+  if(U.resetDone){
+    return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
+      '<h2>تم تسجيل الطلب</h2>'+
+      '<p class="meta">اضغط الزرار ده عشان تبعت الطلب للمالك على واتساب، وبعدها استنى لحد ما يعتمده.</p>'+
+      '<a class="btn block" href="'+U.resetDone+'" target="_blank" rel="noopener">ابعت الطلب على واتساب</a>'+
+      '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
+  }
+  var err=U.resetErr?'<div class="note">'+U.resetErr+'</div>':'';
+  return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
+    '<h2>إعادة تعيين كلمة السر</h2>'+
+    '<p class="meta">اكتب اسمك وكلمة السر الجديدة، وهيتبعت طلب للمالك يعتمده.</p>'+err+
+    '<div class="fld"><label for="rName">اسم المستخدم</label><input id="rName" autocomplete="off"></div>'+
+    '<div class="fld"><label for="rPw">كلمة السر الجديدة</label><input id="rPw" type="password" autocomplete="new-password"></div>'+
+    '<div class="fld"><label for="rPw2">اكتب كلمة السر تاني</label><input id="rPw2" type="password" autocomplete="new-password"></div>'+
+    '<button class="btn block" data-act="resetSend">إرسال الطلب</button>'+
+    '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
 var FX=(function(){
@@ -4086,7 +4107,17 @@ function usersCardHTML(){
     '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
-    (list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
+    resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
+}
+function resetReqsHTML(){
+  var rs=pref('resetReqs',[]);
+  if(!rs.length)return '';
+  return '<div class="grp" style="margin-top:14px">طلبات إعادة التعيين ('+rs.length+')</div>'+
+    rs.map(function(r){
+      return '<div class="hist" style="align-items:center"><span><b>'+esc(r.name)+'</b><br><span class="meta">'+tstr(r.at)+'</span></span>'+
+        '<span class="acts"><button class="btn sm" data-act="resetApprove" data-id="'+r.id+'">اعتماد</button>'+
+        '<button class="btn ghost sm" data-act="resetReject" data-id="'+r.id+'">رفض</button></span></div>';
+    }).join('');
 }
 /* كل تشغيل: دفعات الإنتاج العادي + تحضير الحشو، مرتبين من الأحدث */
 function prodRunsAll(){
@@ -4976,10 +5007,47 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
+function resetWaUrl(req){
+  var msg='طلب إعادة تعيين كلمة السر - RMY Pro\n'+
+    'الاسم: '+req.name+'\n'+
+    'رقم الطلب: '+req.id+'\n'+
+    'الوقت: '+tstr(req.at)+'\n'+
+    'للاعتماد: الإعدادات < إدارة المستخدمين < طلبات إعادة التعيين';
+  return 'https://wa.me/201508999341?text='+encodeURIComponent(msg);
+}
+ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;};
+ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;};
+ACT.resetSend=function(){
+  var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
+  var n=g('rName'),pw=(document.getElementById('rPw')||{}).value||'',pw2=(document.getElementById('rPw2')||{}).value||'';
+  if(!n){U.resetErr='اكتب اسم المستخدم';render();return false;}
+  if(!usersList().some(function(u){return u.name===n;})){U.resetErr='الاسم ده مش موجود';render();return false;}
+  if(pw.length<4){U.resetErr='كلمة السر لازم تكون 4 حروف أو أرقام على الأقل';render();return false;}
+  if(pw!==pw2){U.resetErr='التأكيد مش مطابق';render();return false;}
+  var salt=randHex();
+  hexPbkdf2(pw,salt,200000).then(function(h){
+    var req={id:'R'+Date.now().toString(36),name:n,salt:salt,h:h,iter:200000,at:Date.now()};
+    setPref('resetReqs',pref('resetReqs',[]).concat([req]));
+    U.resetErr=null;U.resetDone=resetWaUrl(req);render();
+  }).catch(function(){U.resetErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
+  return false;
+};
+ACT.resetApprove=function(d){
+  var rs=pref('resetReqs',[]),r=rs.filter(function(x){return x.id===d.id;})[0];
+  if(!r)return false;
+  var u=usersList().filter(function(x){return x.name===r.name;})[0];
+  if(u){u.salt=r.salt;u.h=r.h;u.iter=r.iter;toast('اتغيّر باسورد '+r.name);}
+  else toast('المستخدم ده مش موجود');
+  setPref('resetReqs',rs.filter(function(x){return x.id!==d.id;}));
+};
+ACT.resetReject=function(d){
+  setPref('resetReqs',pref('resetReqs',[]).filter(function(x){return x.id!==d.id;}));
+  toast('اترفض الطلب');
+};
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
 ACT.batchSuggestApply=function(){
