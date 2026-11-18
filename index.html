@@ -3180,13 +3180,13 @@ function slotsField(st,val,u){
   var head='01',mid='xxxxx';
   if(w.length>=6){head=w.slice(0,2);mid='x'.repeat(w.length-6);}
   var typed=waDigits(val),c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
-  var slotStyle='width:1.1em!important;height:24px!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#fff!important;text-align:center!important;letter-spacing:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;caret-color:#fff;';
+  var slotStyle='width:0.9em!important;height:24px!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#fff!important;text-align:center!important;letter-spacing:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;caret-color:#fff;';
   var slots='';
   for(var i=0;i<4;i++){slots+='<input class="rslot" data-i="'+i+'" data-v="'+(typed.charAt(i)||'')+'" value="'+(typed.charAt(i)||'')+'" inputmode="numeric" autocomplete="off" placeholder="x" aria-label="رقم '+(i+1)+' من آخر ٤" style="'+slotStyle+'">';}
   return '<div class="fld"><label>آخر ٤ أرقام من رقم الواتساب</label>'+
     '<div id="rLastBox" style="position:relative;width:100%;height:44px;margin:0;box-sizing:border-box;border-radius:999px;border:1px solid '+(c||'rgba(255,255,255,.22)')+';background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;direction:ltr;color:#fff;font-size:16px;letter-spacing:.08em;padding:0 40px">'+
     '<span>'+esc(head)+'</span><span style="opacity:.45">'+esc(mid)+'</span>'+
-    '<span style="display:inline-flex;gap:6px;margin-inline-start:6px;letter-spacing:0">'+slots+'</span>'+
+    '<span style="display:inline-flex;gap:2px;margin-inline-start:4px;letter-spacing:0">'+slots+'</span>'+
     (c?'<span id="rLastIc" style="position:absolute;inset-inline-end:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'')+
     '</div></div>';
 }
@@ -3234,13 +3234,14 @@ function resetHTML(){
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
   return '<main class="login rst" dir="rtl" lang="ar"><style>'+
     '.login.rst{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;min-height:0;overflow:hidden;padding:12px 16px;box-sizing:border-box}'+
-    '.login.rst .lcard{gap:2px;max-width:340px;width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;justify-content:center;overflow:hidden}'+
+    '.login.rst .lcard{gap:4px;max-width:340px;width:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;justify-content:center;overflow:hidden}'+
     '.login.rst .lcard h2{font-size:20px;margin:0;color:#fff}'+
     '.login.rst .lcard .meta{font-size:13px!important;margin:0 0 6px!important;line-height:1.5}'+
-    '.login.rst .fld{gap:0;width:100%;box-sizing:border-box;align-self:stretch;margin:0}'+
-    '.login.rst .fld label{font-size:12px;line-height:1.2;margin:0}'+
+    '.login.rst .fld{gap:3px;width:100%;box-sizing:border-box;align-self:stretch;margin:0}'+
+    '.login.rst .fld label{font-size:12px;margin:0 0 2px}'+
     '.login.rst .fld input{height:44px!important;width:100%!important;box-sizing:border-box!important;margin:0!important;border-radius:999px!important}'+
-    '.login.rst .btn{min-height:36px!important;height:36px!important;padding-top:0!important;padding-bottom:0!important;line-height:1.2!important;font-size:15px!important}'+
+    '.login.rst .btn{min-height:46px!important;height:46px!important;padding-top:0!important;padding-bottom:0!important;line-height:normal!important;font-size:16px!important}'+
+    '.login.rst .btn+.btn{margin-top:10px!important}'+
     '.login.rst .lcard .note{font-size:12px;padding:6px 10px!important;margin:0!important}'+
     '.rslot::placeholder{color:rgba(255,255,255,.45);opacity:1}'+
     '</style><div class="lcard">'+
