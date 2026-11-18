@@ -3175,6 +3175,7 @@ function resetHTML(){
     '<p class="meta">اكتب الكود بتاعك، والـ PIN الجديد، ورقم الواتساب، وهيتبعت طلب للمالك يعتمده.</p>'+
     err+
     '<div class="fld"><label for="rCode">الكود بتاعك</label><input id="rCode" autocomplete="off"></div>'+
+    '<div id="rCodeSt" class="meta" style="min-height:1.4em;margin:-4px 0 8px"></div>'+
     '<div class="fld"><label for="rPw">الـ PIN الجديد (4 لـ 6 أرقام)</label><input id="rPw" type="password"'+pinMode+' autocomplete="new-password"></div>'+
     '<div class="fld"><label for="rPw2">اكتب الـ PIN تاني</label><input id="rPw2" type="password"'+pinMode+' autocomplete="new-password"></div>'+
     '<div class="fld"><label for="rWa">رقم الواتساب</label><input id="rWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx"></div>'+
@@ -5013,6 +5014,16 @@ var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
+/* فحص الكود وهو بيتكتب: أخضر لو موجود، أحمر لو مش موجود */
+function resetCodeCheck(){
+  var el=document.getElementById('rCodeSt');if(!el)return;
+  var c=((document.getElementById('rCode')||{}).value||'').trim();
+  if(!c){el.textContent='';el.style.color='';return;}
+  var ok=!!usersList().filter(function(x){return String(x.code).toLowerCase()===c.toLowerCase();})[0];
+  el.textContent=ok?'✓ الكود صح':'✕ الكود ده مش موجود';
+  el.style.color=ok?'#22c55e':'#ef4444';
+}
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='rCode')resetCodeCheck();});
 ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;};
 ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;};
 ACT.resetSend=function(){
@@ -5028,10 +5039,15 @@ ACT.resetSend=function(){
   if(!/^[0-9]{10,15}$/.test(wa)){U.resetErr='اكتب رقم الواتساب صح';render();return false;}
   if(wa.charAt(0)==='0')wa='20'+wa.slice(1);
   var salt=randHex();
-  hexPbkdf2(pw,salt,200000).then(function(h){
+  var others=usersList().filter(function(x){return x!==u&&x.salt&&x.h;});
+  if(S.auth&&S.auth.salt&&S.auth.hash)others.push({salt:S.auth.salt,h:S.auth.hash,iter:S.auth.iter,owner:true});
+  Promise.all(others.map(function(x){return hexPbkdf2(pw,x.salt,x.iter||200000).then(function(h){return h===x.h;});})).then(function(hits){
+    if(hits.some(Boolean)){U.resetErr='الـ PIN ده مستخدم قبل كده، اختار PIN تاني';render();return;}
+    return hexPbkdf2(pw,salt,200000).then(function(h){
     var req={id:'R'+Date.now().toString(36),name:u.name,code:u.code,wa:wa,owner:false,salt:salt,h:h,iter:200000,at:Date.now()};
     setPref('resetReqs',pref('resetReqs',[]).concat([req]));
     U.resetErr=null;U.resetDone=true;render();
+    });
   }).catch(function(){U.resetErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
   return false;
 };
@@ -5048,8 +5064,10 @@ ACT.resetApprove=function(d){
   setPref('resetReqs',rs.filter(function(x){return x.id!==d.id;}));
 };
 ACT.resetReject=function(d){
-  setPref('resetReqs',pref('resetReqs',[]).filter(function(x){return x.id!==d.id;}));
+  var rs=pref('resetReqs',[]),r=rs.filter(function(x){return x.id===d.id;})[0];
+  setPref('resetReqs',rs.filter(function(x){return x.id!==d.id;}));
   toast('اترفض الطلب');
+  if(r&&r.wa)window.open('https://wa.me/'+r.wa+'?text='+encodeURIComponent('للأسف طلب تغيير الـ PIN بتاعك في RMY Pro اترفض. كلم المالك لو محتاج مساعدة.'),'_blank');
 };
 ACT.altAdd=function(){var F=U.form;F.alts=F.alts||[];var u=UNITS_M.filter(function(x){return x!==F.unit;})[0];F.alts.push({u:u,f:''});};
 ACT.altDel=function(d){if(U.form&&U.form.alts)U.form.alts.splice(Number(d.i),1);};
