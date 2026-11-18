@@ -3175,10 +3175,20 @@ function slotsInner(u,val){
 function slotsField(st,val,u){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=c?'<span id="rLastIc" style="position:absolute;inset-inline-end:20px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
+  /* الـ input نصه شفاف (بس الـ caret ظاهر) والنص اللي بيظهر هو الـ overlay، عشان الشكل يبقى زي الـ placeholder */
   return '<div class="fld"><label for="rLast">آخر ٤ أرقام من رقم الواتساب</label><div style="position:relative;width:100%;min-width:0">'+
-    '<input id="rLast" inputmode="numeric" maxlength="4" autocomplete="off" value="'+esc(val||'')+'" style="padding:0 52px 0 22px;text-align:left;direction:ltr;font-size:16px;color:transparent;caret-color:#fff;box-sizing:border-box;width:100%;'+(c?'border-color:'+c+';':'')+'">'+
-    '<div id="rLastOv" aria-hidden="true" style="position:absolute;inset:0;box-sizing:border-box;border:1px solid transparent;padding:0 52px 0 22px;display:flex;align-items:center;direction:ltr;text-align:left;pointer-events:none;white-space:pre;overflow:hidden;font-size:16px;letter-spacing:.35em;color:#fff">'+slotsInner(u,val)+'</div>'+ic+'</div></div>';
+    '<input id="rLast" inputmode="numeric" maxlength="4" autocomplete="off" value="'+esc(val||'')+'" style="padding:0 52px;text-align:center;direction:ltr;color:transparent!important;caret-color:#fff;box-sizing:border-box;width:100%;'+(c?'border-color:'+c+';':'')+'">'+
+    '<div id="rLastOv" aria-hidden="true" style="position:absolute;inset:0;box-sizing:border-box;border:1px solid transparent;padding:0 52px;display:flex;align-items:center;justify-content:center;direction:ltr;pointer-events:none;white-space:pre;overflow:hidden;color:#fff">'+slotsInner(u,val)+'</div>'+ic+'</div></div>';
 }
+/* نفس خط وحجم وتباعد الحروف بتاعة الخانات التانية في الفورم */
+function syncSlots(){
+  var r=document.getElementById('rCode'),i=document.getElementById('rLast'),o=document.getElementById('rLastOv');
+  if(!r||!i||!o)return;
+  var cs=getComputedStyle(r),cl=getComputedStyle(i);
+  i.style.fontSize=cs.fontSize;i.style.fontFamily=cs.fontFamily;i.style.letterSpacing=cl.letterSpacing;
+  o.style.fontSize=cs.fontSize;o.style.fontFamily=cs.fontFamily;o.style.fontWeight=cs.fontWeight;o.style.letterSpacing=cl.letterSpacing;
+}
+window.addEventListener('resize',function(){syncSlots();});
 function rField(id,label,attrs,st,val,withMask,mask){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=c?'<span id="'+id+'Ic" style="position:absolute;'+(withMask?'inset-inline-start:14px':'inset-inline-end:12px')+';top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
@@ -3195,6 +3205,7 @@ function resetHTML(){
   }
   var m=U.rMark||{},v=U.rv||{};
   var err='<div id="rErr" class="note" style="display:none;margin-bottom:10px"></div>';
+  setTimeout(syncSlots,0);
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+
     '<h2>إعادة تعيين الـ PIN</h2>'+
@@ -5066,10 +5077,36 @@ function resetLiveCheck(){
   paintField('rCode',!code?'':(u?'ok':'bad'));
   var ov=document.getElementById('rLastOv');
   if(ov)ov.innerHTML=slotsInner(u,(document.getElementById('rLast')||{}).value);
+  syncSlots();
   if(!u||last.length<4){paintField('rLast','');return;}
   paintField('rLast',waDigits(u.wa).slice(-4)===last?'ok':'bad');
 }
 document.addEventListener('input',function(e){if(e.target&&(e.target.id==='rCode'||e.target.id==='rLast'))resetLiveCheck();});
+/* الـ PIN بيتفحص وإنت بتكتبه: لو مستخدم قبل كده (عند حد تاني أو عند نفس المستخدم أو المالك) بيتلون أحمر فوراً */
+var PIN_T=null,PIN_SEQ=0;
+function setRErr(msg){var el=document.getElementById('rErr');if(el){el.textContent=msg||'';el.style.display=msg?'block':'none';}}
+function pinReuseCands(u){
+  var c=usersList().filter(function(x){return x.salt&&x.h;}).map(function(x){return {salt:x.salt,h:x.h,iter:x.iter||200000};});
+  if(u)(u.hist||[]).forEach(function(x){c.push(x);});
+  if(S.auth&&S.auth.salt&&S.auth.hash)c.push({salt:S.auth.salt,h:S.auth.hash,iter:S.auth.iter||200000});
+  return c;
+}
+function pinLiveCheck(){
+  var pw=((document.getElementById('rPw')||{}).value||''),pw2=((document.getElementById('rPw2')||{}).value||'');
+  var seq=++PIN_SEQ;clearTimeout(PIN_T);
+  if(pw2)paintField('rPw2',pw2===pw?'':'bad');
+  if(!/^[0-9]{4,6}$/.test(pw)){paintField('rPw','');setRErr('');return;}
+  var u=findUserByCode(((document.getElementById('rCode')||{}).value||'').trim());
+  PIN_T=setTimeout(function(){
+    var cands=pinReuseCands(u);
+    Promise.all(cands.map(function(x){return hexPbkdf2(pw,x.salt,x.iter).then(function(h){return h===x.h;});})).then(function(hits){
+      if(seq!==PIN_SEQ)return;
+      if(hits.some(Boolean)){paintField('rPw','bad');setRErr('الـ PIN ده مستخدم قبل كده، اختار PIN جديد غيره');}
+      else{paintField('rPw','ok');setRErr('');}
+    });
+  },400);
+}
+document.addEventListener('input',function(e){if(e.target&&(e.target.id==='rPw'||e.target.id==='rPw2'))pinLiveCheck();});
 ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
 ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
 /* الأخطاء بتظهر من غير ما الفورم يتعاد رسمه، عشان الكود والـ PIN اللي كتبتهم يفضلوا مكانهم */
