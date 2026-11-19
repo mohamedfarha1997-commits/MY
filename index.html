@@ -2707,6 +2707,7 @@ function runBodyHTML(R){
     var bad=net>0;if(bad)redN++;
     var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+gPillTxt(sp,net)+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
     var style=bad?' style="border:1.5px solid var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))"':'';
+    if(bad)return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small style="color:var(--bad);font-weight:700">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+gPillTxt(sp,net)+'</small></div></div>';
     return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small>مطلوب '+Number(need).toLocaleString('en-US',{maximumFractionDigits:3})+' '+esc(sp.unit||'')+gCalc(sp,need)+'<br>'+(gramsPerUnitTxt(sp).replace(/^ · /,''))+' · متاح '+f(have)+(pend?' · في التحضير '+f(pend):'')+'</small></div>'+st+'</div>';
   }).join('');
   var btns='<div class="btns" style="margin-top:12px">'+
