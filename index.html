@@ -4664,7 +4664,14 @@ var ACT={
     applyWithdraw(S,b);toast(TRACK()?'تم سحب المواد من المخزن':'تم تأكيد الخامات');
   },
   toggleCheck:function(d){markBy(batch(d.id),'toggleCheck');var b=batch(d.id);b.checks=toggle(b.checks,Number(d.i));},
-  toggleMat:function(d){markBy(batch(d.id),'toggleMat');var b=batch(d.id);b.mchecks=toggle(b.mchecks,d.k);},
+  toggleMat:function(d){var b=batch(d.id);if(!b)return;
+    /* داخل مجموعة: التعليم على المادة بيتعمل على نفس المادة في كل دفعات المجموعة */
+    var g=groupKeyOf(b);
+    var targets=g?S.batches.filter(function(x){return x.stage==='prep'&&!x.withdrawn&&groupKeyOf(x)===g&&matKeys(need(x),compNeed(x)).indexOf(d.k)>-1;}):[b];
+    if(targets.indexOf(b)<0)targets.push(b);
+    var on=(b.mchecks||[]).indexOf(d.k)<0;
+    targets.forEach(function(x){markBy(x,'toggleMat');var cur=(x.mchecks||[]).filter(function(y){return y!==d.k;});x.mchecks=on?cur.concat([d.k]):cur;});
+  },
   toProd:function(d){markBy(batch(d.id),'toProd');var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
   cancel:function(d){
     var b=batch(d.id);
