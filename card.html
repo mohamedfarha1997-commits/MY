@@ -133,6 +133,17 @@ body::before{ /* subtle dot texture */
 .loading span:nth-child(2){animation-delay:.15s}.loading span:nth-child(3){animation-delay:.3s}
 @keyframes pulse{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 
+.qrwrap{display:flex;justify-content:center;margin-top:12px}
+#qrBox{background:#fff;border-radius:12px;padding:8px;width:124px;height:124px;display:grid;place-items:center}
+#qrBox svg{width:108px;height:108px;display:block}
+#scanOv{position:fixed;inset:0;z-index:999;background:#000;overflow:hidden}
+#scanV{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#scanC{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.scanframe{position:absolute;left:50%;top:44%;width:min(72vw,300px);aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);overflow:hidden}
+.scanframe::after{content:"";position:absolute;left:10px;right:10px;height:2px;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:scanln 2s infinite ease-in-out}
+@keyframes scanln{0%{top:6px}50%{top:calc(100% - 8px)}100%{top:6px}}
+.scantxt{position:absolute;left:16px;right:16px;bottom:150px;text-align:center;font:700 16px/1.5 var(--ar);color:#fff;text-shadow:0 2px 10px #000}
+#scanOv .btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);width:auto;padding:12px 32px}
 @media print{
   body{background:#fff;padding:0}
   body::before{display:none}
@@ -147,6 +158,8 @@ body::before{ /* subtle dot texture */
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 var DATA={cards:[],updated:null};
 var currentCode='';
@@ -186,7 +199,7 @@ function showCard(c){
     (fields?'<div class="fields">'+fields+'</div>':'')+
     '<div class="idrow"><div class="k"><span>Employee ID · رقم الـ ID</span><span class="st '+(act?'':'off')+'">'+(act?'Active':'Inactive')+'</span></div>'+
       '<div class="scratch"><span class="num">'+esc(c.code)+'</span><canvas id="scratchC" aria-label="اخربش لكشف الـ ID"></canvas></div>'+
-      '<div class="barcode" aria-hidden="true"></div>'+
+      '<div class="qrwrap"><div id="qrBox" aria-label="QR الخاص بالكارت"></div></div>'+
     '</div>'+
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
   '</div>'+
@@ -196,6 +209,7 @@ function showCard(c){
   document.getElementById('printBtn').onclick=function(){window.print();};
   document.getElementById('pdfBtn').onclick=downloadPdf;
   initScratch();
+  makeQR(c.code);
 }
 
 /* طبقة فضية تتمسح بالإيد أو الماوس، ولما أغلب المساحة تتمسح بتختفي خالص */
@@ -299,13 +313,82 @@ function askId(msg){
     '<p class="'+(msg&&msg.indexOf('مش موجود')>-1?'err':'')+'">'+esc(msg||'اكتب رقم الـ ID الموجود على الكارت')+'</p>'+
     '<input class="input" id="q" placeholder="CODE" autocomplete="off" autocapitalize="characters">'+
     '<div class="actions" style="margin-top:14px"><button class="btn" id="go">عرض البطاقة</button></div>'+
+    '<button class="btn ghost" id="scanBtn" style="width:100%;margin-top:10px">امسح الـ QR بالكاميرا</button>'+
   '</div>';
   var q=document.getElementById('q');
   document.getElementById('go').onclick=function(){go(q.value);};
   q.onkeydown=function(e){if(e.key==='Enter')go(q.value);};
   q.focus();
+  document.getElementById('scanBtn').onclick=function(){unlockAudio();openScanner();};
 }
 
+var audioCtx=null,scanner={active:false,stream:null,raf:0,det:null,off:null};
+function unlockAudio(){try{var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;if(!audioCtx)audioCtx=new AC();if(audioCtx.state==='suspended')audioCtx.resume();}catch(e){}}
+/* صوت "بيب" زي ماسحات السوبر ماركت */
+function beep(){try{if(!audioCtx)return;var o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;o.type='sine';o.frequency.setValueAtTime(1760,t);o.frequency.setValueAtTime(2093,t+0.09);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);o.connect(g);g.connect(audioCtx.destination);o.start(t);o.stop(t+0.25);}catch(e){}}
+function scanMsg(m){var el=document.getElementById('scanT');if(el)el.textContent=m;}
+/* الـ QR ممكن يكون الـ ID نفسه أو لينك فيه ?id= */
+function parseCode(t){try{var u=new URL(t,location.href);var id=u.searchParams.get('id');if(id)return id;var h=(u.hash||'').slice(1);if(h)return h;}catch(e){}return String(t||'').trim();}
+function closeScanner(){scanner.active=false;cancelAnimationFrame(scanner.raf);if(scanner.stream){scanner.stream.getTracks().forEach(function(t){t.stop();});scanner.stream=null;}var ov=document.getElementById('scanOv');if(ov)ov.remove();}
+function frameOf(v){var off=scanner.off||(scanner.off=document.createElement('canvas'));off.width=v.videoWidth;off.height=v.videoHeight;var c=off.getContext('2d',{willReadFrequently:true});c.drawImage(v,0,0,off.width,off.height);return c;}
+/* يرجّع {text, pts} لو لقى QR في الفريم، أو null */
+function detectFrame(v){
+  if(scanner.det)return scanner.det.detect(v).then(function(r){if(!r||!r.length)return null;var b=r[0].boundingBox;return {text:r[0].rawValue,pts:[{x:b.x,y:b.y},{x:b.x+b.width,y:b.y},{x:b.x+b.width,y:b.y+b.height},{x:b.x,y:b.y+b.height}]};});
+  if(window.jsQR){var c=frameOf(v);var img=c.getImageData(0,0,c.canvas.width,c.canvas.height);var q=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});if(!q)return Promise.resolve(null);var L=q.location;return Promise.resolve({text:q.data,pts:[L.topLeftCorner,L.topRightCorner,L.bottomRightCorner,L.bottomLeftCorner]});}
+  return Promise.resolve(null);
+}
+/* إطار أخضر حوالين الـ QR المتقري، متظبط على حجم الفيديو المعروض */
+function drawBox(pts,v){
+  var cv=document.getElementById('scanC');if(!cv)return;
+  var r=v.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
+  cv.width=r.width*dpr;cv.height=r.height*dpr;
+  var ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,r.width,r.height);
+  var s=Math.max(r.width/v.videoWidth,r.height/v.videoHeight),ox=(r.width-v.videoWidth*s)/2,oy=(r.height-v.videoHeight*s)/2;
+  ctx.beginPath();
+  pts.forEach(function(p,i){var x=p.x*s+ox,y=p.y*s+oy;if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);});
+  ctx.closePath();ctx.fillStyle='rgba(34,197,94,.18)';ctx.fill();
+  ctx.lineWidth=4;ctx.strokeStyle='#22c55e';ctx.lineJoin='round';ctx.stroke();
+}
+function loopScan(){
+  if(!scanner.active)return;
+  var v=document.getElementById('scanV');
+  if(!v||v.readyState<2||!v.videoWidth){scanner.raf=requestAnimationFrame(loopScan);return;}
+  detectFrame(v).then(function(hit){
+    if(!scanner.active)return;
+    if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
+    scanner.raf=requestAnimationFrame(loopScan);
+  }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
+}
+function onScanned(text){
+  scanner.active=false;cancelAnimationFrame(scanner.raf);
+  beep();
+  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+  scanMsg('تم القراءة ✓');
+  var code=parseCode(text);
+  setTimeout(function(){closeScanner();go(code);},350);
+}
+function openScanner(){
+  closeScanner();
+  var ov=document.createElement('div');ov.id='scanOv';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scanframe"></div><div class="scantxt" id="scanT">وجّه الكاميرا على الـ QR الموجود على الكارت</div><button class="btn ghost" id="scanX">إغلاق</button>';
+  document.body.appendChild(ov);
+  document.getElementById('scanX').onclick=closeScanner;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
+  if('BarcodeDetector' in window){try{scanner.det=new BarcodeDetector({formats:['qr_code']});}catch(e){scanner.det=null;}}
+  if(!scanner.det&&!window.jsQR){scanMsg('المتصفح ده مش بيقرأ الـ QR، اكتب الـ ID يدوي');return;}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(function(s){
+    if(!ov.isConnected){s.getTracks().forEach(function(t){t.stop();});return;}
+    scanner.stream=s;scanner.active=true;
+    var v=document.getElementById('scanV');v.srcObject=s;
+    return v.play().then(function(){loopScan();});
+  }).catch(function(){scanMsg('اسمح للكاميرا من إعدادات المتصفح، أو اكتب الـ ID يدوي');});
+}
+/* QR على الكارت بيفتح الصفحة على الكود ده */
+function makeQR(code){
+  var box=document.getElementById('qrBox');if(!box)return;
+  var link=location.href.split('#')[0].split('?')[0]+'?id='+encodeURIComponent(code);
+  try{if(window.qrcode){var q=qrcode(0,'M');q.addData(link);q.make();box.innerHTML=q.createSvgTag(4,0);}}catch(e){}
+}
 function go(v){
   var c=findCard(v);
   if(!c){askId('الـ ID ده مش موجود، اتأكد منه وجرّب تاني');return;}
