@@ -2665,6 +2665,27 @@ function runSuggest(R){
   if(!m.length)return '<div class="meta" style="margin-top:6px">مفيش صنف محشو بالاسم ده. الأصناف الجديدة اعملها من تبويب إضافة أصناف جديدة.</div>';
   return '<div class="fdrop">'+m.map(function(p){return '<button data-act="runPick" data-id="'+p.id+'">'+esc(p.name)+(p.grp?' <small>· '+esc(p.grp)+'</small>':'')+'</button>';}).join('')+'</div>';
 }
+/* وزن الوحدة بالجرام: للأصناف اللي وحدتها قطعة (صاج/كاس/...) = إجمالي وزن الوصفة ÷ عدد القطع اللي بتطلعها */
+function gramsPerRun(p,depth){
+  var t=0;
+  (p.stages||[]).forEach(function(g){(g.ings||[]).forEach(function(i){var m=M(i.m);var u=m?unitGrams(m.unit):null;if(u)t+=(i.q||0)*u;});});
+  (p.comps||[]).forEach(function(c){var sp=P(c.p);if(sp&&depth<6){var gp=gramsPerUnit(sp,depth+1);if(gp)t+=(c.q||0)*gp;}});
+  return t;
+}
+function gramsPerUnit(p,depth){
+  depth=depth||0;if(!p)return null;
+  if(!isPieceU(p.unit))return unitGrams(p.unit)||null;
+  var r=gramsPerRun(p,depth);return r>0?r/yieldOf(p.id):null;
+}
+function gramsTxt(sp,qty){
+  if(!sp||!isPieceU(sp.unit))return '';
+  var g=gramsPerUnit(sp);if(!g)return '';
+  return ' ≈ '+f(r3(qty*g))+' جرام';
+}
+function gramsPerUnitTxt(sp){
+  if(!sp||!isPieceU(sp.unit))return '';
+  var g=gramsPerUnit(sp);return g?' · '+esc(sp.unit)+' الواحدة ≈ '+f(r3(g))+' جرام':'';
+}
 function runBodyHTML(R){
   var p=R&&R.pid?P(R.pid):null;
   if(!p)return '<div class="meta" style="margin-top:8px">اكتب اسم الصنف واختاره من الاقتراحات عشان المجموعة والخامات تظهر تلقائي.</div>';
@@ -2675,9 +2696,9 @@ function runBodyHTML(R){
     var need=num(R.q[pid])||0,have=S.ready[pid]||0,pend=runPend(pid),net=runNetLack(R,pid);
     if(need>have+1e-9)needStock=true;
     var bad=net>0;if(bad)redN++;
-    var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
+    var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+gramsTxt(sp,net)+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
     var style=bad?' style="border:1.5px solid var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))"':'';
-    return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small>مطلوب '+f(need)+' '+esc(sp.unit||'')+' · متاح '+f(have)+(pend?' · في التحضير '+f(pend):'')+'</small></div>'+st+'</div>';
+    return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small>مطلوب '+f(need)+' '+esc(sp.unit||'')+gramsTxt(sp,need)+gramsPerUnitTxt(sp)+' · متاح '+f(have)+(pend?' · في التحضير '+f(pend):'')+'</small></div>'+st+'</div>';
   }).join('');
   var btns='<div class="btns" style="margin-top:12px">'+
     (redN?'<button class="btn" data-act="runMakeBatches">إنشاء دفعة بالنواقص ('+redN+')</button>':'')+
