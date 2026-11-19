@@ -1947,6 +1947,41 @@ function batchSuggestHTML(){
   return '<section class="card" style="--c:var(--prep)"><div><h3>اقتراح تجميع الدفعات</h3><p class="meta" style="margin:2px 0 0">أقل عدد دفعات يغطي النواقص الحالية، بعد ما نطرح اللي متعمل بالفعل.</p></div>'+rows+
     '<div class="btns"><button class="btn" data-act="batchSuggestApply">أنشئ '+tot+' '+(tot>1?'دفعات':'دفعة')+' مقترحة</button></div></section>';
 }
+function groupKeyOf(b){var p=P(b.p);return p&&p.group?unesc(p.group).trim():'';}
+/* الدفعة جاهزة للسحب: مفيش نقص ومكوناتها كلها اتعلّمت */
+function groupReady(b){
+  if(!b||b.withdrawn||shortOf(b).length||compShort(b).length)return false;
+  var mk=matKeys(need(b),compNeed(b));
+  return mk.length>0&&(b.mchecks||[]).filter(function(x){return mk.indexOf(x)>-1;}).length===mk.length;
+}
+function renderPrepList(list){
+  var out='',done={};
+  list.forEach(function(b){
+    var g=groupKeyOf(b);
+    if(!g){out+=prepCard(b);return;}
+    if(done[g])return;done[g]=1;
+    out+=groupPrepCard(g,list.filter(function(x){return groupKeyOf(x)===g;}));
+  });
+  return out;
+}
+/* كارت واحد للمجموعة: إجمالي المواد، وزرار سحب للكل، والدفعات محفوظة كل واحدة لوحدها */
+function groupPrepCard(g,items){
+  var tot={},ctot={};
+  items.forEach(function(b){
+    var n=need(b),cn=compNeed(b);
+    Object.keys(n).forEach(function(k){tot[k]=r3((tot[k]||0)+n[k]);});
+    Object.keys(cn).forEach(function(k){ctot[k]=r3((ctot[k]||0)+cn[k]);});
+  });
+  var line=function(name,qty,unit){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line)"><b>'+esc(name)+'</b><span class="qv">'+f(qty)+' '+esc(unit)+'</span></div>';};
+  var rows=Object.keys(tot).map(function(k){var m=M(k);return line(m.name,tot[k],m.unit);}).join('')+
+    Object.keys(ctot).map(function(k){var cp=P(k);return line(cp.name,ctot[k],cp.unit);}).join('');
+  var ready=items.filter(function(b){return !b.withdrawn;});
+  var canAll=ready.length>0&&ready.every(groupReady);
+  var btn=ready.length?'<button class="btn block" data-act="groupWithdraw" data-ids="'+ready.map(function(b){return b.id;}).join(',')+'"'+(canAll?'':' disabled')+'>'+(TRACK()?'اسحب المواد للمجموعة كلها':'تأكيد تجهيز الخامات للمجموعة')+'</button>':'';
+  return '<section class="card" style="--c:var(--prep)"><div class="bh"><div><h3 class="bn">'+esc(g)+'</h3><span class="meta">'+items.length+' أصناف في التحضير ده</span></div><span class="pill c">مجمّع</span></div>'+
+    '<div class="grp">إجمالي المواد</div>'+rows+(btn?'<div style="margin:10px 0">'+btn+'</div>':'')+
+    '<div class="grp">الأصناف</div><div class="list">'+items.map(prepCard).join('')+'</div></section>';
+}
 function prepView(){
   var shopTab=U.prepTab==='shop';
   var isShop=function(b){var p=P(b.p);return !!(p&&p.shop);};
@@ -1955,7 +1990,7 @@ function prepView(){
     '<button class="'+(shopTab?'':'on')+'" data-act="prepTabSet" data-v="cust">الأوردرات</button>'+
     '<button class="'+(shopTab?'on':'')+'" data-act="prepTabSet" data-v="shop">المحل</button></div>';
   var btn='<div class="btns">'+seg+'<button class="btn ghost sm" data-act="exportBatchMats">تصدير الخامات PDF</button><button class="btn" data-act="newBatch"'+(shopTab?' data-shop="1"':'')+'>'+svg('plus')+(shopTab?'دفعة للمحل':'دفعة جديدة')+'</button></div>';
-  var body=list.length?'<div class="list">'+list.map(prepCard).join('')+'</div>':
+  var body=list.length?'<div class="list">'+renderPrepList(list)+'</div>':
     '<div class="empty"><b>'+(shopTab?'مفيش دفعات للمحل':'مفيش دفعات في التحضير')+'</b><span>'+(shopTab?'الدفعات اللي للمحل بتظهر هنا.':'ابدأ دفعة جديدة والبرنامج يحسب لك المواد المطلوبة.')+'</span></div>';
   return head('تحضير','حدد الكمية، اسحب المواد، وخلّص خطوات التجهيز',btn)+(shopTab?'':batchSuggestHTML())+body;
 }
@@ -2906,6 +2941,7 @@ function prodFormHTML(){
     seasonSeg(F.season||'normal','prodSeason')+'<div class="seg" style="align-self:flex-start"><button class="'+(F.shop?'':'on')+'" data-act="prodKind" data-v="reg">وصفة عادية</button><button class="'+(F.shop?'on':'')+'" data-act="prodKind" data-v="shop">وصفة المحل</button></div>'+
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
+    fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -3028,7 +3064,7 @@ function saveProd(F){
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
   var conv=null;
   if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var kk=convK(ou,nu);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
-  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',comps:comps,noOrder:!!F.noOrder};
+  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',group:esc((F.group||'').trim()),comps:comps,noOrder:!!F.noOrder};
   if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);o.code='P-'+String(nextProdNo()).padStart(3,'0');syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name+' بكود '+o.code);}
   U.form=null;
@@ -4536,7 +4572,7 @@ var ACT={
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:p.id,noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
+    U.form={kind:'prod',edit:p.id,group:unesc(p.group||''),noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
           ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.dq!=null?i.dq:i.q),u:i.du||(m?m.unit:'جرام')};}),
@@ -4620,6 +4656,7 @@ var ACT={
     toast(ids.length>1?'تم إنشاء '+ids.length+' دفعات'+(held?' · '+held+' منها اتحجزت لأوردرات':''):'تم إنشاء الدفعة '+sid(ids[0])+(held?' · اتحجزت لطلبية':''));
     go('prep');
   },
+  groupWithdraw:function(d){var n=0;String(d.ids||'').split(',').filter(Boolean).forEach(function(id){var b=batch(id);if(groupReady(b)){ACT.withdraw({id:id});n++;}});if(n)toast('تم سحب المواد لـ '+n+' دفعة');},
   withdraw:function(d){markBy(batch(d.id),'withdraw');
     var b=batch(d.id);if(!b)return;
     /* سحب الخامات مفتوح ولا يعتمد على رصيد */
