@@ -206,10 +206,10 @@ function showCard(c){
     '</div>'+
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
   '</div>'+
-  '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="printBtn">طباعة</button></div>'+
+  '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="pdfBtn">تصدير PDF</button></div>'+
   '<a class="linkline noprint" href="card.html">تحقق من ID تاني</a>';
 
-  document.getElementById('printBtn').onclick=function(){window.print();};
+  document.getElementById('pdfBtn').onclick=downloadPdf;
   document.getElementById('shareBtn').onclick=shareCard;
   initScratch();
   makeBarcode(c.code);
@@ -305,7 +305,7 @@ function downloadPdf(){
   }).catch(function(){
     window.print();
   }).then(function(){
-    btn.disabled=false;btn.textContent='تحميل PDF';
+    btn.disabled=false;btn.textContent='تصدير PDF';
   });
 }
 
