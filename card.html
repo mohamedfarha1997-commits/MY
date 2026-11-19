@@ -395,7 +395,7 @@ function zxDetect(v){
 /* باركود Code 128 للكود بتاع الكارت */
 function makeBarcode(code){
   var svg=document.getElementById('bcSvg');if(!svg||!window.JsBarcode)return;
-  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:40,width:2,background:'#ffffff',lineColor:'#0b1030'});svg.setAttribute('preserveAspectRatio','none');}catch(e){}
+  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:40,width:3,background:'#ffffff',lineColor:'#0b1030'});svg.setAttribute('preserveAspectRatio','none');}catch(e){}
 }
 /* مشاركة لينك الكارت، ولو المتصفح مش بيدعم المشاركة بننسخه */
 function shareCard(){
@@ -407,7 +407,7 @@ function shareCard(){
 function openScanner(){
   closeScanner();
   var ov=document.createElement('div');ov.id='scanOv';
-  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scanframe"></div><div class="scantxt" id="scanT">وجّه الكاميرا على الـ QR الموجود على الكارت</div><button class="btn ghost" id="scanX">إغلاق</button>';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scanframe"></div><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود الموجود على الكارت</div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
@@ -416,6 +416,8 @@ function openScanner(){
   navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(function(s){
     if(!ov.isConnected){s.getTracks().forEach(function(t){t.stop();});return;}
     scanner.stream=s;scanner.active=true;
+    var tr=s.getVideoTracks()[0],caps=(tr&&tr.getCapabilities)?tr.getCapabilities():{};
+    if(caps.torch){var tb=document.getElementById('scanTorch');if(tb){tb.style.display='block';tb.onclick=function(){var on=tb.dataset.on==='1';tr.applyConstraints({advanced:[{torch:!on}]}).then(function(){tb.dataset.on=on?'0':'1';tb.textContent=on?'فلاش':'إطفاء';}).catch(function(){});};}}
     var v=document.getElementById('scanV');v.srcObject=s;
     return v.play().then(function(){loopScan();});
   }).catch(function(e){scanMsg('الكاميرا ماشتغلتش ('+((e&&e.name)||'خطأ')+'). اسمح بالكاميرا أو اكتب الـ ID يدوي');});
