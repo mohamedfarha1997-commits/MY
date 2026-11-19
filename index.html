@@ -4057,7 +4057,7 @@ function ordersView(kind){
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
   return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+ordSegHTML()+body+archiveHTML(arch,kind);
 }
-var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة'];
+var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة','سفنديش كبير','سفنديش صغير','فخارة','كاس','بولة'];
 /* التعبئات داخل الطلبية: كل صنف بيتحط في تعبئة (رقم)، ولكل تعبئة نوع. الطلبيات القديمة من غير رقم تعبئة بتتعامل كتعبئة 1 */
 function boxOf(os,pid){var bs=os.boxes||[{n:1,type:''}],n=(os.box||{})[pid];return bs.some(function(b){return b.n===n;})?n:bs[0].n;}
 function boxTypeOf(os,n){var b=(os.boxes||[]).filter(function(x){return x.n===n;})[0];return b?(b.type||''):'';}
