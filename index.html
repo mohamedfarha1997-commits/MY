@@ -2691,6 +2691,10 @@ function gCalc(sp,qty){
   var n=function(x){return Number(x).toLocaleString('en-US',{maximumFractionDigits:3});};
   return '<br><b>الحساب: '+n(qty)+' '+esc(sp.unit)+' × '+n(r3(g))+' جرام = '+n(r3(qty*g))+' جرام</b>';
 }
+function gPillTxt(sp,qty){
+  var g=gramsPerUnit(sp);if(!g||!isPieceU(sp.unit))return '';
+  return ' = '+Number(r3(qty*g)).toLocaleString('en-US',{maximumFractionDigits:2})+' جرام';
+}
 function runBodyHTML(R){
   var p=R&&R.pid?P(R.pid):null;
   if(!p)return '<div class="meta" style="margin-top:8px">اكتب اسم الصنف واختاره من الاقتراحات عشان المجموعة والخامات تظهر تلقائي.</div>';
@@ -2701,7 +2705,7 @@ function runBodyHTML(R){
     var need=num(R.q[pid])||0,have=S.ready[pid]||0,pend=runPend(pid),net=runNetLack(R,pid);
     if(need>have+1e-9)needStock=true;
     var bad=net>0;if(bad)redN++;
-    var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
+    var st=bad?'<span class="pill bad">ناقص تحضير '+f(net)+' '+esc(sp.unit||'')+gPillTxt(sp,net)+'</span>':(need>have+1e-9?'<span class="pill low">في التحضير</span>':'<span class="pill ok">متاح</span>');
     var style=bad?' style="border:1.5px solid var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--surface))"':'';
     return '<div class="rq"'+style+'><div><b>'+esc(sp.name)+'</b><small>مطلوب '+Number(need).toLocaleString('en-US',{maximumFractionDigits:3})+' '+esc(sp.unit||'')+gCalc(sp,need)+'<br>'+(gramsPerUnitTxt(sp).replace(/^ · /,''))+' · متاح '+f(have)+(pend?' · في التحضير '+f(pend):'')+'</small></div>'+st+'</div>';
   }).join('');
