@@ -1964,6 +1964,12 @@ function renderPrepList(list){
   });
   return out;
 }
+/* صف مادة في إجمالي المجموعة: الضغط عليه بيعلّم المادة دي في كل دفعات المجموعة اللي فيها */
+function groupMatRow(items,key,name,qty,unit){
+  var tg=items.filter(function(b){return !b.withdrawn&&matKeys(need(b),compNeed(b)).indexOf(key)>-1;});
+  var on=tg.length>0&&tg.every(function(b){return (b.mchecks||[]).indexOf(key)>-1;});
+  return '<div class="rq matrow'+(on?' on':'')+'" data-act="groupMat" data-k="'+key+'" data-ids="'+tg.map(function(b){return b.id;}).join(',')+'" role="checkbox" aria-checked="'+(on?'true':'false')+'" style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line)"><b>'+esc(name)+'</b><span class="qv">'+f(qty)+' '+esc(unit)+'</span></div>';
+}
 /* كارت واحد للمجموعة: إجمالي المواد، وزرار سحب للكل، والدفعات محفوظة كل واحدة لوحدها */
 function groupPrepCard(g,items){
   var tot={},ctot={};
@@ -1973,8 +1979,8 @@ function groupPrepCard(g,items){
     Object.keys(cn).forEach(function(k){ctot[k]=r3((ctot[k]||0)+cn[k]);});
   });
   var line=function(name,qty,unit){return '<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line)"><b>'+esc(name)+'</b><span class="qv">'+f(qty)+' '+esc(unit)+'</span></div>';};
-  var rows=Object.keys(tot).map(function(k){var m=M(k);return line(m.name,tot[k],m.unit);}).join('')+
-    Object.keys(ctot).map(function(k){var cp=P(k);return line(cp.name,ctot[k],cp.unit);}).join('');
+  var rows=Object.keys(tot).map(function(k){var m=M(k);return groupMatRow(items,'m:'+k,m.name,tot[k],m.unit);}).join('')+
+    Object.keys(ctot).map(function(k){var cp=P(k);return groupMatRow(items,'c:'+k,cp.name,ctot[k],cp.unit);}).join('');
   var ready=items.filter(function(b){return !b.withdrawn;});
   var canAll=ready.length>0&&ready.every(groupReady);
   var btn=ready.length?'<button class="btn block" data-act="groupWithdraw" data-ids="'+ready.map(function(b){return b.id;}).join(',')+'"'+(canAll?'':' disabled')+'>'+(TRACK()?'اسحب المواد للمجموعة كلها':'تأكيد تجهيز الخامات للمجموعة')+'</button>':'';
@@ -4655,6 +4661,12 @@ var ACT={
     notifyNew(ids.length>1?'دفعات جديدة':'دفعة جديدة',ids.length>1?ids.length+' دفعات اتعملوا':'دفعة '+sid(ids[0])+' اتعملت','newb-'+Date.now(),'prep');
     toast(ids.length>1?'تم إنشاء '+ids.length+' دفعات'+(held?' · '+held+' منها اتحجزت لأوردرات':''):'تم إنشاء الدفعة '+sid(ids[0])+(held?' · اتحجزت لطلبية':''));
     go('prep');
+  },
+  groupMat:function(d){
+    var list=String(d.ids||'').split(',').filter(Boolean).map(function(id){return batch(id);}).filter(Boolean);
+    if(!list.length)return;
+    var on=!list.every(function(b){return (b.mchecks||[]).indexOf(d.k)>-1;});
+    list.forEach(function(x){markBy(x,'toggleMat');var cur=(x.mchecks||[]).filter(function(y){return y!==d.k;});x.mchecks=on?cur.concat([d.k]):cur;});
   },
   groupWithdraw:function(d){var n=0;String(d.ids||'').split(',').filter(Boolean).forEach(function(id){var b=batch(id);if(groupReady(b)){ACT.withdraw({id:id});n++;}});if(n)toast('تم سحب المواد لـ '+n+' دفعة');},
   withdraw:function(d){markBy(batch(d.id),'withdraw');
