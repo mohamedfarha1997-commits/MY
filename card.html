@@ -139,11 +139,13 @@ body::before{ /* subtle dot texture */
 #scanOv{position:fixed;inset:0;z-index:999;background:#000;overflow:hidden}
 #scanV{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #scanC{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.scanframe{position:absolute;left:50%;top:44%;width:min(72vw,300px);aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);overflow:hidden}
+.scanframe{position:absolute;left:50%;top:44%;width:min(88vw,360px);height:150px;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);overflow:hidden}
 .scanframe::after{content:"";position:absolute;left:10px;right:10px;height:2px;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:scanln 2s infinite ease-in-out}
 @keyframes scanln{0%{top:6px}50%{top:calc(100% - 8px)}100%{top:6px}}
 .scantxt{position:absolute;left:16px;right:16px;bottom:150px;text-align:center;font:700 16px/1.5 var(--ar);color:#fff;text-shadow:0 2px 10px #000}
 #scanOv .btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);width:auto;padding:12px 32px}
+.bcwrap{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px}
+.bcwrap svg{width:100%;height:auto;display:block}
 @media print{
   body{background:#fff;padding:0}
   body::before{display:none}
@@ -159,7 +161,8 @@ body::before{ /* subtle dot texture */
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
 var DATA={cards:[],updated:null};
 var currentCode='';
@@ -199,17 +202,17 @@ function showCard(c){
     (fields?'<div class="fields">'+fields+'</div>':'')+
     '<div class="idrow"><div class="k"><span>Employee ID · رقم الـ ID</span><span class="st '+(act?'':'off')+'">'+(act?'Active':'Inactive')+'</span></div>'+
       '<div class="scratch"><span class="num">'+esc(c.code)+'</span><canvas id="scratchC" aria-label="اخربش لكشف الـ ID"></canvas></div>'+
-      '<div class="qrwrap"><div id="qrBox" aria-label="QR الخاص بالكارت"></div></div>'+
+      '<div class="bcwrap"><svg id="bcSvg" role="img" aria-label="باركود الكارت"></svg></div>'+
     '</div>'+
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
   '</div>'+
-  '<div class="noprint actions"><button class="btn" id="pdfBtn">تحميل PDF</button><button class="btn ghost" id="printBtn">طباعة</button></div>'+
+  '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="printBtn">طباعة</button></div>'+
   '<a class="linkline noprint" href="card.html">تحقق من ID تاني</a>';
 
   document.getElementById('printBtn').onclick=function(){window.print();};
-  document.getElementById('pdfBtn').onclick=downloadPdf;
+  document.getElementById('shareBtn').onclick=shareCard;
   initScratch();
-  makeQR(c.code);
+  makeBarcode(c.code);
 }
 
 /* طبقة فضية تتمسح بالإيد أو الماوس، ولما أغلب المساحة تتمسح بتختفي خالص */
@@ -334,6 +337,7 @@ function frameOf(v){var off=scanner.off||(scanner.off=document.createElement('ca
 /* يرجّع {text, pts} لو لقى QR في الفريم، أو null */
 function detectFrame(v){
   if(scanner.det)return scanner.det.detect(v).then(function(r){if(!r||!r.length)return null;var b=r[0].boundingBox;return {text:r[0].rawValue,pts:[{x:b.x,y:b.y},{x:b.x+b.width,y:b.y},{x:b.x+b.width,y:b.y+b.height},{x:b.x,y:b.y+b.height}]};});
+  if(window.ZXing){return zxDetect(v);}
   if(window.jsQR){var c=frameOf(v);var img=c.getImageData(0,0,c.canvas.width,c.canvas.height);var q=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});if(!q)return Promise.resolve(null);var L=q.location;return Promise.resolve({text:q.data,pts:[L.topLeftCorner,L.topRightCorner,L.bottomRightCorner,L.bottomLeftCorner]});}
   return Promise.resolve(null);
 }
@@ -360,12 +364,45 @@ function loopScan(){
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
 function onScanned(text){
+  var code=parseCode(text);
+  if(!findCard(code)){
+    scanMsg('الكود ده مش موجود، كمّل المسح');
+    setTimeout(function(){if(scanner.active)scanMsg('وجّه الكاميرا على الباركود');},1500);
+    scanner.raf=requestAnimationFrame(loopScan);
+    return;
+  }
   scanner.active=false;cancelAnimationFrame(scanner.raf);
   beep();
   if(navigator.vibrate)navigator.vibrate([80,40,80]);
   scanMsg('تم القراءة ✓');
-  var code=parseCode(text);
-  setTimeout(function(){closeScanner();go(code);},350);
+  setTimeout(function(){closeScanner();go(code);},250);
+}
+/* قراية بديلة لو المتصفح مش بيدعم BarcodeDetector: ZXing (باركود وQR) */
+var zxReader=null;
+function zxDetect(v){
+  var c=frameOf(v),W=c.canvas.width,H=c.canvas.height;
+  var d=c.getImageData(0,0,W,H).data,lum=new Uint8ClampedArray(W*H);
+  for(var i=0,j=0;i<d.length;i+=4,j++){lum[j]=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;}
+  try{
+    if(!zxReader)zxReader=new ZXing.MultiFormatReader();
+    var res=zxReader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.RGBLuminanceSource(lum,W,H))));
+    var ps=(res.getResultPoints()||[]).map(function(p){return {x:p.getX(),y:p.getY()};});
+    var x0=0,y0=0,x1=W,y1=H;
+    if(ps.length){x0=Math.max(0,Math.min.apply(null,ps.map(function(p){return p.x;}))-10);x1=Math.min(W,Math.max.apply(null,ps.map(function(p){return p.x;}))+10);y0=Math.max(0,Math.min.apply(null,ps.map(function(p){return p.y;}))-10);y1=Math.min(H,Math.max.apply(null,ps.map(function(p){return p.y;}))+10);}
+    return Promise.resolve({text:res.getText(),pts:[{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}]});
+  }catch(e){return Promise.resolve(null);}
+}
+/* باركود Code 128 للكود بتاع الكارت */
+function makeBarcode(code){
+  var svg=document.getElementById('bcSvg');if(!svg||!window.JsBarcode)return;
+  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:80,width:2,background:'#ffffff',lineColor:'#0b1030'});}catch(e){}
+}
+/* مشاركة لينك الكارت، ولو المتصفح مش بيدعم المشاركة بننسخه */
+function shareCard(){
+  var c=currentCode,btn=document.getElementById('shareBtn');
+  var link=location.href.split('#')[0].split('?')[0]+'?id='+encodeURIComponent(c);
+  if(navigator.share){navigator.share({title:'RMY ID',text:'بطاقة RMY · '+c,url:link}).catch(function(){});return;}
+  if(navigator.clipboard&&btn){navigator.clipboard.writeText(link).then(function(){btn.textContent='اتنسخ الرابط ✓';setTimeout(function(){btn.textContent='مشاركة';},2000);}).catch(function(){});}
 }
 function openScanner(){
   closeScanner();
@@ -374,9 +411,9 @@ function openScanner(){
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
-  if('BarcodeDetector' in window){try{scanner.det=new BarcodeDetector({formats:['qr_code']});}catch(e){scanner.det=null;}}
-  if(!scanner.det&&!window.jsQR){scanMsg('المتصفح ده مش بيقرأ الـ QR، اكتب الـ ID يدوي');return;}
-  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false}).then(function(s){
+  if('BarcodeDetector' in window){try{scanner.det=new BarcodeDetector({formats:['code_128','code_39','ean_13','ean_8','upc_a','itf','qr_code']});}catch(e){scanner.det=null;}}
+  if(!scanner.det&&!window.jsQR&&!window.ZXing){scanMsg('المتصفح ده مش بيقرأ الـ QR، اكتب الـ ID يدوي');return;}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false}).then(function(s){
     if(!ov.isConnected){s.getTracks().forEach(function(t){t.stop();});return;}
     scanner.stream=s;scanner.active=true;
     var v=document.getElementById('scanV');v.srcObject=s;

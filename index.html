@@ -4415,7 +4415,7 @@ function verifyBtn(){return '<button class="btn ghost sm themebtn" data-act="tab
 function verifyView(){
   var src=new URL('card.html',location.href).href;
   return '<div style="position:fixed;inset:0;z-index:60;background:#070b22">'+
-    '<iframe data-verify allow="camera" src="'+esc(src)+'" title="التحقق من البطاقة" style="width:100%;height:100%;border:0;display:block"></iframe>'+
+    '<iframe data-verify allow="camera; web-share; clipboard-write" src="'+esc(src)+'" title="التحقق من البطاقة" style="width:100%;height:100%;border:0;display:block"></iframe>'+
     '<button class="btn ghost sm" data-act="tab" data-v="home" style="position:absolute;top:12px;inset-inline-start:12px;z-index:1;width:auto;padding:8px 14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35)">رجوع</button></div>';
 }
 var MOON_P='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
@@ -5221,7 +5221,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={deepRefresh:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
