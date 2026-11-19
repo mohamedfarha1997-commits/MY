@@ -4715,7 +4715,7 @@ var ACT={
     var on=(b.mchecks||[]).indexOf(d.k)<0;
     targets.forEach(function(x){markBy(x,'toggleMat');var cur=(x.mchecks||[]).filter(function(y){return y!==d.k;});x.mchecks=on?cur.concat([d.k]):cur;});
   },
-  toProd:function(d){markBy(batch(d.id),'toProd');var b=batch(d.id);b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');go('prod');},
+  toProd:function(d){var b=batch(d.id);if(!b)return;markBy(b,'toProd');b.stage='prod';b.startedAt=null;b.notified=false;b.ringing=false;toast(b.id+' دخلت الإنتاج');},
   cancel:function(d){
     var b=batch(d.id);
     if(U.confirm!==d.id){U.confirm=d.id;setTimeout(function(){if(U.confirm===d.id){U.confirm=null;render();}},3000);return;}
