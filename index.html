@@ -102,7 +102,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 :root{
   --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#B7C1CC;
   --ink:#101C28; --ink-2:#3A4959; --muted:#5F6E7F;
-  --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED;
+  --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED; --verify:#0E7490;
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
   --shadow:0 1px 2px rgb(16 28 40 / .06);
   --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
@@ -111,7 +111,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 :root[data-theme="dark"]{
   --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
   --ink:#E7EDF3; --ink-2:#B4C0CD; --muted:#8C9BAC;
-  --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD;
+  --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD; --verify:#38BDF8;
   --good:#4ADE80; --warn:#FBBF24; --bad:#F87171; --on-c:#0C141C;
   --shadow:none; color-scheme:dark;
 }
@@ -1087,6 +1087,7 @@ window.addEventListener('online',function(){updateConn();});
 window.addEventListener('offline',function(){updateConn();});
 
 var IC={
+     verify:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h3M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2"/>',
      boxes:'<path d="M4 9h16v11H4z"/><path d="M3 5h18v4H3zM12 5v15"/>',
      waste:'<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/><path d="M10 11v5M14 11v5"/>',
      filling:'<path d="M4 5h16l-6 7v6l-4-2v-4z"/>',
@@ -1773,12 +1774,12 @@ function greetHTML(){
 }
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب',verify:'التحقق من البطاقة'}[U.view]||'';
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
     return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+
-    '<div class="hl">'+deepBtn()+themeBtn()+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
+    '<div class="hl">'+deepBtn()+themeBtn()+(tabHidden('verify')?'':verifyBtn())+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
@@ -1802,6 +1803,7 @@ function navItems(){
     {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
   st.push({k:'waste',l:'هالك',n:(S.waste||[]).length,u:'عملية'});
+  st.push({k:'verify',l:'التحقق من البطاقة',n:usersList().length,u:'مستخدم'});
   st.push({k:'filling',l:'تحضير حشو',n:PRODUCTS.filter(function(p){return isFill(p)&&!p.archived;}).length,u:'صنف'});
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
@@ -1828,7 +1830,7 @@ function navTab(s){
     (s.live&&U.view==='home'&&s.k==='prod'?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'<small>'+s.u+'</small></button>';
 }
 function navHTML(){
-  var st=navItems().filter(function(x){return !tabHidden(x.k);});
+  var st=navItems().filter(function(x){return !tabHidden(x.k)&&x.k!=='verify';});
   var out='',i=0;
   while(i<st.length){
     var g=st[i].g;
@@ -3483,7 +3485,7 @@ function render(){
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.toggle('has-bbar',U.view!=='home');
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -4408,6 +4410,15 @@ function settingsGate(){
   return '<section class="card" style="--c:var(--settings);max-width:420px;margin:24px auto"><h3>'+title+'</h3>'+err+body+'<button class="btn block" data-act="settingsSubmit">'+btn+'</button>'+extra+'</section>';
 }
 
+function verifyBtn(){return '<button class="btn ghost sm themebtn" data-act="tab" data-v="verify" aria-label="التحقق من البطاقة" title="التحقق من البطاقة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h3M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg></button>';}
+function verifyView(){
+  var q=U.vq||'',r=U.vres,res='';
+  if(r==='none')res='<div class="note" style="margin-top:12px">مفيش بطاقة بالرقم ده</div>';
+  else if(r)res='<div class="card" style="margin-top:12px;--c:var(--verify)"><b>'+esc(r.name||'')+'</b>'+(r.job?'<div class="meta">'+esc(r.job)+'</div>':'')+'<div>الكود: <span class="ltr">'+esc(r.code||'')+'</span></div>'+(r.joinDate?'<div class="meta">تاريخ الانضمام: '+esc(r.joinDate)+'</div>':'')+'</div>';
+  return '<section class="card" style="--c:var(--verify);max-width:420px;margin:24px auto;text-align:center"><h3>التحقق من البطاقة</h3><p class="meta" style="margin:0 0 12px">اكتب رقم الـ ID الموجود على الكارت</p>'+
+    '<div class="fld"><input id="vcId" class="ltr" autocomplete="off" maxlength="20" placeholder="CODE" value="'+esc(q)+'" style="text-align:center;letter-spacing:2px"></div>'+
+    '<button class="btn block" data-act="verifyCard">عرض البطاقة</button>'+res+'</section>';
+}
 var MOON_P='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
 var SUN_P='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
 function curTheme(){var t=document.documentElement.getAttribute('data-theme');if(t)return t;return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
@@ -4453,6 +4464,12 @@ var ACT={
   exportBackup:function(){exportBackup();return false;},
   importBackup:function(){importBackup();return false;},
   logout:function(){try{localStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
+  verifyCard:function(){
+    var el=document.getElementById('vcId');var q=((el&&el.value)||'').trim();U.vq=q;
+    var k=q.toUpperCase();
+    var f=k?usersList().filter(function(u){return (u.cid&&String(u.cid).toUpperCase()===k)||String(u.code).toUpperCase()===k;})[0]:null;
+    U.vres=f||'none';render();return false;
+  },
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
   filter:function(d){U.filter=d.v;},
@@ -5211,7 +5228,7 @@ var ACT={
     S=seed();U.confirm=null;U.recv=null;toast('اتمسحت كل البيانات');
   }
 };
-var READ_ACTS={resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={verifyCard:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
