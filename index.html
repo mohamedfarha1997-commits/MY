@@ -3480,7 +3480,7 @@ function render(){
     if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}
   }
   U.restShown=false;
-  if(U.view==='verify'){var fa=document.getElementById('app');fa.classList.remove('has-bbar');fa.innerHTML=verifyView();return;}
+  if(U.view==='verify'){var fa=document.getElementById('app');fa.classList.remove('has-bbar');if(!fa.querySelector('iframe[data-verify]'))fa.innerHTML=verifyView();return;}
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
@@ -4415,7 +4415,7 @@ function verifyBtn(){return '<button class="btn ghost sm themebtn" data-act="tab
 function verifyView(){
   var src=new URL('card.html',location.href).href;
   return '<div style="position:fixed;inset:0;z-index:60;background:#070b22">'+
-    '<iframe allow="camera" src="'+esc(src)+'" title="التحقق من البطاقة" style="width:100%;height:100%;border:0;display:block"></iframe>'+
+    '<iframe data-verify allow="camera" src="'+esc(src)+'" title="التحقق من البطاقة" style="width:100%;height:100%;border:0;display:block"></iframe>'+
     '<button class="btn ghost sm" data-act="tab" data-v="home" style="position:absolute;top:12px;inset-inline-start:12px;z-index:1;width:auto;padding:8px 14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35)">رجوع</button></div>';
 }
 var MOON_P='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
