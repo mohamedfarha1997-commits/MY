@@ -1063,7 +1063,7 @@ function markBy(b,act){
   S.plog[b.id]=e;
 }
 var ACT_LBL={withdraw:'سحب المواد',toggleCheck:'علّم خطوة',toggleMat:'علّم مادة',toProd:'حوّل للإنتاج',startRun:'بدأ التشغيل',skipTimer:'أنهى المؤقت',approve:'اعتمد الإنتاج'};
-var STAFF_DEFAULT=['prep','prod'];
+var STAFF_DEFAULT=['prep','prod','refresh','theme'];
 var DEV=Math.random().toString(36).slice(2,8);
 function devId(){return DEV;}
 function tombAdd(kind,id){S.tomb=S.tomb||{};S.tomb[kind]=S.tomb[kind]||{};S.tomb[kind][id]=Date.now();}
@@ -1779,7 +1779,7 @@ function titleHTML(){
 }
 function topHTML(){
     return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+
-    '<div class="hl">'+deepBtn()+themeBtn()+(tabHidden('verify')?'':verifyBtn())+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
+    '<div class="hl">'+(tabHidden('refresh')?'':deepBtn())+(tabHidden('theme')?'':themeBtn())+(tabHidden('verify')?'':verifyBtn())+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
     '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
     '</header>';
 }
@@ -1804,6 +1804,8 @@ function navItems(){
   ];
   st.push({k:'waste',l:'هالك',n:(S.waste||[]).length,u:'عملية'});
   st.push({k:'verify',l:'التحقق من البطاقة',n:usersList().length,u:'مستخدم'});
+  st.push({k:'refresh',l:'زرار التحديث',n:0,u:''});
+  st.push({k:'theme',l:'الوضع الليلي والنهاري',n:0,u:''});
   st.push({k:'filling',l:'تحضير حشو',n:PRODUCTS.filter(function(p){return isFill(p)&&!p.archived;}).length,u:'صنف'});
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
@@ -1830,7 +1832,7 @@ function navTab(s){
     (s.live&&U.view==='home'&&s.k==='prod'?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'<small>'+s.u+'</small></button>';
 }
 function navHTML(){
-  var st=navItems().filter(function(x){return !tabHidden(x.k)&&x.k!=='verify';});
+  var st=navItems().filter(function(x){return !tabHidden(x.k)&&['verify','refresh','theme'].indexOf(x.k)<0;});
   var out='',i=0;
   while(i<st.length){
     var g=st[i].g;
