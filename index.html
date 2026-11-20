@@ -1855,6 +1855,44 @@ function importFromInput(){
   };
   inp.click();
 }
+/* استيراد بيانات الكروت: بيقرأ cards.json اللي اتصدّر ويحدّث الكروت للمستخدمين الموجودين بنفس الكود.
+   مش بيضيف مستخدمين جداد ولا بيغيّر الباسورد، والـ WhatsApp مش بيتستورد لأنه بيتصدّر مخفي (****) */
+function applyCardsImport(text){
+  var j=JSON.parse(text);
+  if(!j||j.app!=='rmy-cards'||!Array.isArray(j.cards))throw new Error('bad cards file');
+  var byCode={};
+  usersList().forEach(function(u){byCode[String(u.code).toLowerCase()]=u;});
+  var ok=0,miss=[];
+  j.cards.forEach(function(c){
+    if(!c||!c.code)return;
+    var u=byCode[String(c.code).toLowerCase()];
+    if(!u){miss.push(c.code);return;}
+    u.cardActive=c.active!==false;
+    if(typeof c.name==='string'&&c.name.trim())u.name=c.name.trim();
+    if(typeof c.job==='string'&&c.job.trim())u.job=c.job.trim();
+    if(typeof c.joinDate==='string'&&c.joinDate)u.joinDate=c.joinDate;
+    ok++;
+  });
+  save();render();
+  var msg='اتحدّث '+ok+' كارت';
+  if(miss.length)msg+=' · '+miss.length+' كود مش موجود عندك';
+  toast(msg);
+}
+function importCards(){
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=function(){
+    var f=inp.files&&inp.files[0];if(!f)return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      try{applyCardsImport(String(rd.result));}
+      catch(e){toast('الملف ده مش cards.json صالح');}
+    };
+    rd.onerror=function(){toast('تعذّر قراءة الملف، جرّب تاني');};
+    rd.readAsText(f);
+  };
+  inp.click();
+}
 function importBackup(){importFromInput();}
 /* تصدير واستيراد الوصفات: ملف JSON، الخامات بتتربط بالاسم والوحدة */
 function recipeRefs(p){
@@ -3733,6 +3771,7 @@ function render(){
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.add('has-bbar');
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
+applyActGuards();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   hdrGlass();
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
@@ -4425,7 +4464,7 @@ function guardState(local,snap){
   PROT_COLLS.forEach(function(c){if(!canEditColl(c))out[c]=JSON.parse(JSON.stringify(snap[c]||[]));});
   out.users=JSON.parse(JSON.stringify(snap.users||[]));
   var p=Object.assign({},local.prefs||{}),sp=snap.prefs||{};
-  ['tabsHidden','perms','pw'].forEach(function(k){p[k]=sp[k];});
+  ['tabsHidden','perms','aperms','pw'].forEach(function(k){p[k]=sp[k];});
   out.prefs=p;
   return out;
 }
@@ -4583,10 +4622,107 @@ function permsCardHTML(){
     '<div class="pusers">'+chips+'</div>'+
     '<div class="pstats"><div><b>'+cnt.edit+'</b><small>يعدّل</small></div><div><b>'+cnt.view+'</b><small>يعرض</small></div><div><b>'+cnt.none+'</b><small>لا يرى</small></div></div>'+
     '<div class="ppresets"><span class="meta">قوالب جاهزة لـ '+esc(sel.name||sel.code)+':</span>'+presets+'</div>'+
-    rows+
+    rows+permActsHTML(sel)+
     '<div class="pgrp"><div class="pgrp-h">المالك بس</div><div class="pchips">'+lockedChips+'</div></div>'+
     '<div class="pgrp"><div class="pgrp-h">إخفاء من قائمتك انت (المالك)</div><div class="pchips">'+ownChips+'</div></div>'+
     '</section>';
+}
+PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:'تعبئة العلب والقوالب'}]});
+
+/* ===== صلاحيات الإجراءات داخل التبويبات ===== */
+var PERM_SEC_LABEL={orders:'الأوردرات',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
+/* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
+var ACT_SYS={login:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1};
+/* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
+var ACT_CAT={
+  newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
+  oDelete:['orders','حذف الطلبية','w'],oDeliver:['orders','تسليم الأوردر','w'],oCreate:['orders','حفظ الأوردر','w'],
+  oDone:['orders','تم (إنهاء التعديل)','w'],oBack:['orders','تعديل أصناف الأوردر','w'],oPick:['orders','إضافة صنف للأوردر','w'],
+  resTick:['orders','تأكيد تحت التشغيل','w'],printOrder:['orders','طباعة الطلبية','r'],printAllOrders:['orders','تصدير الأوردرات PDF','r'],
+  oToggle:['orders','فتح تفاصيل الطلبية','r'],oTab:['orders','تبويب داخل الأوردر','r'],oClose:['orders','إغلاق نافذة الأوردر','r'],
+  newBatch:['prep','دفعة تحضير جديدة','w'],prepBatches:['prep','إنشاء دفعات التحضير','w'],withdraw:['prep','سحب خامات','w'],
+  groupWithdraw:['prep','سحب مجمّع','w'],toProd:['prep','تحويل الدفعة للإنتاج','w'],cancel:['prep','إلغاء الدفعة','w'],
+  batchSuggestApply:['prep','تطبيق الدفعات المقترحة','w'],matPick:['prep','اختيار خامة مقترحة','w'],
+  goStock:['prep','فتح المخزن','r'],exportBatchMats:['prep','تصدير الخامات PDF','r'],prepTabSet:['prep','تبويب التحضير','r'],
+  startRun:['prod','بدء التشغيل','w'],skipTimer:['prod','إنهاء المؤقت الآن','w'],sheetCreate:['prod','إنشاء دفعة إنتاج','w'],
+  lotZero:['prod','تصفير الدفعات','w'],testAlarm:['prod','تجربة الصوت','r'],stopAlarm:['prod','إيقاف المنبه','r'],
+  sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
+  fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
+  fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
+  fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
+  newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
+  recvOk:['stock','تأكيد الاستلام','w'],recvClose:['stock','إلغاء الاستلام','r'],filter:['stock','فلتر الخامات','r'],
+  toggleMat:['stock','فتح تفاصيل مكوّن','r'],groupMat:['stock','تجميع مكوّن','r'],
+  wasteAdd:['waste','تسجيل هالك','w'],wasteToggle:['waste','فتح تفاصيل الهالك','r'],wasteFilter:['waste','فلتر الهالك','r'],
+  wasteGrpOpen:['waste','فتح مجموعة الهالك','r'],
+  newProd:['recipes','وصفة جديدة','w'],editProd:['recipes','تعديل وصفة','w'],copyProd:['recipes','نسخ وصفة','w'],
+  formSave:['recipes','حفظ الوصفة','w'],formDelete:['recipes','حذف الوصفة','w'],formClose:['recipes','إغلاق نموذج الوصفة','r'],
+  recImport:['recipes','استيراد الوصفات','w'],recExport:['recipes','تصدير الوصفات','r'],rpOpen:['recipes','طباعة الوصفات','r'],
+  rpPrint:['recipes','تنفيذ طباعة الوصفات','r'],rpAll:['recipes','تحديد الكل للطباعة','r'],rpNone:['recipes','إلغاء تحديد الطباعة','r'],
+  rpToggle:['recipes','تحديد وصفة للطباعة','r'],rpClose:['recipes','إغلاق الطباعة','r'],
+  stAdd:['recipes','إضافة مرحلة','w'],stDel:['recipes','حذف مرحلة','w'],stMove:['recipes','ترتيب مرحلة','w'],
+  stepAdd:['recipes','إضافة خطوة','w'],stepDel:['recipes','حذف خطوة','w'],ingAdd:['recipes','إضافة مكوّن للوصفة','w'],
+  ingDel:['recipes','حذف مكوّن من الوصفة','w'],compAdd:['recipes','إضافة وصفة فرعية','w'],compDel:['recipes','حذف وصفة فرعية','w'],
+  altAdd:['recipes','إضافة بديل','w'],altDel:['recipes','حذف بديل','w'],prodKind:['recipes','نوع الصنف','r'],
+  rQty:['recipes','تعديل كمية الوصفة','r'],rSet:['recipes','تعيين كمية الوصفة','r'],
+  fillMake:['filling','اعمل الصنف المحشو','w'],fillTab:['filling','تبويب الحشو','r'],fillSel:['filling','اختيار صنف حشو','r'],
+  fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
+  runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
+  boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
+  tplAdd:['boxes','إضافة قالب','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
+  approve:['approve','اعتماد الدفعة','w'],
+  userAdd:['settings','إضافة مستخدم','w'],userDel:['settings','حذف مستخدم','w'],userEditOpen:['settings','تعديل مستخدم','w'],
+  userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],
+  userHoursToggle:['settings','ساعات المستخدم','w'],hrToggle:['settings','ساعات العمل','w'],cardsExport:['settings','تصدير الكروت','r'],cardsImport:['settings','استيراد الكروت','w'],
+  exportBackup:['settings','تنزيل نسخة احتياطية','r'],importBackup:['settings','استيراد نسخة احتياطية','w'],
+  lockMonth:['settings','قفل الشهر','w'],monthDelArchive:['settings','حذف أرشيف شهر','w'],monthPdf:['settings','تصدير الشهر PDF','r'],
+  archDel:['settings','حذف الأرشيف','w'],toggleSeason:['settings','إظهار/إخفاء موسم','w'],resetAll:['settings','مسح كل البيانات','w'],
+  plAll:['settings','تحديد سجل الإنتاج','w'],plToggle:['settings','تحديد سجل إنتاج','w'],plDel:['settings','حذف سجل الإنتاج','w']
+};
+function actAllowed(act){
+  if(!limited())return true;
+  if(ACT_SYS[act])return true;
+  if(!authed())return false;
+  var o=(pref('aperms',{})[sessionCode()])||{};
+  if(o[act]==='on')return true;
+  if(o[act]==='off')return false;
+  var def=ACT_CAT[act];
+  if(!def)return canWrite();
+  var lvl=permLevel(def[0]);
+  return def[2]==='w'?lvl==='edit':lvl!=='none';
+}
+/* بنخفي الزراير اللي الإجراء بتاعها ممنوع، ونعلّم باقي العناصر */
+function applyActGuards(){
+  if(!limited())return;
+  document.querySelectorAll('[data-act]').forEach(function(el){
+    var a=el.getAttribute('data-act');
+    if(ACT_SYS[a]||READ_ACTS[a])return;
+    if(actAllowed(a))return;
+    el.setAttribute('data-denied','1');
+    if(el.tagName==='BUTTON')el.style.display='none';
+  });
+}
+function permActsHTML(sel){
+  var secs=Object.keys(PERM_SEC_LABEL);
+  var cur=(U.permSec&&PERM_SEC_LABEL[U.permSec])?U.permSec:secs[0];
+  var o=(pref('aperms',{})[sel.code])||{};
+  var chips=secs.map(function(s){return '<button class="pchip-u'+(s===cur?' on':'')+'" data-act="permSec" data-s="'+s+'">'+PERM_SEC_LABEL[s]+'</button>';}).join('');
+  var bulk=[['def','رجّع للتبويب'],['on','سماح للكل'],['off','منع الكل']].map(function(x){
+    return '<button class="btn ghost sm" data-act="permActAll" data-u="'+esc(sel.id)+'" data-s="'+cur+'" data-lv="'+x[0]+'">'+x[1]+'</button>';
+  }).join('');
+  var list=Object.keys(ACT_CAT).filter(function(a){return ACT_CAT[a][0]===cur;});
+  var rows=list.map(function(a){
+    var c=ACT_CAT[a], st=o[a]||'def';
+    var seg=[['def','حسب التبويب'],['on','مسموح'],['off','ممنوع']].map(function(x){
+      var cls=st===x[0]?' on '+(x[0]==='off'?'none':x[0]==='on'?'edit':'view'):'';
+      return '<button class="pseg-b'+cls+'" data-act="permActSet" data-u="'+esc(sel.id)+'" data-a="'+a+'" data-lv="'+x[0]+'" aria-pressed="'+(st===x[0])+'">'+x[1]+'</button>';
+    }).join('');
+    return '<div class="prow"><div class="pinfo"><b>'+esc(c[1])+'</b><small>'+(c[2]==='w'?'بيغيّر البيانات':'عرض أو تحكم في الشاشة')+'</small></div><div class="pseg">'+seg+'</div></div>';
+  }).join('');
+  return '<div class="pgrp"><div class="pgrp-h">الإجراءات داخل التبويبات</div>'+
+    '<div class="pusers">'+chips+'</div>'+
+    '<div class="ppresets">'+bulk+'</div>'+
+    (rows||'<p class="meta">مفيش إجراءات مسجلة في القسم ده</p>')+'</div>';
 }
 var WEEK_DAYS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 function weekOffOf(u){return (u&&u.weekOff!=null&&u.weekOff!=='')?Number(u.weekOff):null;}
@@ -4647,7 +4783,7 @@ function usersCardHTML(){
      '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3><p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه بس، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني. الكود (من ٣ لـ ١٢ حرف أو رقم) بيظهر في جدول الصلاحيات وجدول الإنتاج.</p>'+
     form+
-    '<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button></div>'+
+    '<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button> <button class="btn ghost sm" data-act="cardsImport">استيراد بيانات الكروت</button></div>'+
     resetReqsHTML()+(list.length?'<table class="ttab utable" style="margin-top:12px"><thead><tr><th>المستخدم</th><th>الكود</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+editBox+'</section>';
 }
 function resetReqsHTML(){
@@ -5173,6 +5309,7 @@ var ACT={
     U.focus='[data-oq="'+d.p+'"]';
   },
   cardsExport:function(){exportCards();return false;},
+  cardsImport:function(){importCards();return false;},
   userAdd:function(){
     var n=((document.getElementById('uName')||{}).value||'').trim();
     var pw=(document.getElementById('uPw')||{}).value||'';
@@ -5309,7 +5446,7 @@ var ACT={
     if(U.confirm!=='udel:'+d.id){U.confirm='udel:'+d.id;setTimeout(function(){if(U.confirm==='udel:'+d.id){U.confirm=null;render();}},3000);render();return false;}
     var u=usersList().filter(function(x){return x.id===d.id;})[0];
     S.users=usersList().filter(function(x){return x.id!==d.id;});
-    if(u){var m=Object.assign({},pref('perms',{}));delete m[u.code];setPref('perms',m);}
+    if(u){var m=Object.assign({},pref('perms',{}));delete m[u.code];setPref('perms',m);var am=Object.assign({},pref('aperms',{}));delete am[u.code];setPref('aperms',am);}
     U.confirm=null;toast('اتشال المستخدم');render();return false;
   },
   permSel:function(d){U.permUser=d.id;render();return false;},
@@ -5323,6 +5460,22 @@ var ACT={
     var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
     var fn=PERM_PRESET_DEF[d.p];if(!fn)return false;
     permSaveFor(u.code,fn(permCatalog()));render();toast('اتطبق القالب');return false;
+  },
+  permSec:function(d){U.permSec=d.s;render();return false;},
+  permActSet:function(d){
+    var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
+    var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});
+    if(d.lv==='def')delete o[d.a];else o[d.a]=d.lv;
+    m[u.code]=o;setPref('aperms',m);render();return false;
+  },
+  permActAll:function(d){
+    var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
+    var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});
+    Object.keys(ACT_CAT).forEach(function(a){
+      if(ACT_CAT[a][0]!==d.s)return;
+      if(d.lv==='def')delete o[a];else o[a]=d.lv;
+    });
+    m[u.code]=o;setPref('aperms',m);render();toast('اتطبق على القسم');return false;
   },
   foldToggle:function(d){U.folds=U.folds||{};U.folds[d.k]=!U.folds[d.k];render();return false;},
   oCreate:function(){
@@ -5800,7 +5953,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
   var fn=ACT[t.dataset.act];if(!fn)return;
-  if(!READ_ACTS[t.dataset.act]&&!canWrite()){toast('مش مسموح بالتعديل في القسم ده');return;}
+  if(!READ_ACTS[t.dataset.act]&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
   if(fn(t.dataset)===false)return;
   save();render();
 });
