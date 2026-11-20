@@ -1175,12 +1175,28 @@ function kickDeletedUser(){
   lockSettings();U.view='home';U.bioPrompt=false;U.loginErr='الحساب ده اتحذف، سجّل دخول تاني أو كلم المالك.';
   return true;
 }
-function cardOffMsg(){return 'الكارت ده موقوف، والحساب مش شغال دلوقتي. كلم المالك عشان يفعّله.';}
+function cardOffPopupHTML(closeAttr){
+  var wa='https://wa.me/201508999341?text='+encodeURIComponent('السلام عليكم، حسابي في RMY Pro موقوف، ممكن أستفسر؟');
+  return '<div style="position:fixed;inset:0;z-index:9999;background:rgba(5,8,25,.72);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;direction:rtl">'+
+    '<div role="dialog" aria-modal="true" style="position:relative;width:100%;max-width:340px;box-sizing:border-box;padding:26px 20px 20px;border-radius:18px;background:#16204a;color:#fff;border:1px solid rgba(255,255,255,.14);text-align:center;font-family:Tajawal,Tahoma,sans-serif;box-shadow:0 20px 50px -10px rgba(0,0,0,.6)">'+
+      '<button '+closeAttr+' aria-label="إغلاق" style="position:absolute;top:6px;left:8px;background:none;border:0;color:#fff;font-size:28px;line-height:1;cursor:pointer;padding:4px 8px">×</button>'+
+      '<div style="font-size:30px;color:#fbbf24;margin-bottom:6px">!</div>'+
+      '<h3 style="margin:0 0 8px;font-size:18px;font-weight:800">الحساب ده موقوف حالياً</h3>'+
+      '<p style="margin:0;font-size:14px;line-height:1.7;color:rgba(255,255,255,.75)">مش هتقدر تدخل التطبيق دلوقتي. لو عايز تفعّله تاني، تواصل مع المسئول.</p>'+
+      '<a href="'+wa+'" target="_blank" rel="noopener" style="display:block;margin-top:14px;padding:12px;border-radius:999px;background:#25D366;color:#fff;text-decoration:none;font-weight:700">تواصل مع المسئول على واتساب</a>'+
+    '</div></div>';
+}
+function showCardOffOverlay(){
+  var prev=document.getElementById('cardOffWrap');if(prev)prev.remove();
+  var w=document.createElement('div');w.id='cardOffWrap';w.innerHTML=cardOffPopupHTML('data-cardoff-x');
+  document.body.appendChild(w);
+  var x=w.querySelector('[data-cardoff-x]');if(x)x.onclick=function(){w.remove();};
+}
 function kickStoppedUser(){
   var c=sessionCode();if(!c)return false;
   var u=userByCode(c);if(!u||u.cardActive!==false)return false;
   try{localStorage.removeItem(AUTH_KEY);}catch(e){}
-  lockSettings();U.view='home';U.bioPrompt=false;U.loginErr=cardOffMsg();
+  lockSettings();U.view='home';U.bioPrompt=false;U.cardOffPop=true;
   return true;
 }
 function actorCode(){var c=sessionCode();if(c)return c;return 'CHEF MYF';}
@@ -1513,9 +1529,9 @@ function fsStart(){baseline();gdStart();window.RMY_NEEDS_DATA=!!GD.on;}
    Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
 var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
 var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
-function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id,sh:GD_SHARD_IDS}));else localStorage.removeItem('khat-gd');}catch(e){}}
+function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id,sh:GD_SHARD_IDS,cid:GD.cardsId,cl:GD.cardsLast}));else localStorage.removeItem('khat-gd');}catch(e){}}
 function gdLoadCfg(){
-  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;if(c.sh)Object.keys(c.sh).forEach(function(k){GD_SHARD_IDS[k]=c.sh[k];});}}catch(e){}
+  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;GD.cardsId=c.cid||null;GD.cardsLast=c.cl||null;if(c.sh)Object.keys(c.sh).forEach(function(k){GD_SHARD_IDS[k]=c.sh[k];});}}catch(e){}
   try{var t=JSON.parse(localStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
@@ -1752,8 +1768,39 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
+  }).then(function(){gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
+}
+/* ملف الكروت: ملف منفصل على درايف بيتقري من صفحة الكروت (وأي حد معاه الرابط يقدر يقراه) */
+var CARDS_NAME='rmy-cards.json';
+function gdCardsFind(){
+  var q=encodeURIComponent("name='"+CARDS_NAME+"' and trashed=false");
+  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&pageSize=1&fields=files(id)&spaces=drive')
+    .then(function(r){return r.json();}).then(function(j){return j.files&&j.files[0]?j.files[0].id:null;});
+}
+function gdCardsCreate(){
+  var b='rmycards'+randHex().slice(0,12);
+  var mp='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:CARDS_NAME,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n{}\r\n--'+b+'--';
+  return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:mp})
+    .then(function(r){return r.json();}).then(function(j){
+      return gdApi('https://www.googleapis.com/drive/v3/files/'+j.id+'/permissions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:'reader',type:'anyone'})})
+        .then(function(){return j.id;});
+    });
+}
+function gdCardsSync(){
+  if(!GD.on||!GD.id||!gdTokOk())return Promise.resolve();
+  var cards=usersList().map(cardData);
+  var arr=JSON.stringify(cards);
+  if(GD.cardsId&&arr===GD.cardsLast)return Promise.resolve();
+  var body=JSON.stringify({app:'rmy-cards',v:1,updated:new Date().toISOString(),cards:cards},null,2);
+  return (GD.cardsId?Promise.resolve(GD.cardsId):gdCardsFind().then(function(id){return id||gdCardsCreate();}))
+    .then(function(id){
+      return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:body})
+        .then(function(){GD.cardsId=id;GD.cardsLast=arr;gdSaveCfg();});
+    })
+    .catch(function(e){
+      if(e&&e.code===404){GD.cardsId=null;GD.cardsLast=null;gdSaveCfg();}
+    });
 }
 function gdStart(){
   gdLoadCfg();
@@ -3508,7 +3555,7 @@ function loginHTML(){
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
     '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
     loginBtnsHTML()+
-    '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>';
+    '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
 }
 /* صفحة إعادة تعيين الـ PIN: بتتأكد من الكود وآخر ٤ أرقام من الواتساب، ولو صح بيتغير الـ PIN فوراً */
 function waDigits(s){return String(s||'').replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/\D/g,'');}
@@ -4646,7 +4693,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
@@ -4800,6 +4847,9 @@ document.addEventListener('input',function(e){
 var WEEK_DAYS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 function weekOffOf(u){return (u&&u.weekOff!=null&&u.weekOff!=='')?Number(u.weekOff):null;}
 function weekMoveOf(u){var m=u&&u.weekMove;return (m&&m.from&&m.to)?m:null;}
+function addDaysKey(k,n){var d=new Date(k+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
+function weekMoveFor(woN,toWd,todayK){var from=addDaysKey(todayK,(woN-weekdayOfKey(todayK)+7)%7);return {from:from,to:addDaysKey(from,(toWd-woN+7)%7)};}
+function weekMoveOptions(cur){return '<option value="">بدون</option>'+WEEK_DAYS_AR.map(function(n,i){return '<option value="'+i+'"'+(String(cur)===String(i)?' selected':'')+'>'+n+'</option>';}).join('');}
 function weekdayOfKey(k){return new Date(k+'T12:00:00Z').getUTCDay();}
 function weekOffOptions(cur){return '<option value="">بدون</option>'+WEEK_DAYS_AR.map(function(n,i){return '<option value="'+i+'"'+(String(cur)===String(i)?' selected':'')+'>'+n+'</option>';}).join('');}
 function usersCardHTML(){
@@ -4813,7 +4863,7 @@ function usersCardHTML(){
   var editBox='';
   var eu=U.editUser?list.filter(function(x){return x.id===U.editUser;})[0]:null;
   if(eu){
-    var onNow=userLeaveActive(eu,todayK);var mv=weekMoveOf(eu);
+    var onNow=userLeaveActive(eu,todayK);var mv=weekMoveOf(eu);if(mv&&todayK&&mv.to<todayK)mv=null;
     var period=(eu.leaveFrom&&eu.leaveTo)?('من '+eu.leaveFrom+' إلى '+eu.leaveTo):'مفيش فترة إجازة';
     editBox='<div class="uedit">'+
       '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
@@ -4833,9 +4883,8 @@ function usersCardHTML(){
       '<div class="ugrp"><span class="sec-l">يوم الإجازة الأسبوعي</span>'+
         '<div class="fld"><label for="uWeekOff">اليوم اللي بيتكرر كل أسبوع</label><select id="uWeekOff">'+weekOffOptions(eu.weekOff)+'</select></div>'+
         '<small class="uhint">المستخدم بياخد إجازة في اليوم ده كل أسبوع تلقائي، ومش محتاج تفعّله كل مرة.</small>'+
-        '<div class="urow"><div class="fld"><label for="uWeekMoveFrom">يوم الإجازة الأصلي</label><input id="uWeekMoveFrom" type="date" value="'+esc(mv?mv.from:'')+'"></div>'+
-        '<div class="fld"><label for="uWeekMoveTo">اتأجلت ليوم</label><input id="uWeekMoveTo" type="date" value="'+esc(mv?mv.to:'')+'"></div></div>'+
-        '<small class="uhint">التأجيل ده لمرة واحدة بس: الإجازة بتتنقل لليوم ده، وبعده المستخدم يرجع ياخد إجازته في اليوم الأساسي كل أسبوع.</small>'+
+        '<div class="fld"><label for="uWeekMove">اتأجلت ليوم</label><select id="uWeekMove">'+weekMoveOptions(mv?weekdayOfKey(mv.to):'')+'</select></div>'+
+        '<small class="uhint">'+(mv?'الإجازة الجاية اتأجلت ليوم '+WEEK_DAYS_AR[weekdayOfKey(mv.to)]+' ('+esc(mv.to)+')، ولما اليوم ده يخلص التأجيل بيختفي لوحده.':'اختار اليوم اللي الإجازة تتنقل ليه، والتأجيل بيختفي لوحده بعد اليوم ده.')+'</small>'+
         '<div class="ubtns"><button class="btn ghost sm" data-act="weekMoveClear">مسح التأجيل</button></div></div>'+
       '<div class="ugrp"><span class="sec-l">الإجازة التلقائية</span>'+
         '<div class="urow"><div class="fld"><label for="uLeaveFrom">من يوم</label><input id="uLeaveFrom" type="date" value="'+esc(eu.leaveFrom||'')+'"></div>'+
@@ -4860,7 +4909,7 @@ function usersCardHTML(){
       userRowsHTML(list,todayK):'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+
     editBox+
     '<div class="pgrp"><div class="pgrp-h">إضافة مستخدم جديد</div>'+form+'</div>'+
-    '<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button> <button class="btn ghost sm" data-act="cardsImport">استيراد بيانات الكروت</button></div>'+
+    '<small class="uhint">معرّف ملف الكروت (لصفحة الكروت): <span class="ltr">'+esc(GD.cardsId||'يظهر بعد أول مزامنة مع درايف')+'</span></small>'+'<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button> <button class="btn ghost sm" data-act="cardsImport">استيراد بيانات الكروت</button></div>'+
     resetReqsHTML()+'</section>';
 }
 function resetReqsHTML(){
@@ -4995,7 +5044,7 @@ var ACT={
     checkPin(p).then(function(ok){
       if(ok){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
       return findUserByPw(p).then(function(u){
-        if(u&&u.cardActive===false){U.loginErr=cardOffMsg();}
+        if(u&&u.cardActive===false){U.cardOffPop=true;}
         else if(u){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
         else{U.loginErr='الباسورد غلط';}
         render();
@@ -5020,6 +5069,7 @@ var ACT={
   },
   exportBackup:function(){exportBackup();return false;},
   importBackup:function(){importBackup();return false;},
+  cardOffClose:function(){U.cardOffPop=false;render();return false;},
   logout:function(){try{localStorage.removeItem(AUTH_KEY);}catch(e){}lockSettings();U.view='home';U.loginErr=null;render();return false;},
   tab:function(d){go(d.v);},
   goStock:function(){U.filter='low';go('stock');},
@@ -5444,7 +5494,7 @@ var ACT={
     if(!u){U.editUser=null;return false;}
     var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
     var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo'),wo=g('uWeekOff');
-    var jb=g('uEditJob'),jd=g('uEditJoin');var mf=g('uWeekMoveFrom'),mt=g('uWeekMoveTo');
+    var jb=g('uEditJob'),jd=g('uEditJoin');var wmv=g('uWeekMove');
     var wa=waDigits(g('uEditWa'));
     if(wa&&!/^[0-9]{10,15}$/.test(wa)){toast('اكتب رقم الواتساب صح');return false;}
     if(!n){toast('اكتب اسم المستخدم');return false;}
@@ -5453,9 +5503,16 @@ var ACT={
     if((lf&&!lt)||(lt&&!lf)){toast('حدد بداية ونهاية الإجازة');return false;}
     if(lf&&lt&&lt<lf){toast('نهاية الإجازة لازم تكون بعد البداية');return false;}
     var woN=(wo===''?null:Number(wo));
-    if((mf&&!mt)||(mt&&!mf)){toast('حدد اليوم الأصلي واليوم اللي اتأجل ليه');return false;}
-    if(mf&&(woN===null||weekdayOfKey(mf)!==woN)){toast('اليوم الأصلي لازم يكون يوم الإجازة الأسبوعي');return false;}
-    if(mf&&mt&&mf===mt){toast('اليوم الجديد لازم يكون غير اليوم الأصلي');return false;}
+    var newMove=null,nowM=trustedNow(),todayM=nowM===null?null:cairoDateKey(nowM);
+    if(wmv!==''){
+      if(woN===null){toast('حدد يوم الإجازة الأسبوعي الأول');return false;}
+      if(Number(wmv)===woN){toast('اليوم المؤجل لازم يكون غير يوم الإجازة الأسبوعي');return false;}
+      var cm=weekMoveOf(u);
+      var same=cm&&weekdayOfKey(cm.to)===Number(wmv)&&weekdayOfKey(cm.from)===woN&&(!todayM||cm.to>=todayM);
+      if(same)newMove=cm;
+      else if(!todayM){toast('محتاج إنترنت عشان نحسب تاريخ التأجيل');return false;}
+      else newMove=weekMoveFor(woN,Number(wmv),todayM);
+    }
     if(pw&&pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
     var finish=function(){
       var old=u.code;
@@ -5465,7 +5522,7 @@ var ACT={
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
       var ca=document.querySelector('[data-cactive]');if(ca)u.cardActive=ca.checked;
       u.weekOff=wo===''?null:Number(wo);
-      u.weekMove=(mf&&mt)?{from:mf,to:mt}:null;
+      u.weekMove=newMove;
       U.editUser=null;U.pwUser=null;save();
       toast('اتحفظت التعديلات'+(c!==old?' · الكود الجديد '+c:''));render();
     };
@@ -5481,7 +5538,7 @@ var ACT={
     return false;
   },
   weekMoveClear:function(){
-    ['uWeekMoveFrom','uWeekMoveTo'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    var el=document.getElementById('uWeekMove');if(el)el.value='';
     return false;
   },
   userLeaveClear:function(){
@@ -6403,7 +6460,11 @@ var DATA={cards:[],updated:null};
 var currentCode='';
 var out=document.getElementById('out');
 var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
+/* إعدادات صفحة الكروت: معرّف ملف الكروت (من الإعدادات) ومفتاح Google API. لو فاضيين بتتقري cards.json اللي جنب الصفحة */
+var CARDS_FILE_ID='';
+var CARDS_API_KEY='AIzaSyA97tpmMo2oZjgmvUZY3_vDzdj_KAkIFJI';
 var DATA_URL=new URL('cards.json',location.href).href;
+var CARDS_SRC=(CARDS_FILE_ID&&CARDS_API_KEY)?'https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(CARDS_FILE_ID)+'?alt=media&key='+encodeURIComponent(CARDS_API_KEY):DATA_URL;
 var LOGO='<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="110" fill="#ffffff" fill-opacity=".14"/><g fill="#fff" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg>';
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -6435,6 +6496,7 @@ function showCard(c){
       '<p><a class="btn" href="'+waStop+'" target="_blank" rel="noopener">تواصل مع المسئول على واتساب</a></p>'+
       '<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>'+
     '</div>';
+    showCardOffOverlay();
     var anotherStop=document.getElementById('anotherLink');
     if(anotherStop)anotherStop.onclick=function(e){e.preventDefault();askId();};
     return;
@@ -6679,7 +6741,7 @@ function go(v){
   showCard(c);
 }
 
-fetch(DATA_URL,{cache:'no-store'})
+fetch(CARDS_SRC,{cache:'no-store'})
   .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
   .then(function(j){
     DATA.cards=j.cards||[];
