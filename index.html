@@ -6461,7 +6461,7 @@ var currentCode='';
 var out=document.getElementById('out');
 var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
 /* إعدادات صفحة الكروت: معرّف ملف الكروت (من الإعدادات) ومفتاح Google API. لو فاضيين بتتقري cards.json اللي جنب الصفحة */
-var CARDS_FILE_ID='';
+var CARDS_FILE_ID='1HooDudVdgdVoJNzG9A8n822KZgWhWj4l';
 var CARDS_API_KEY='AIzaSyA97tpmMo2oZjgmvUZY3_vDzdj_KAkIFJI';
 var DATA_URL=new URL('cards.json',location.href).href;
 var CARDS_SRC=(CARDS_FILE_ID&&CARDS_API_KEY)?'https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(CARDS_FILE_ID)+'?alt=media&key='+encodeURIComponent(CARDS_API_KEY):DATA_URL;
