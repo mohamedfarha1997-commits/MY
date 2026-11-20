@@ -6954,11 +6954,10 @@ function downloadPdf(){
   /* التصدير بيستخدم محرك الطباعة في المتصفح نفسه، فالكارت بيطلع بالألوان والتدرجات زي ما هو قدامك بالظبط.
      من نافذة الطباعة اختار "Save as PDF" / "حفظ كـ PDF" */
   if(!el)return;
-  /* نسخة نضيفة من الكارت بتتطبع لوحدها، والكانفاس بتاع الخربشة بننقل صورته للنسخة */
+  /* نسخة نضيفة من الكارت بتتطبع لوحدها. طبقة الخربشة بتتشال من النسخة عشان الكود يبان */
   var wrap=document.createElement('div');wrap.id='cardPrint';
   var c=el.cloneNode(true);c.removeAttribute('id');
-  var src=el.querySelectorAll('canvas'),dst=c.querySelectorAll('canvas');
-  src.forEach(function(s,i){var d=dst[i];if(!d)return;d.width=s.width;d.height=s.height;try{d.getContext('2d').drawImage(s,0,0);}catch(e){}});
+  c.querySelectorAll('canvas').forEach(function(d){d.parentNode.removeChild(d);});
   wrap.appendChild(c);document.body.appendChild(wrap);
   document.body.classList.add('card-print');
   var clean=function(){document.body.classList.remove('card-print');if(wrap.parentNode)wrap.parentNode.removeChild(wrap);window.removeEventListener('afterprint',clean);};
