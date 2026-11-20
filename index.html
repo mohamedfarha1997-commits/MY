@@ -739,6 +739,16 @@ html[data-theme="light"] .fx-bg{display:none!important}
 @media (max-width:480px){.nav .tab{min-width:150px}}
 @media (max-width:480px){.hgrid{grid-template-columns:minmax(0,1fr)!important;gap:12px}}
 @media (max-width:480px){.hgrid .gin{display:flex;flex-direction:column;gap:12px;grid-auto-flow:row}.hgrid .tab{min-height:84px}.hgrid .tab .stub{flex:0 0 64px;width:64px}.hgrid .tab .stub .cnt{font-size:22px}.hgrid .tab .main{padding:12px 10px 12px 12px}}
+/* fire edge + countdown ring + wider count cell */
+.hgrid .tab .stub,.nav .tab .stub,.tab .stub{flex:0 0 40%;width:auto}
+.hgrid .tab .stub .cnt{font-size:22px}
+.tab .stub .hcdt{font-size:18px}
+.hgrid .tab .hcd{z-index:4}
+.hgrid .tab:has(.hcd)::before{display:block!important;content:"";position:absolute;inset:-2px;border-radius:16px;padding:2px;z-index:5;pointer-events:none;background:linear-gradient(110deg,#fde047,#f97316,#ef4444,#fde047,#f97316);background-size:260% 100%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:tfire 1.6s linear infinite}
+.hgrid .tab:has(.hcd) .main svg{background:linear-gradient(160deg,#2b1206,#7c2d12 60%,#9a3412);background-image:none;animation:none;stroke:#fef3c7;filter:drop-shadow(0 0 3px #fde047) drop-shadow(0 0 8px #f97316)}
+.hgrid .tab:has(.hcd){box-shadow:0 0 18px -4px rgb(249 115 22/.55)!important}
+@keyframes tfire{from{background-position:0% 0}to{background-position:100% 0}}
+@media (prefers-reduced-motion:reduce){.hgrid .tab:has(.hcd)::before{animation:none}}
 </style>
 
 <style id="cardCss">:root{
