@@ -119,7 +119,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 :root{
   --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#F4F6F8; --line:#B7C1CC;
   --ink:#101C28; --ink-2:#3A4959; --muted:#5F6E7F;
-  --orders:#BE185D; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED;
+  --orders:#BE185D; --calendar:#0284C7; --settings:#475569; --recipes:#0B7A7C; --prep:#1D4ED8; --prod:#C2410C; --stock:#0B7A7C; --finish:#6D28D9; --filling:#0E7490; --prepreq:#7C3AED;
   --good:#15803D; --warn:#B45309; --bad:#B91C1C; --on-c:#FFFFFF;
   --shadow:0 1px 2px rgb(16 28 40 / .06);
   --f-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif;
@@ -128,7 +128,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 :root[data-theme="dark"]{
   --bg:#0C141C; --surface:#14202B; --surface-2:#1A2835; --line:#26374A;
   --ink:#E7EDF3; --ink-2:#B4C0CD; --muted:#8C9BAC;
-  --orders:#F472B6; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD;
+  --orders:#F472B6; --calendar:#38BDF8; --settings:#94A3B8; --recipes:#2DB5B7; --prep:#6F9BFF; --prod:#FB8A4B; --stock:#2DB5B7; --finish:#A78BFA; --filling:#22D3EE; --prepreq:#C4B5FD;
   --good:#4ADE80; --warn:#FBBF24; --bad:#F87171; --on-c:#0C141C;
   --shadow:none; color-scheme:dark;
 }
@@ -708,6 +708,63 @@ button,input{font-family:inherit}
 .dash-u-tags{display:flex;gap:6px;flex-wrap:wrap}
 .dash-u-act{display:flex;flex-wrap:wrap;gap:6px}
 .dash-empty{margin:14px 0;padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px}
+.cal-wrap{width:100%;box-sizing:border-box;min-width:0}
+.cal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:6px 0 10px}
+.cal-top b{display:block;font-size:17px;font-weight:800}
+.cal-top small{color:var(--muted);font-size:12px}
+.cal-nav{display:flex;gap:6px;flex-wrap:wrap}
+.cal-month{font-weight:800;font-size:clamp(14px,3.6vw,18px);margin:4px 0 8px;text-align:center}
+.cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(3px,1vw,10px)}
+.cal-week span{text-align:center;font-size:clamp(10px,2.6vw,13px);color:var(--muted);font-weight:700;padding:2px 0}
+.cal-grid{margin-top:4px}
+.cal-cell{all:unset;box-sizing:border-box;cursor:pointer;min-width:0;aspect-ratio:1/1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:clamp(1px,.4vw,4px);padding:clamp(3px,1vw,8px);border-radius:clamp(10px,2vw,16px);border:1px solid var(--line);background:var(--surface);overflow:hidden;transition:transform .15s,box-shadow .2s}
+.cal-cell:active{transform:scale(.96)}
+.cal-cell.empty{visibility:hidden;border:0;background:transparent}
+.cal-cell.has{background:color-mix(in srgb,var(--calendar) 11%,var(--surface));border-color:color-mix(in srgb,var(--calendar) 28%,var(--line))}
+.cal-cell.today{box-shadow:0 0 0 2px var(--calendar) inset}
+.cal-num{font-size:clamp(12px,3.2vw,18px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.2}
+.cal-cnt{font-size:clamp(9px,2.4vw,12px);font-weight:800;color:var(--calendar);line-height:1}
+.cal-dots{display:flex;gap:3px;justify-content:center;flex-wrap:wrap}
+.cal-dot{display:inline-block;width:6px;height:6px;border-radius:50%;flex:none}
+.cal-dot.open{background:#f59e0b}
+.cal-dot.ready{background:#16a34a}
+.cal-dot.done{background:#94a3b8}
+.cal-names{display:none}
+.cal-legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:12px;font-size:12px;color:var(--muted);font-weight:700}
+.cal-legend span{display:inline-flex;align-items:center;gap:6px}
+@media (min-width:700px){
+  .cal-cell{aspect-ratio:auto;min-height:98px;align-items:stretch;justify-content:flex-start;padding:8px 9px}
+  .cal-num{font-size:16px}
+  .cal-dots{justify-content:flex-start}
+  .cal-names{display:block;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+}
+@media (min-width:1100px){
+  .cal-cell{min-height:124px}
+  .cal-num{font-size:18px}
+  .cal-names{font-size:13px}
+}
+.cal-ov{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,8,25,.55)}
+.cal-bg{position:absolute;inset:0}
+.cal-sheet{position:relative;width:100%;max-width:560px;max-height:86vh;display:flex;flex-direction:column;background:var(--surface);border-radius:22px 22px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.35);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+@media (min-width:700px){.cal-ov{align-items:center}.cal-sheet{border-radius:22px}}
+.cal-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.cal-sheet-h b{display:block;font-size:16px;font-weight:800}
+.cal-sheet-h small{color:var(--muted);font-size:12px}
+.cal-x{all:unset;cursor:pointer;font-size:26px;line-height:1;padding:2px 8px;color:var(--muted)}
+.cal-sheet-b{overflow:auto;padding:12px 14px 18px;display:grid;gap:10px}
+.cal-ord{border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:8px;background:var(--surface)}
+.cal-ord-h{display:flex;align-items:center;gap:10px}
+.cal-time{font-weight:800;font-variant-numeric:tabular-nums;color:var(--calendar);background:color-mix(in srgb,var(--calendar) 14%,transparent);padding:4px 10px;border-radius:99px;font-size:13px;white-space:nowrap}
+.cal-ord-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cal-ord-id b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-ord-id small{color:var(--muted);font-size:12px}
+.cal-st{font-size:11px;font-weight:800;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.cal-st.open{background:rgba(245,158,11,.16);color:#f59e0b}
+.cal-st.ready{background:rgba(22,163,74,.14);color:#16a34a}
+.cal-st.done{background:rgba(148,163,184,.2);color:#94a3b8}
+.cal-ord-items{font-size:13px;color:var(--ink-2)}
+.cal-ord-note{font-size:12px;color:var(--muted)}
+.cal-ord-act{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .utable{width:100%}
 .utable th{font-size:12px;color:var(--muted);font-weight:600}
 .utable td{vertical-align:middle}
@@ -1341,7 +1398,7 @@ var IC={
   stock:'<path d="M3.5 8.2L12 3.5l8.5 4.7v7.6L12 20.5l-8.5-4.7z"/><path d="M3.5 8.2L12 13l8.5-4.8M12 13v7.5"/>',
   settings:'<path d="M5 8h14M5 16h14"/><circle cx="9" cy="8" r="2.2"/><circle cx="15" cy="16" r="2.2"/>',
   recipes:'<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M8 8.5h6M8 12h6"/>',
-  orders:'<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',orders:'<path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2z"/><path d="M9 8.5h6M9 12.5h6"/>',
   shopProducts:'<path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/>',
   shopOrders:'<path d="M4 9.5h16l-1.5-5h-13z"/><path d="M5.5 9.5V20h13V9.5M9.5 20v-5h5v5"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
@@ -2173,6 +2230,7 @@ function navItems(){
   st.push({k:'prepreq',l:'تحضيرات مطلوبة',n:prepReqIds().length,u:'صنف'});
   st.push({k:'recipes',l:'وصفات',n:prodsOf('cust').length,u:'وصفة',g:'recipes'});
   st.push({k:'shopProducts',l:'وصفات المحل',n:prodsOf('shop').length,u:'وصفة',g:'recipes'});
+  st.splice(3,0,{k:'calendar',l:'التقويم',n:calUpcomingDays(),u:'يوم',g:'orders'});
   return st;
 }
 var GROUP_LABEL={orders:'الأوردرات',recipes:'الوصفات'};
@@ -3892,9 +3950,9 @@ function render(){
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,calendar:calendarView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.add('has-bbar');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+(U.view==='calendar'?calDayHTML():'');
 applyActGuards();
 focusSearchKeep();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -4435,6 +4493,76 @@ function reservedView(){
 }
 /* المواسم في الأوردرات + موسم "علب جاهزة" */
 function ordSegHTML(){return seasonSeg(ordSeason(),'setSeason',visibleSeasons().concat([['boxes','علب جاهزة']]));}
+/* ===== تقويم الأوردرات ===== */
+function calTodayKey(){var ms=trustedNow();return ms===null?null:cairoDateKey(ms);}
+function calCur(){var k=calTodayKey();return k?k.slice(0,7):new Date().toISOString().slice(0,7);}
+function calShift(ym,n){var y=+ym.slice(0,4),m=+ym.slice(5,7)+n;var d=new Date(Date.UTC(y,m-1,1));return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0');}
+function calGroup(){
+  var g={};
+  (S.orders||[]).forEach(function(o){if(o.isBox||!o.due)return;var k=String(o.due).slice(0,10);(g[k]=g[k]||[]).push(o);});
+  Object.keys(g).forEach(function(k){g[k].sort(function(a,b){return String(a.due).localeCompare(String(b.due));});});
+  return g;
+}
+function calUpcomingDays(){
+  var today=calTodayKey(),g=calGroup();
+  if(!today)return 0;
+  return Object.keys(g).filter(function(k){return k>=today&&g[k].some(function(o){return !o.deliveredAt;});}).length;
+}
+function calDotClass(o){return o.deliveredAt?'done':(ordComplete(o)?'ready':'open');}
+function calCellHTML(k,list,today){
+  var n=list?list.length:0;
+  var dots=n?list.slice(0,4).map(function(o){return '<i class="cal-dot '+calDotClass(o)+'"></i>';}).join(''):'';
+  var names=n?list.slice(0,2).map(function(o){return esc(custName(o));}).join('، ')+(n>2?' …':''):'';
+  return '<button class="cal-cell'+(k===today?' today':'')+(n?' has':'')+'" data-act="calDay" data-d="'+k+'" aria-label="'+k+(n?' — '+n+' أوردر':'')+'">'+
+    '<span class="cal-num">'+(+k.slice(8,10))+'</span>'+
+    (n?'<span class="cal-cnt">'+n+'</span><span class="cal-dots">'+dots+'</span><span class="cal-names">'+names+'</span>':'')+
+    '</button>';
+}
+function calendarView(){
+  var today=calTodayKey(),ym=U.calMonth||calCur(),g=calGroup();
+  var y=+ym.slice(0,4),m=+ym.slice(5,7);
+  var label=new Date(Date.UTC(y,m-1,15)).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'});
+  var first=new Date(Date.UTC(y,m-1,1)).getUTCDay(), days=new Date(Date.UTC(y,m,0)).getUTCDate();
+  var monthN=0,cells='';
+  for(var i=0;i<first;i++)cells+='<span class="cal-cell empty" aria-hidden="true"></span>';
+  for(var d=1;d<=days;d++){
+    var k=ym+'-'+String(d).padStart(2,'0'), list=g[k]||[];
+    monthN+=list.length;
+    cells+=calCellHTML(k,list,today);
+  }
+  var week=WEEK_DAYS_AR.map(function(n){return '<span>'+n+'</span>';}).join('');
+  return '<section class="cal-wrap">'+
+    '<div class="cal-top"><div><b>تقويم الأوردرات</b><small>'+monthN+' أوردر في '+label+'</small></div>'+
+    '<div class="cal-nav"><button class="btn ghost sm" data-act="calNav" data-m="1">الشهر اللي بعده</button>'+
+    '<button class="btn ghost sm" data-act="calToday">النهاردة</button>'+
+    '<button class="btn ghost sm" data-act="calNav" data-m="-1">الشهر اللي قبله</button></div></div>'+
+    '<div class="cal-month">'+label+'</div>'+
+    '<div class="cal-week">'+week+'</div>'+
+    '<div class="cal-grid">'+cells+'</div>'+
+    '<div class="cal-legend"><span><i class="cal-dot open"></i>قيد التحضير</span><span><i class="cal-dot ready"></i>جاهز للتسليم</span><span><i class="cal-dot done"></i>متسلّم</span></div>'+
+    '</section>';
+}
+function calDayHTML(){
+  var k=U.calDay;if(!k)return '';
+  var list=calGroup()[k]||[];
+  var title=new Date(k+'T12:00:00Z').toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
+  var canEd=!limited()||permLevel('orders')==='edit';
+  var rows=list.map(function(o){
+    var time=String(o.due).slice(11,16);
+    var st=o.deliveredAt?'<span class="cal-st done">متسلّم</span>':(ordComplete(o)?'<span class="cal-st ready">جاهز</span>':'<span class="cal-st open">قيد التحضير</span>');
+    return '<article class="cal-ord">'+
+      '<div class="cal-ord-h"><span class="cal-time">'+(time||'--:--')+'</span>'+
+      '<div class="cal-ord-id"><b>'+esc(custName(o))+'</b><small class="ltr">'+sid(o.id)+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+'</small></div>'+st+'</div>'+
+      '<div class="cal-ord-items">'+itemsText(o)+'</div>'+
+      (o.note?'<div class="cal-ord-note">ملاحظة: '+o.note+'</div>':'')+
+      '<div class="cal-ord-act"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة</button>'+
+      (canEd&&!o.deliveredAt?'<button class="btn sm" data-act="calEditOrder" data-id="'+o.id+'">تعديل</button>':'')+'</div></article>';
+  }).join('');
+  return '<div class="cal-ov"><div class="cal-bg" data-act="calClose"></div><div class="cal-sheet" role="dialog" aria-modal="true" aria-label="أوردرات اليوم">'+
+    '<div class="cal-sheet-h"><div><b>'+title+'</b><small>'+list.length+(list.length>1?' أوردرات':' أوردر')+'</small></div>'+
+    '<button class="cal-x" data-act="calClose" aria-label="إغلاق">×</button></div>'+
+    '<div class="cal-sheet-b">'+rows+'</div></div></div>';
+}
 function ordersView(kind){
   kind=kind||'cust';
   if(ordSeason()==='boxes')return head(kind==='shop'?'أوردرات المحل':'الأوردرات','علب جاهزة: اعمل قالب للعلبة بأصنافها، واطلبها زي أي أوردر','')+ordSegHTML()+boxSeasonHTML();
@@ -4578,7 +4706,7 @@ function mkStage(kind,name){return {kind:kind,name:name||'',ings:[],steps:['']};
 
 function hiddenTabs(){return pref('tabsHidden',[]);}
 /* صلاحيات التعديل: كل قسم مربوط بالمجموعة اللي بيتخزن فيها في الملف المشترك */
-var SECTION_COLL={orders:['orders'],shopOrders:['orders'],reserved:['batches'],prep:['batches'],prod:['batches'],fgstock:['done'],stock:['materials'],recipes:['products'],shopProducts:['products'],filling:['products'],prepreq:['products'],waste:['waste']};
+var SECTION_COLL={orders:['orders'],calendar:['orders'],shopOrders:['orders'],reserved:['batches'],prep:['batches'],prod:['batches'],fgstock:['done'],stock:['materials'],recipes:['products'],shopProducts:['products'],filling:['products'],prepreq:['products'],waste:['waste']};
 var PROT_COLLS=['orders','batches','done','products','materials','waste'];
 function viewNoteHTML(){if(!limited()||canEditView())return '';return '<div class="note" role="status">الصفحة دي للعرض بس: أي تعديل فيها مش هيتحفظ</div>';}
 function snapOf(s){return JSON.parse(JSON.stringify(s));}
@@ -4612,7 +4740,8 @@ var PERM_GROUPS=[
   {l:'الأوردرات',rows:[
     {k:'orders',l:'أوردرات',d:'طلبات العملاء: تسجيلها ومتابعتها وطباعتها'},
     {k:'shopOrders',l:'أوردرات المحل',d:'طلبات المحل: تسجيلها ومتابعتها'},
-    {k:'reserved',l:'تحت التشغيل',d:'الطلبات المحجوزة لإنتاج'}
+    {k:'reserved',l:'تحت التشغيل',d:'الطلبات المحجوزة لإنتاج'},
+     {k:'calendar',l:'التقويم',d:'الأيام المحجوزة بالأوردرات ومراجعة الحفلات في كل يوم'}
   ]},
   {l:'الإنتاج',rows:[
     {k:'prep',l:'تحضير',d:'الدفعات، حساب الخامات، وخطوات التجهيز'},
@@ -4755,11 +4884,12 @@ function permsCardHTML(){
 PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:'تعبئة العلب والقوالب'}]});
 
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
-var PERM_SEC_LABEL={orders:'الأوردرات',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
+var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
 var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
+  calEditOrder:['orders','تعديل من التقويم','w'],
   newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
   oDelete:['orders','حذف الطلبية','w'],oDeliver:['orders','تسليم الأوردر','w'],oCreate:['orders','حفظ الأوردر','w'],
   oDone:['orders','تم (إنهاء التعديل)','w'],oBack:['orders','تعديل أصناف الأوردر','w'],oPick:['orders','إضافة صنف للأوردر','w'],
@@ -5733,6 +5863,17 @@ var ACT={
     });
     m[u.code]=o;setPref('aperms',m);render();toast('اتطبق على القسم');return false;
   },
+  calNav:function(d){U.calMonth=calShift(U.calMonth||calCur(),Number(d.m));U.calDay=null;render();return false;},
+  calToday:function(){U.calMonth=null;U.calDay=null;render();return false;},
+  calDay:function(d){if(!(calGroup()[d.d]||[]).length){toast('مفيش أوردرات في اليوم ده');return false;}U.calDay=d.d;render();return false;},
+  calClose:function(){U.calDay=null;render();return false;},
+  calEditOrder:function(d){
+    var o=(S.orders||[]).filter(function(x){return x.id===d.id;})[0];
+    if(!o){toast('الأوردر ده مش موجود');return false;}
+    U.calDay=null;U.view=okind(o)==='shop'?'shopOrders':'orders';
+    ACT.oEdit({id:o.id});
+    render();return false;
+  },
   uFilter:function(d){U.uFilter=d.f;render();return false;},
   uSort:function(d){U.uSort=d.s;render();return false;},
   userCardToggle:function(d){
@@ -5988,7 +6129,7 @@ var ACT={
   notifLater:function(){U.notifLater=true;},
   testAlarm:function(){unlockAudio();beep();buzz();showSysNotif('تجربة التنبيه','لو وصلك الإشعار بصوت واهتزاز يبقى شغال','test');toast('لو سمعت الصوت وحسيت الاهتزاز يبقى التنبيه شغال');return false;},
 };
-var READ_ACTS={deepRefresh:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
+var READ_ACTS={calNav:1,calDay:1,calClose:1,calToday:1,deepRefresh:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,notifAsk:1,notifLater:1,wasteToggle:1,wasteClose:1,wasteFilter:1,wasteGrpOpen:1,tab:1,fgFilter:1,fgSel:1,fgClear:1,goStock:1,filter:1,rQty:1,rSet:1,oToggle:1,oClose:1,sheetClose:1,sheetProd:1,sheetQty:1,
   formClose:1,altAdd:1,altDel:1,stAdd:1,stMove:1,stDel:1,ingAdd:1,ingDel:1,stepAdd:1,stepDel:1,stopAlarm:1,testAlarm:1,
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
