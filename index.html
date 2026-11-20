@@ -4842,6 +4842,16 @@ function permSegHTML(uid,k,cur,ap){
     return '<button class="pseg-b'+(on?' on '+o[0]:'')+'" data-act="permSet" data-u="'+esc(uid)+'" data-k="'+k+'" data-lv="'+o[0]+'" aria-pressed="'+on+'">'+o[1]+'</button>';
   }).join('')+'</div>';
 }
+/* قوالب محفوظة: بتحفظ صلاحيات التبويبات + الإجراءات لأي مستخدم، وتتطبق على أي مستخدم تاني بضغطة */
+function savedTplsHTML(sel){
+  var tpls=pref('savedPermTpls',[])||[];
+  var items=tpls.map(function(t){
+    return '<button class="btn ghost sm" data-act="permTplApply" data-u="'+esc(sel.id)+'" data-t="'+esc(t.id)+'">'+esc(t.name)+'</button>'+
+      '<button class="btn ghost sm" data-act="permTplDel" data-t="'+esc(t.id)+'" aria-label="حذف القالب">×</button>';
+  }).join('');
+  return '<div class="ppresets"><span class="meta">قوالبي المحفوظة:</span>'+(items||'<span class="meta">مفيش قوالب لسه</span>')+
+    '<button class="btn sm" data-act="permTplSave" data-u="'+esc(sel.id)+'">احفظ صلاحيات '+esc(sel.name||sel.code)+' كقالب</button></div>';
+}
 function permsCardHTML(){
   if(limited())return '';
   var head='<h3>الصلاحيات</h3>';
@@ -4877,6 +4887,7 @@ function permsCardHTML(){
     '<div class="pusers">'+chips+'</div>'+
     '<div class="pstats"><div><b>'+cnt.edit+'</b><small>يعدّل</small></div><div><b>'+cnt.view+'</b><small>يعرض</small></div><div><b>'+cnt.none+'</b><small>لا يرى</small></div></div>'+
     '<div class="ppresets"><span class="meta">قوالب جاهزة لـ '+esc(sel.name||sel.code)+':</span>'+presets+'</div>'+
+    savedTplsHTML(sel)+
     rows+permActsHTML(sel)+
     '<div class="pgrp"><div class="pgrp-h">المالك بس</div><div class="pchips">'+lockedChips+'</div></div>'+
     '<div class="pgrp"><div class="pgrp-h">إخفاء من قائمتك انت (المالك)</div><div class="pchips">'+ownChips+'</div></div>'+
@@ -5848,6 +5859,25 @@ var ACT={
     var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
     var fn=PERM_PRESET_DEF[d.p];if(!fn)return false;
     permSaveFor(u.code,fn(permCatalog()));render();toast('اتطبق القالب');return false;
+  },
+  permTplSave:function(d){
+    var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
+    var name=(window.prompt('اسم القالب اللي هتحفظ بيه الصلاحيات دي؟','')||'').trim();
+    if(!name)return false;
+    var list=(pref('savedPermTpls',[])||[]).slice();
+    list.push({id:'t'+Date.now(),name:name,perms:Object.assign({},permsOf(u.code)),aperms:Object.assign({},(pref('aperms',{})[u.code])||{})});
+    setPref('savedPermTpls',list);render();toast('اتحفظ القالب');return false;
+  },
+  permTplApply:function(d){
+    var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;
+    var t=(pref('savedPermTpls',[])||[]).filter(function(x){return x.id===d.t;})[0];if(!t)return false;
+    permSaveFor(u.code,Object.assign({},t.perms));
+    var m=Object.assign({},pref('aperms',{}));m[u.code]=Object.assign({},t.aperms||{});setPref('aperms',m);
+    render();toast('اتطبق القالب');return false;
+  },
+  permTplDel:function(d){
+    setPref('savedPermTpls',(pref('savedPermTpls',[])||[]).filter(function(x){return x.id!==d.t;}));
+    render();return false;
   },
   permSec:function(d){U.permSec=d.s;render();return false;},
   permActSet:function(d){
@@ -6861,8 +6891,7 @@ function initScratch(){
 /* تجهيز الكارت للتصدير: الطبقة الفضية بتتخفى عشان الرقم يبان، والباركود (SVG) بيتحوّل لصورة عشان يتصور زي ما هو */
 function cardPdfPrep(el){
   var swaps=[],jobs=[];
-  var sc=document.getElementById('scratchC');
-  if(sc){swaps.push({el:sc,disp:sc.style.display});sc.style.display='none';}
+  /* الطبقة الفضية (scratchC) بتفضل زي ما هي على الشاشة: الـ ID بيفضل مخفي لحد ما يتخربش */
   [].forEach.call(el.querySelectorAll('svg'),function(svg){
     var r=svg.getBoundingClientRect();
     var str=new XMLSerializer().serializeToString(svg);
