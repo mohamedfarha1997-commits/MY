@@ -4,6 +4,12 @@
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
 
+// Chrome only offers "install" (and shows the install prompt / launch screen) for apps whose
+// service worker handles fetch events. This pass-through keeps everything network-only, so nothing is cached.
+self.addEventListener('fetch', function (e) {
+  e.respondWith(fetch(e.request));
+});
+
 // Tapping a notification focuses the app and opens the section it belongs to.
 self.addEventListener('notificationclick', function (e) {
   e.notification.close();
