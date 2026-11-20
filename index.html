@@ -4438,22 +4438,80 @@ function saveSettingsPw(p){
   return hexPbkdf2(p,salt,iter).then(function(h){setPref('pw',{salt:salt,hash:h,iter:iter});});
 }
 function pwField(id,label,ac){return '<div class="fld"><label for="'+id+'">'+label+'</label><input id="'+id+'" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="'+ac+'"></div>';}
+/* جدول التبويبات والصلاحيات: كل الأقسام والأجزاء اللي جوه التطبيق مرتبة في مجموعات */
+var PERM_GROUPS=[
+  {l:'الأوردرات',rows:[
+    {k:'orders',l:'أوردرات',d:'طلبات العملاء: تسجيلها ومتابعتها وطباعتها'},
+    {k:'shopOrders',l:'أوردرات المحل',d:'طلبات المحل: تسجيلها ومتابعتها'},
+    {k:'reserved',l:'تحت التشغيل',d:'الطلبات المحجوزة لإنتاج'}
+  ]},
+  {l:'الإنتاج',rows:[
+    {k:'prep',l:'تحضير',d:'الدفعات، حساب الخامات، وخطوات التجهيز'},
+    {k:'prod',l:'إنتاج',d:'تشغيل الدفعات والمؤقت وسجل الإنتاج'},
+    {k:'prepreq',l:'تحضيرات مطلوبة',d:'المكونات الوسيطة اللازمة لإعادة إنتاج النواقص'},
+    {k:'filling',l:'تحضير حشو',d:'الأصناف المحشوة',sub:[
+      {k:'fillrun',l:'تسجيل إنتاج جديد',d:'تشغيل صنف محشو موجود من مخزن الإنتاج'},
+      {k:'filladd',l:'إضافة أصناف جديدة',d:'اعمل صنف محشو جديد بكود جديد'}
+    ]}
+  ]},
+  {l:'المخازن',rows:[
+    {k:'stock',l:'مكوّنات',d:'تعريف المكوّنات المستخدمة في الوصفات'},
+    {k:'fgstock',l:'مخزن الإنتاج',d:'الكميات الجاهزة والنواقص'},
+    {k:'waste',l:'هالك',d:'تسجيل عمليات الهالك'}
+  ]},
+  {l:'الوصفات',rows:[
+    {k:'recipes',l:'وصفات',d:'إضافة الوصفات وتعديلها واستيرادها وتصديرها'},
+    {k:'shopProducts',l:'وصفات المحل',d:'وصفات المحل'}
+  ]},
+  {l:'أدوات التطبيق',rows:[
+    {k:'verify',l:'التحقق من البطاقة',d:'فتح كاميرا التحقق من كود الموظف'},
+    {k:'refresh',l:'زرار التحديث',d:'تحديث البيانات من درايف'},
+    {k:'theme',l:'الوضع الليلي والنهاري',d:'تغيير شكل التطبيق'},
+    {k:'approve',l:'اعتماد الإنتاج',d:'اعتماد الدفعات بعد انتهاء الوقت',fixed:true},
+    {k:'settings',l:'الإعدادات',d:'صفحة الإعدادات كلها',fixed:true}
+  ]}
+];
+var PERM_OWNER_ONLY=[
+  {l:'مواعيد العمل',d:'ساعات فتح التطبيق لكل يوم'},
+  {l:'إدارة المستخدمين',d:'إضافة المستخدمين وتعديلهم وأكوادهم وإجازاتهم'},
+  {l:'التبويبات والصلاحيات',d:'هذا الجدول نفسه'},
+  {l:'المواسم',d:'إظهار وإخفاء المواسم في الأوردرات'},
+  {l:'الـ PIN والقفل',d:'تغيير رقم الإعدادات وقفلها'},
+  {l:'سجل الإنتاج',d:'عرض سجل الإنتاج وحذفه'},
+  {l:'قفل الشهور',d:'قفل الشهور وإدارة الأرشيف وتحميل PDF'},
+  {l:'النسخ الاحتياطي',d:'تصدير واستيراد البيانات'},
+  {l:'درايف',d:'ربط حساب جوجل درايف والمزامنة'},
+  {l:'تثبيت التطبيق',d:'تثبيت التطبيق على الجهاز'}
+];
 function tabsCardHTML(){
   if(limited())return '';
   var users=usersList();
-  var TR=function(t){
+  var cols=2+users.length;
+  var ownerCell=function(t){
+    if(t.fixed)return '<span class="meta">دايمًا ظاهر</span>';
     var hid=tabHidden(t.k);
-    var ownerCell='<button class="tg'+(hid?'':' on')+'" data-act="'+'toggleTab'+'" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
-    var userCells=users.map(function(u){return permCellHTML(u,t.k);}).join('');
-    return '<tr><td>'+t.l+'</td><td>'+ownerCell+'</td>'+userCells+'</tr>';
+    return '<button class="tg'+(hid?'':' on')+'" data-act="toggleTab" data-k="'+t.k+'">'+(hid?'مخفي':'ظاهر')+'</button>';
   };
-  var rows=navItems().map(function(t){return TR(t)+(t.k==='filling'?TR({k:'fillrun',l:'تحضير حشو ← تسجيل إنتاج جديد'})+TR({k:'filladd',l:'تحضير حشو ← إضافة أصناف جديدة'}):'');}).join('');
-  rows+='<tr><td>اعتماد الإنتاج (بعد انتهاء الوقت)</td><td><span class="meta">دايمًا ظاهر</span></td>'+
-    users.map(function(u){var on=userTabs(u.code).indexOf('approve')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="approve">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
-  rows+='<tr><td>الإعدادات</td><td><span class="meta">دايمًا ظاهر</span></td>'+
-    users.map(function(u){var on=userTabs(u.code).indexOf('settings')>-1;return '<td><button class="tg'+(on?' on':'')+'" data-act="toggleUserTab" data-u="'+esc(u.code)+'" data-k="settings">'+(on?'ظاهر':'مخفي')+'</button></td>';}).join('')+'</tr>';
+  var rowOf=function(t,sub){
+    var name='<b>'+t.l+'</b>'+(t.d?'<span class="meta" style="display:block;margin-top:2px">'+t.d+'</span>':'');
+    return '<tr><td'+(sub?' style="padding-inline-start:22px"':'')+'>'+name+'</td><td>'+ownerCell(t)+'</td>'+
+      users.map(function(u){return permCellHTML(u,t.k);}).join('')+'</tr>';
+  };
+  var grp=function(l){return '<tr><th colspan="'+cols+'" style="text-align:start;background:rgba(127,127,127,.14)">'+l+'</th></tr>';};
+  var body=PERM_GROUPS.map(function(g){
+    return grp(g.l)+g.rows.map(function(t){
+      return rowOf(t,false)+(t.sub?t.sub.map(function(s){return rowOf(s,true);}).join(''):'');
+    }).join('');
+  }).join('');
+  var own=PERM_OWNER_ONLY.map(function(o){
+    return '<tr><td><b>'+o.l+'</b><span class="meta" style="display:block;margin-top:2px">'+o.d+'</span></td><td><span class="meta">المالك بس</span></td>'+
+      users.map(function(){return '<td><span class="meta">—</span></td>';}).join('')+'</tr>';
+  }).join('');
+  body+=grp('الإعدادات (المالك بس)')+own;
   var hd='<tr><th>التبويب</th><th>المالك</th>'+users.map(function(u){var conf=U.confirm==='udel:'+u.id;return '<th><button class="ox" data-act="userDel" data-id="'+u.id+'" aria-label="احذف المستخدم" title="احذف المستخدم" style="'+(conf?'width:auto;padding:0 8px;font-size:12px;color:var(--bad)':'')+'">'+(conf?'تأكيد':'×')+'</button><br><span class="ltr">'+esc(u.code)+'</span><br><small>'+esc(u.name)+'</small></th>';}).join('')+'</tr>';
-  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3><p class="meta" style="margin:0">اختار إيه يظهر لكل مستخدم. المستخدم اللي بيتضاف بيتسجل هنا تلقائي بالتبويبات الافتراضية.</p><div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+rows+'</tbody></table></div></section>';
+  return '<section class="card" style="--c:var(--settings)"><h3>التبويبات والصلاحيات</h3>'+
+    '<p class="meta" style="margin:0">كل الأقسام والأجزاء اللي جوه التطبيق في مكان واحد. الأقسام اللي بتسجّل بيانات بتتحدد لكل مستخدم: مخفي أو يشوف أو يعدّل. التبويبات والأجزاء التانية: ظاهر أو مخفي. اللي مكتوب عليه المالك بس بيفضل عندك دايمًا. المستخدم اللي بيتضاف بيتسجل تلقائي بالتبويبات الافتراضية.</p>'+
+    '<div style="overflow-x:auto"><table class="ttab"><thead>'+hd+'</thead><tbody>'+body+'</tbody></table></div></section>';
 }
 function userTabs(c){var m=pref('userTabs',{});return m[c]||STAFF_DEFAULT;}
 var WEEK_DAYS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
