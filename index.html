@@ -664,6 +664,50 @@ button,input{font-family:inherit}
 .stile .sic{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:color-mix(in srgb,var(--settings) 14%,transparent);color:var(--settings);flex:none}
 .stile .sic svg{width:24px;height:24px}
 .stile .stl{font-size:13px;font-weight:700;line-height:1.35;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;max-width:100%}
+.dash-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 2px}
+.dash-head b{display:block;font-size:17px;font-weight:800}
+.dash-head small{color:var(--muted);font-size:12px}
+.dash-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.dash-kpi{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);transition:transform .15s,box-shadow .2s}
+.dash-kpi:active{transform:scale(.98)}
+.dash-kpi.on{border-color:var(--k);box-shadow:0 0 0 1px var(--k) inset}
+.dash-kpi-t{font-size:12px;color:var(--muted);font-weight:700}
+.dash-kpi b{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--k)}
+.dash-bar{display:block;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.dash-bar i{display:block;height:100%;border-radius:99px;background:var(--k,var(--settings));transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.dash-mid{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:14px;border-radius:18px;border:1px solid var(--line);background:var(--surface);margin-bottom:6px}
+.dash-donut{position:relative;width:132px;height:132px;flex:none}
+.dash-donut svg{width:100%;height:100%}
+.dash-donut-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dash-donut-c b{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.dash-donut-c small{font-size:11px;color:var(--muted)}
+.dash-legend{flex:1;min-width:150px;display:grid;gap:9px}
+.dash-legend div{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.dash-legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.dash-legend span{margin-inline-start:auto;font-variant-numeric:tabular-nums;color:var(--muted)}
+.dash-tools{display:grid;gap:10px;margin:12px 0 4px}
+.dash-search input{width:100%;box-sizing:border-box}
+.dash-sorts,.dash-filters{display:flex;gap:6px;flex-wrap:wrap}
+.dash-chip{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.dash-chip.on{background:var(--settings);border-color:var(--settings);color:#fff}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;margin-top:10px}
+.dash-user{display:flex;flex-direction:column;gap:12px;padding:14px 14px 12px 14px;border-radius:18px;border:1px solid var(--line);background:var(--surface);position:relative;overflow:hidden;--st:var(--settings)}
+.dash-user::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--st)}
+.dash-user.st-active{--st:#16a34a}
+.dash-user.st-leave{--st:#3b82f6}
+.dash-user.st-off{--st:#ef4444}
+.dash-user header{display:flex;align-items:center;gap:10px}
+.dash-u-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dash-u-id b{font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-u-id small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-badge{font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;white-space:nowrap}
+.dash-badge.ok{background:rgba(22,163,74,.14);color:#16a34a}
+.dash-badge.leave{background:rgba(59,130,246,.14);color:#3b82f6}
+.dash-badge.off{background:rgba(239,68,68,.14);color:#ef4444}
+.dash-badge.warn{background:rgba(245,158,11,.16);color:#f59e0b}
+.dash-u-tags{display:flex;gap:6px;flex-wrap:wrap}
+.dash-u-act{display:flex;flex-wrap:wrap;gap:6px}
+.dash-empty{margin:14px 0;padding:18px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px}
 .utable{width:100%}
 .utable th{font-size:12px;color:var(--muted);font-weight:600}
 .utable td{vertical-align:middle}
@@ -4823,8 +4867,8 @@ function userStatsHTML(list,todayK){
 function userFilterHTML(list,todayK){
   var c=userCounts(list,todayK), cur=U.uFilter||'all';
   return [['all','الكل'],['active','نشط'],['leave','في إجازة'],['cardOff','كارت موقوف'],['noPerm','بدون صلاحيات']].map(function(x){
-    return '<button class="btn '+(cur===x[0]?'':'ghost ')+'sm" data-act="uFilter" data-f="'+x[0]+'">'+x[1]+' ('+c[x[0]]+')</button>';
-  }).join(' ');
+    return '<button class="dash-chip'+(cur===x[0]?' on':'')+'" data-act="uFilter" data-f="'+x[0]+'">'+x[1]+' '+c[x[0]]+'</button>';
+  }).join('');
 }
 function userMatches(u,todayK){
   var q=String(U.uSearch||'').trim().toLowerCase();
@@ -4836,24 +4880,74 @@ function userMatches(u,todayK){
   if(cur==='noPerm')return f.noPerm;
   return true;
 }
-function userRowsHTML(list,todayK){
-  var shown=list.filter(function(u){return userMatches(u,todayK);});
-  if(!shown.length)return '<div class="meta" style="margin:12px 0">مفيش مستخدمين مطابقين للبحث أو الفلتر.</div>';
-  return '<table class="ttab utable" style="margin-top:8px"><thead><tr><th>المستخدم</th><th>الحالة</th><th></th></tr></thead><tbody>'+
-    shown.map(function(u){
-      var f=userFlags(u,todayK), conf=U.confirm==='udel:'+u.id;
-      var pills=(f.leave?'<span class="upill">في إجازة</span> ':'')+(f.cardOff?'<span class="upill bad">كارت موقوف</span> ':'')+(f.noPerm?'<span class="upill">بدون صلاحيات</span>':'');
-      var leaveLbl=(u.leave===todayK)?'ألغِ إجازة النهاردة':'إجازة النهاردة';
-      return '<tr><td><div class="uname"><span class="uava sm">'+esc((u.name||'?').charAt(0))+'</span><div><b>'+esc(u.name)+'</b><small class="ltr">'+esc(u.code)+(u.job?' · '+esc(u.job):'')+'</small></div></div></td>'+
-        '<td>'+(pills||'<span class="meta">نشط</span>')+'</td>'+
-        '<td class="uact"><div class="ubtns-row">'+
-          '<button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button> '+
-          '<button class="btn ghost sm" data-act="userCardToggle" data-id="'+u.id+'">'+(f.cardOff?'تفعيل الكارت':'إيقاف الكارت')+'</button> '+
-          '<button class="btn ghost sm" data-act="userLeave" data-id="'+u.id+'" '+(todayK?'':'disabled')+'>'+leaveLbl+'</button> '+
-          '<button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button>'+
-        '</div></td></tr>';
-    }).join('')+'</tbody></table>';
+var USER_SORTS=[['name','الاسم'],['status','الحالة'],['code','الكود'],['recent','الأحدث']];
+function userStatusOf(u,todayK){var f=userFlags(u,todayK);return f.cardOff?'off':(f.leave?'leave':'active');}
+function userSortList(list,todayK){
+  var cur=U.uSort||'name', rank={off:0,leave:1,active:2}, arr=list.slice();
+  if(cur==='status')arr.sort(function(a,b){return rank[userStatusOf(a,todayK)]-rank[userStatusOf(b,todayK)]||String(a.name||'').localeCompare(String(b.name||''),'ar');});
+  else if(cur==='code')arr.sort(function(a,b){return String(a.code).localeCompare(String(b.code));});
+  else if(cur==='recent')arr.reverse();
+  else arr.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'ar');});
+  return arr;
 }
+function userSortHTML(){
+  var cur=U.uSort||'name';
+  return USER_SORTS.map(function(x){return '<button class="dash-chip'+(cur===x[0]?' on':'')+'" data-act="uSort" data-s="'+x[0]+'">'+x[1]+'</button>';}).join('');
+}
+function userKpiHTML(list,todayK){
+  var c=userCounts(list,todayK), n=c.all||0, cur=U.uFilter||'all';
+  var pct=function(v){return n?Math.round(v/n*100):0;};
+  var items=[['all','الإجمالي',c.all,100,'var(--settings)'],['active','نشط الآن',c.active,pct(c.active),'#16a34a'],['leave','في إجازة',c.leave,pct(c.leave),'#3b82f6'],['cardOff','كارت موقوف',c.cardOff,pct(c.cardOff),'#ef4444']];
+  return '<div class="dash-kpis">'+items.map(function(x){
+    return '<button class="dash-kpi'+(cur===x[0]?' on':'')+'" data-act="uFilter" data-f="'+x[0]+'" style="--k:'+x[4]+'">'+
+      '<span class="dash-kpi-t">'+x[1]+'</span><b>'+x[2]+'</b><span class="dash-bar"><i style="width:'+x[3]+'%"></i></span></button>';
+  }).join('')+'</div>';
+}
+function userDonutHTML(list,todayK){
+  var n=list.length, c={active:0,leave:0,off:0}, R=52, C=2*Math.PI*R, acc=0, segs='';
+  list.forEach(function(u){c[userStatusOf(u,todayK)]++;});
+  var parts=[['active','#16a34a','نشط'],['leave','#3b82f6','في إجازة'],['off','#ef4444','كارت موقوف']];
+  parts.forEach(function(x){
+    var len=(n?c[x[0]]/n:0)*C;
+    if(len>0)segs+='<circle cx="70" cy="70" r="'+R+'" fill="none" stroke="'+x[1]+'" stroke-width="16" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-acc).toFixed(2)+'" transform="rotate(-90 70 70)"/>';
+    acc+=len;
+  });
+  var legend=parts.map(function(x){return '<div><i style="background:'+x[1]+'"></i>'+x[2]+'<span>'+c[x[0]]+'</span></div>';}).join('')+
+    (userCounts(list,todayK).noPerm?'<div><i style="background:#f59e0b"></i>بدون صلاحيات<span>'+userCounts(list,todayK).noPerm+'</span></div>':'');
+  return '<div class="dash-mid"><div class="dash-donut"><svg viewBox="0 0 140 140" role="img" aria-label="توزيع المستخدمين">'+
+    '<circle cx="70" cy="70" r="'+R+'" fill="none" stroke="var(--line)" stroke-width="16"/>'+segs+'</svg>'+
+    '<div class="dash-donut-c"><b>'+n+'</b><small>مستخدم</small></div></div><div class="dash-legend">'+legend+'</div></div>';
+}
+function userRowsHTML(list,todayK){
+  var shown=userSortList(list.filter(function(u){return userMatches(u,todayK);}),todayK);
+  if(!shown.length)return '<div class="dash-empty">مفيش مستخدمين مطابقين للبحث أو الفلتر.</div>';
+  return '<div class="dash-grid">'+shown.map(function(u){
+    var f=userFlags(u,todayK), conf=U.confirm==='udel:'+u.id, st=userStatusOf(u,todayK);
+    var badge=st==='off'?'<span class="dash-badge off">كارت موقوف</span>':(st==='leave'?'<span class="dash-badge leave">في إجازة</span>':'<span class="dash-badge ok">نشط</span>');
+    var tags=f.noPerm?'<div class="dash-u-tags"><span class="dash-badge warn">بدون صلاحيات</span></div>':'';
+    var leaveLbl=(u.leave===todayK)?'ألغِ إجازة النهاردة':'إجازة النهاردة';
+    return '<article class="dash-user st-'+st+'">'+
+      '<header><span class="uava">'+esc((u.name||'?').charAt(0))+'</span>'+
+      '<div class="dash-u-id"><b>'+esc(u.name)+'</b><small class="ltr">'+esc(u.code)+(u.job?' · '+esc(u.job):'')+'</small></div>'+badge+'</header>'+
+      tags+
+      '<footer class="dash-u-act">'+
+        '<button class="btn ghost sm" data-act="userEditOpen" data-id="'+u.id+'">تعديل</button>'+
+        '<button class="btn ghost sm" data-act="userCardToggle" data-id="'+u.id+'">'+(f.cardOff?'تفعيل الكارت':'إيقاف الكارت')+'</button>'+
+        '<button class="btn ghost sm" data-act="userLeave" data-id="'+u.id+'" '+(todayK?'':'disabled')+'>'+leaveLbl+'</button>'+
+        '<button class="btn ghost sm'+(conf?' danger':'')+'" data-act="userDel" data-id="'+u.id+'">'+(conf?'تأكيد الحذف':'حذف')+'</button>'+
+      '</footer></article>';
+  }).join('')+'</div>';
+}
+function userDashHTML(list,todayK){
+  var nowMs=trustedNow(), dateStr='';
+  if(nowMs!==null){try{dateStr=new Date(nowMs).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',timeZone:TZ_CAIRO});}catch(e){}}
+  return '<div class="dash-head"><div><b>لوحة المستخدمين</b><small>'+esc(dateStr||'')+'</small></div><span class="dash-badge ok">'+list.length+' مستخدم</span></div>'+
+    userKpiHTML(list,todayK)+userDonutHTML(list,todayK)+
+    '<div class="dash-tools"><div class="dash-search"><input id="uSearch" type="search" autocomplete="off" placeholder="ابحث بالاسم أو الكود أو الوظيفة" value="'+esc(U.uSearch||'')+'"></div>'+
+    '<div class="dash-sorts">'+userSortHTML()+'</div><div class="dash-filters">'+userFilterHTML(list,todayK)+'</div></div>'+
+    userRowsHTML(list,todayK);
+}
+
 /* البحث بيعمل إعادة رسم، فبنرجّع التركيز للخانة ومكان الكتابة */
 function focusSearchKeep(){
   if(!U.uSearchFocus)return;
@@ -4924,9 +5018,7 @@ function usersCardHTML(){
      '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3>'+
     '<p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني.</p>'+
-    (list.length?userStatsHTML(list,todayK)+'<div class="ppresets" style="margin:10px 0 6px">'+userFilterHTML(list,todayK)+'</div>'+
-      '<div class="fld" style="margin:6px 0 4px"><input id="uSearch" type="search" autocomplete="off" placeholder="ابحث بالاسم أو الكود أو الوظيفة" value="'+esc(U.uSearch||'')+'"></div>'+
-      userRowsHTML(list,todayK):'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+
+    (list.length?userDashHTML(list,todayK):'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+
     editBox+
     '<div class="pgrp"><div class="pgrp-h">إضافة مستخدم جديد</div>'+form+'</div>'+
     '<small class="uhint">معرّف ملف الكروت (لصفحة الكروت): <span class="ltr">'+esc(GD.cardsId||'يظهر بعد أول مزامنة مع درايف')+'</span></small>'+'<div class="ubtns" style="margin-top:12px"><button class="btn ghost sm" data-act="cardsExport">تصدير بيانات الكروت (cards.json)</button> <button class="btn ghost sm" data-act="cardsImport">استيراد بيانات الكروت</button></div>'+
@@ -5642,6 +5734,7 @@ var ACT={
     m[u.code]=o;setPref('aperms',m);render();toast('اتطبق على القسم');return false;
   },
   uFilter:function(d){U.uFilter=d.f;render();return false;},
+  uSort:function(d){U.uSort=d.s;render();return false;},
   userCardToggle:function(d){
     var u=usersList().filter(function(x){return x.id===d.id;})[0];if(!u)return false;
     u.cardActive=(u.cardActive===false);
