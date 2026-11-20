@@ -290,7 +290,14 @@ button,input{font-family:inherit}
 @media (min-width:640px){.hgrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .bbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;padding:10px max(16px,env(safe-area-inset-left,0px)) calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
 .bbar .btn{min-width:60%}
-#app.has-bbar{padding-bottom:110px}
+#app.has-bbar{padding-bottom:96px}
+.fbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px max(12px,env(safe-area-inset-left,0px)) calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
+.fbar .finfo{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.fbar .hdate{font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.fbar .hl{display:flex;align-items:center;gap:6px;flex-shrink:0;border-inline-start:1px solid var(--line);padding-inline-start:10px}
+.fbar .themebtn{width:38px;min-width:38px;height:38px;min-height:38px}
+.fbar .themebtn svg{width:19px;height:19px}
+.fbar .dstat{font-size:12px}
 .login{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:20px max(16px,env(safe-area-inset-left,0px))}
 .lcard{width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:var(--shadow)}
 .lcard h1{font-family:var(--f-disp);font-size:28px;margin:0;line-height:1.2;text-align:center}
@@ -1454,7 +1461,7 @@ function gdLoadCfg(){
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
 function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
 function gdPaint(){
-  var pill=document.querySelector('.top .dstat');
+  var pill=document.querySelector('.fbar .dstat');
   if(pill)pill.outerHTML=driveHTML();
   var sg=(GD.ok?1:0)+'|'+GD.err+'|'+GD.on;
   if(sg!==GD.shown){GD.shown=sg;renderIdle();}
@@ -1923,10 +1930,15 @@ function titleHTML(){
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+
-    '<div class="hl">'+(tabHidden('refresh')?'':deepBtn())+(tabHidden('theme')?'':themeBtn())+(tabHidden('verify')?'':verifyBtn())+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
-    '<span class="hdate">'+dateStr()+'</span>'+driveHTML()+
-    '</header>';
+    return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+'</header>';
+}
+/* الشريط السفلي (تصميم 4): المعلومات يمين، والأدوات شمال بخط فاصل. زرار الرئيسية بيظهر في الصفحات الفرعية */
+function footHTML(){
+  var home=U.view!=='home'?'<button class="btn ghost sm themebtn" data-act="tab" data-v="home" aria-label="الرئيسية" title="الرئيسية">'+svg('home')+'</button>':'';
+  return '<nav class="fbar" aria-label="أدوات">'+
+    '<div class="finfo"><span class="hdate">'+dateStr()+'</span>'+driveHTML()+'</div>'+
+    '<div class="hl">'+home+(tabHidden('refresh')?'':deepBtn())+(tabHidden('theme')?'':themeBtn())+(tabHidden('verify')?'':verifyBtn())+(limited()&&tabsFor().indexOf('settings')<0?'':settingsBtn())+'</div>'+
+    '</nav>';
 }
 function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
 /* زرار الرجوع بيتعرض في صف تحت الهيدر */
@@ -3676,8 +3688,8 @@ function render(){
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
-  app.classList.toggle('has-bbar',U.view!=='home');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+(U.view==='home'?'':bbarHTML())+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
+  app.classList.add('has-bbar');
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
   hdrGlass();
   Array.prototype.forEach.call(document.querySelectorAll('.sheet,.sbody,main.view'),function(e,i){if(scSaved[i]!==undefined)e.scrollTop=scSaved[i];});
