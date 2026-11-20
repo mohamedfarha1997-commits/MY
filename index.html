@@ -4762,7 +4762,7 @@ var PERM_GROUPS=[
     {k:'shopProducts',l:'وصفات المحل',d:'وصفات المحل'}
   ]},
   {l:'أدوات التطبيق',rows:[
-    {k:'verify',l:'التحقق من البطاقة',d:'فتح كاميرا التحقق من كود الموظف'},
+    {k:'verify',l:'التحقق من البطاقة',d:'عرض: الموظف يشوف كارته بس · يعدّل: يفتح الكاميرا ويتحقق من كروت الموظفين'},
     {k:'refresh',l:'زرار التحديث',d:'تحديث البيانات من درايف'},
     {k:'theme',l:'الوضع الليلي والنهاري',d:'تغيير شكل التطبيق'},
     {k:'approve',l:'اعتماد الإنتاج',d:'اعتماد الدفعات بعد انتهاء الوقت',fixed:true},
@@ -5261,7 +5261,8 @@ function settingsGate(){
 
 function verifyBtn(){return '<button class="btn ghost sm themebtn" data-act="tab" data-v="verify" aria-label="التحقق من البطاقة" title="التحقق من البطاقة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h3M6 16c.5-1.5 1.7-2 3-2s2.5.5 3 2"/></svg></button>';}
 function verifyView(){
-  var src=new URL('./?card=1',location.href).href;
+  var own=limited()&&permLevel('verify')!=='edit';
+  var src=own?new URL('./?id='+encodeURIComponent(sessionCode())+'&own=1',location.href).href:new URL('./?card=1',location.href).href;
   return '<div style="position:fixed;inset:0;z-index:60;background:#070b22">'+
     '<iframe data-verify allow="camera; web-share; clipboard-write" src="'+esc(src)+'" title="التحقق من البطاقة" style="width:100%;height:100%;border:0;display:block"></iframe>'+
     '<button class="btn ghost sm" data-act="tab" data-v="home" style="position:absolute;top:12px;inset-inline-start:12px;z-index:1;width:auto;padding:8px 14px;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35)">رجوع</button></div>';
@@ -6713,6 +6714,7 @@ window.rmyCardBoot=function(){
 var DATA={cards:[],updated:null};
 var currentCode='';
 var out=document.getElementById('out');
+var OWN_MODE=new URLSearchParams(location.search).get('own')==='1';
 var qid=new URLSearchParams(location.search).get('id')||(location.hash||'').slice(1);
 /* إعدادات صفحة الكروت: معرّف ملف الكروت (من الإعدادات) ومفتاح Google API. لو فاضيين بتتقري cards.json اللي جنب الصفحة */
 var CARDS_FILE_ID='1HooDudVdgdVoJNzG9A8n822KZgWhWj4l';
@@ -6748,7 +6750,7 @@ function showCard(c){
       '<p>المسئول قام بإيقاف الكارت ده، ومش هتقدر تستخدمه دلوقتي.</p>'+
       '<p>لو عايز تعرف السبب أو تفعّل الكارت تاني، تواصل مع المسئول على الواتساب:</p>'+
       '<p><a class="btn" href="'+waStop+'" target="_blank" rel="noopener">تواصل مع المسئول على واتساب</a></p>'+
-      '<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>'+
+      (OWN_MODE?'':'<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>')+
     '</div>';
     var anotherStop=document.getElementById('anotherLink');
     if(anotherStop)anotherStop.onclick=function(e){e.preventDefault();askId();};
@@ -6770,7 +6772,7 @@ function showCard(c){
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
   '</div>'+
   '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="pdfBtn">تصدير PDF</button></div>'+
-  '<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>';
+  (OWN_MODE?'':'<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>');
 
   document.getElementById('pdfBtn').onclick=downloadPdf;
   document.getElementById('shareBtn').onclick=shareCard;
@@ -7034,6 +7036,7 @@ fetch(CARDS_SRC,{cache:'no-store'})
     if(qid){
       var c=findCard(qid);
       if(c){showCard(c);return;}
+      if(OWN_MODE){out.innerHTML='<div class="panel"><div class="ico">!</div><h2>بطاقتك مش متاحة دلوقتي</h2><p>كلم المالك عشان يتأكد من بياناتك.</p></div>';return;}
       askId('الـ ID ده مش موجود، اتأكد منه وجرّب تاني');
       return;
     }
