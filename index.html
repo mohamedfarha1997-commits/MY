@@ -1882,7 +1882,7 @@ var LOCAL_READY=false,LOCAL_Q=Promise.resolve(),LOCAL_ERR='',LOCAL_FALLBACK=fals
 function persistLocal(){}
 function restoreLocal(){
   purgeLocalData();
-  S=seed();bind(S);baseline();applyTheme();
+  S=fix(seed());bind(S);baseline();applyTheme();
   LOCAL_READY=true;
   return Promise.resolve();
 }
@@ -5759,7 +5759,7 @@ document.addEventListener('focusin',function(e){
 vvSync();
 
 render();
-restoreLocal().then(function(){S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();document.dispatchEvent(new Event("rmy:loaded"));});
+restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();}catch(e){console.error("boot",e);}document.dispatchEvent(new Event("rmy:loaded"));});
 })();
 }</script>
 
