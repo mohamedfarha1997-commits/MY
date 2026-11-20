@@ -739,16 +739,15 @@ html[data-theme="light"] .fx-bg{display:none!important}
 @media (max-width:480px){.nav .tab{min-width:150px}}
 @media (max-width:480px){.hgrid{grid-template-columns:minmax(0,1fr)!important;gap:12px}}
 @media (max-width:480px){.hgrid .gin{display:flex;flex-direction:column;gap:12px;grid-auto-flow:row}.hgrid .tab{min-height:84px}.hgrid .tab .stub{flex:0 0 64px;width:64px}.hgrid .tab .stub .cnt{font-size:22px}.hgrid .tab .main{padding:12px 10px 12px 12px}}
-/* fire edge + countdown ring + wider count cell */
+/* running batch: warm tint inside the tab, slim progress bar on the bottom edge, count cell widened */
 .hgrid .tab .stub,.nav .tab .stub,.tab .stub{flex:0 0 40%;width:auto}
 .hgrid .tab .stub .cnt{font-size:22px}
 .tab .stub .hcdt{font-size:18px}
-.hgrid .tab .hcd{z-index:4}
-.hgrid .tab:has(.hcd)::before{display:block!important;content:"";position:absolute;inset:-2px;border-radius:16px;padding:2px;z-index:5;pointer-events:none;background:linear-gradient(110deg,#fde047,#f97316,#ef4444,#fde047,#f97316);background-size:260% 100%;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);animation:tfire 1.6s linear infinite}
-.hgrid .tab:has(.hcd) .main svg{background:linear-gradient(160deg,#2b1206,#7c2d12 60%,#9a3412);background-image:none;animation:none;stroke:#fef3c7;filter:drop-shadow(0 0 3px #fde047) drop-shadow(0 0 8px #f97316)}
-.hgrid .tab:has(.hcd){box-shadow:0 0 18px -4px rgb(249 115 22/.55)!important}
-@keyframes tfire{from{background-position:0% 0}to{background-position:100% 0}}
-@media (prefers-reduced-motion:reduce){.hgrid .tab:has(.hcd)::before{animation:none}}
+.hgrid .tab:has(.pbar)::before{display:block!important;content:"";position:absolute;inset:0;border-radius:14px;pointer-events:none;z-index:0;background:linear-gradient(90deg,transparent 35%,rgb(234 88 12/.10))}
+.hgrid .tab:has(.pbar){background-image:linear-gradient(var(--line),var(--line));background-size:100% 3px;background-position:0 100%;background-repeat:no-repeat;box-shadow:0 8px 16px -14px rgb(194 65 12/.6)!important}
+.tab .pbar{position:absolute;inset-inline-start:0;bottom:0;height:3px;width:calc(var(--p) * 1%);background:var(--prod);border-radius:0 0 0 14px;z-index:3;transition:width 1s linear}
+.hgrid .tab:has(.pbar) .main svg{background:var(--prod);stroke:#fff}
+@media (prefers-reduced-motion:reduce){.tab .pbar{transition:none}}
 </style>
 
 <style id="cardCss">:root{
@@ -2016,11 +2015,12 @@ function cdRingHTML(b){
     '</svg></span>';
 }
 function cdText(){var b=prodCountdown();return b?mmss(dur(b)-elapsed(b)):'0:00';}
+function pctOf(b){return b?Math.min(100,Math.round(elapsed(b)/dur(b)*100)):0;}
 function navTab(s){
   var on=U.view===s.k, cd=!!(s.live&&U.view==='home'&&s.k==='prod');
   var c=(s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k;
   return '<button class="tab'+(on?' on':'')+(s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+c+')" data-act="tab" data-v="'+s.k+'"'+(on?' aria-current="page"':'')+'>'+
-    (cd?cdRingHTML(prodCountdown()):(s.live?'<i class="live" title="قيد التشغيل"></i>':''))+
+    (cd?'<i class="pbar" style="--p:'+pctOf(prodCountdown())+'"></i>':(s.live?'<i class="live" title="قيد التشغيل"></i>':''))+
     '<span class="main">'+svg(s.k)+'<span class="lbl"><span class="tl">'+s.l+'</span><small>'+s.u+'</small></span></span>'+
     '<span class="stub">'+(cd?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'</span></button>';
 }
