@@ -913,6 +913,13 @@ function mergePlog(a,b){
   return out;
 }
 /* دمج سجل واحد: لو عندنا النسخة اللي اتزامنت آخر مرة (base) بنجمع التعديلات حقل بحقل، والتعارض بس على نفس الحقل بيكسبه الأحدث */
+/* تجميع ملفات الأقسام: لو أي ملف ناقص أو أقدم من الملف الأساسي بنرجع null */
+function combineShards(parts,mainAt){
+  if(parts.some(function(p){return !p||!p.data||(p.savedAt||0)<(mainAt||0);}))return null;
+  var data={},at=0;
+  parts.forEach(function(p){Object.assign(data,p.data);at=Math.max(at,p.savedAt||0);});
+  return {data:data,savedAt:at};
+}
 function mergeRec(base,a,b){
   var ua=a._u||0,ub=b._u||0;
   if(!base)return ub>ua?b:a;
@@ -1439,9 +1446,9 @@ function fsStart(){baseline();gdStart();}
    Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
 var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
 var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
-function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id}));else localStorage.removeItem('khat-gd');}catch(e){}}
+function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id,sh:GD_SHARD_IDS}));else localStorage.removeItem('khat-gd');}catch(e){}}
 function gdLoadCfg(){
-  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;}}catch(e){}
+  try{var c=JSON.parse(localStorage.getItem('khat-gd')||'null');if(c){GD.on=true;GD.id=c.id||null;if(c.sh)Object.keys(c.sh).forEach(function(k){GD_SHARD_IDS[k]=c.sh[k];});}}catch(e){}
   try{var t=JSON.parse(localStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
@@ -1565,28 +1572,22 @@ function gdDownloadMain(){
     .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
 }
 /* المرحلة 2: نقرأ ملفات الأقسام كلها. لو أي ملف ناقص أو قديم عن الملف الأساسي، بنرجع للأساسي */
-function gdDownloadShards(mainAt){
+function gdFetchShardParts(){
   return Promise.all(SHARD_FILES.map(function(sf){
     return gdShardLookup(sf.f).then(function(id){
       if(!id)return null;
       return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media').then(function(r){return r.text();})
         .then(function(t){return t&&t.trim()?parseTolerant(t):null;});
-    }).catch(function(){return null;});
-  })).then(function(parts){
-    if(parts.some(function(p){return !p||!p.data||(p.savedAt||0)<(mainAt||0);}))return null;
-    var data={},at=0;
-    parts.forEach(function(p){Object.assign(data,p.data);at=Math.max(at,p.savedAt||0);});
-    return {data:data,savedAt:at};
-  });
+    }).catch(function(){delete GD_SHARD_IDS[sf.f];gdSaveCfg();return null;});
+  }));
 }
+
 function gdDownload(){
-  return gdDownloadMain().then(function(main){
-    var mainAt=main?(main.savedAt||0):0;
-    return gdDownloadShards(mainAt).then(function(sh){
-      if(!sh)return main;
-      var st=Object.assign({},sh.data,{savedAt:sh.savedAt});
-      return fix(st);
-    });
+  return Promise.all([gdDownloadMain(),gdFetchShardParts()]).then(function(r){
+    var main=r[0],mainAt=main?(main.savedAt||0):0;
+    var sh=combineShards(r[1],mainAt);
+    if(!sh)return main;
+    return fix(Object.assign({},sh.data,{savedAt:sh.savedAt}));
   });
 }
 /* ---------- ملفات الأقسام (المرحلة 1: بتتكتب جنب الملف الأساسي، والتطبيق لسه بيقرأ من الأساسي) ---------- */
@@ -1608,7 +1609,7 @@ function gdShardLookup(name){
   if(GD_SHARD_IDS[name])return Promise.resolve(GD_SHARD_IDS[name]);
   var q=encodeURIComponent("name='"+name+"' and trashed=false");
   return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&pageSize=1&fields=files(id)&spaces=drive')
-    .then(function(r){return r.json();}).then(function(j){var id=j.files&&j.files[0]?j.files[0].id:null;if(id)GD_SHARD_IDS[name]=id;return id;});
+    .then(function(r){return r.json();}).then(function(j){var id=j.files&&j.files[0]?j.files[0].id:null;if(id){GD_SHARD_IDS[name]=id;gdSaveCfg();}return id;});
 }
 function gdShardWrite(name,body){
   return gdShardLookup(name).then(function(id){
@@ -3353,10 +3354,15 @@ function deepRefresh(){
       .then(go,go);
   }catch(e){go();}
 }
+/* فحص التحديث: HEAD بس (بدون تحميل الملف كله)، ومقارنة الـ ETag بالقيمة اللي اتسجلت قبل كده */
 function updCheck(){
-  fetch('index.html?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():'';}).then(function(t){
-    var m=t.match(/var APP_BUILD='([^']+)'/);
-    if(m&&m[1]!==APP_BUILD){window.UPD_NEEDED=true;render();}
+  fetch('index.html',{method:'HEAD',cache:'no-store'}).then(function(r){
+    if(!r.ok)return;
+    var v=r.headers.get('etag')||r.headers.get('last-modified');
+    if(!v)return;
+    var old=null;try{old=localStorage.getItem('khat-build');}catch(e){}
+    if(!old){try{localStorage.setItem('khat-build',v);}catch(e){}return;}
+    if(old!==v){try{localStorage.setItem('khat-build',v);}catch(e){}window.UPD_NEEDED=true;render();}
   }).catch(function(){});
 }
 function updOverlay(){
