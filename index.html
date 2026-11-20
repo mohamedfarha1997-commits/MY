@@ -15,6 +15,7 @@
 .pinfo b{display:block;font-size:14px}
 .pinfo small{color:var(--muted);font-size:12px}
 .pseg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);gap:2px}
+.permSecSel{width:100%;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:700 14px/1 var(--ar);padding:0 12px}
 .pseg-b{border:0;background:transparent;color:var(--ink-2);font:inherit;font-size:13px;font-weight:700;padding:6px 10px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .pseg-b.on.none{background:#dc2626;color:#fff}
 .pseg-b.on.view{background:var(--settings);color:#fff}
@@ -1023,6 +1024,11 @@ body::before{ /* subtle dot texture */
   .noprint{display:none !important}
   .idc{box-shadow:none;border:1px solid #cfd3e6}
   .scratch canvas{display:none}
+  /* تصدير الكارت: بنطبع الكارت بس وبالألوان الأصلية */
+  body.card-print *{visibility:hidden}
+  body.card-print #card,body.card-print #card *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.card-print #card{position:absolute;left:0;top:0;width:100%;margin:0;box-shadow:none!important;border:0!important}
+  body.card-print .scratch canvas{display:block!important}
 }</style>
 <script>var RMY_CARD=(function(){var p=new URLSearchParams(location.search);return p.has('id')||p.has('card');})();if(!RMY_CARD)document.getElementById('cardCss').disabled=true;</script>
 </head><body>
@@ -3178,6 +3184,7 @@ function boxSeasonHTML(){
     '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></details>';
   return '<div class="grp">علب محفوظة ('+tplList.length+')</div>'+tplHTML+'<div style="margin-top:14px">'+newForm+'</div>';
 }
+document.addEventListener('change',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.permsec!==undefined){U.permSec=t.value;render();}});
 document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tname!==undefined&&U.tpl)U.tpl.name=t.value;if(t&&t.dataset&&t.dataset.onote!==undefined&&U.osheet)U.osheet.note=t.value;});
 function wasteView(){
   var F=U.wf||'all',nowKey=ymKey(Date.now()),openG=U.wGrpOpen||{};
@@ -4973,7 +4980,7 @@ function permActsHTML(sel){
   var secs=Object.keys(PERM_SEC_LABEL);
   var cur=(U.permSec&&PERM_SEC_LABEL[U.permSec])?U.permSec:secs[0];
   var o=(pref('aperms',{})[sel.code])||{};
-  var chips=secs.map(function(s){return '<button class="pchip-u'+(s===cur?' on':'')+'" data-act="permSec" data-s="'+s+'">'+PERM_SEC_LABEL[s]+'</button>';}).join('');
+  var chips='<select class="permSecSel" data-permsec="1" aria-label="اختار التبويب">'+secs.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+PERM_SEC_LABEL[s]+'</option>';}).join('')+'</select>';
   var bulk=[['def','رجّع للتبويب'],['on','سماح للكل'],['off','منع الكل']].map(function(x){
     return '<button class="btn ghost sm" data-act="permActAll" data-u="'+esc(sel.id)+'" data-s="'+cur+'" data-lv="'+x[0]+'">'+x[1]+'</button>';
   }).join('');
@@ -6917,25 +6924,13 @@ function cardPdfRestore(swaps){
 function downloadPdf(){
   var el=document.getElementById('card');
   var btn=document.getElementById('pdfBtn');
-  if(!el||!window.html2canvas||!window.jspdf){window.print();return;}
-  btn.disabled=true;btn.textContent='جاري تجهيز الملف...';
-  var swaps=[];
-  var done=function(){cardPdfRestore(swaps);btn.disabled=false;btn.textContent='تصدير PDF';};
-  cardPdfPrep(el).then(function(s){
-    swaps=s;
-    return html2canvas(el,{scale:3,backgroundColor:null,useCORS:true,logging:false,windowWidth:el.scrollWidth,windowHeight:el.scrollHeight});
-  }).then(function(canvas){
-    var k=3,w=canvas.width/k,h=canvas.height/k,m=24;
-    var pdf=new window.jspdf.jsPDF({unit:'px',format:[w+m*2,h+m*2],orientation:w>h?'l':'p'});
-    pdf.setFillColor(7,11,34);
-    pdf.rect(0,0,w+m*2,h+m*2,'F');
-    pdf.addImage(canvas.toDataURL('image/png'),'PNG',m,m,w,h);
-    pdf.save('ID-'+currentCode+'.pdf');
-    done();
-  }).catch(function(){
-    done();
-    window.print();
-  });
+  /* التصدير بيستخدم محرك الطباعة في المتصفح نفسه، فالكارت بيطلع بالألوان والتدرجات زي ما هو قدامك بالظبط.
+     من نافذة الطباعة اختار "Save as PDF" / "حفظ كـ PDF" */
+  if(!el)return;
+  document.body.classList.add('card-print');
+  var clean=function(){document.body.classList.remove('card-print');window.removeEventListener('afterprint',clean);};
+  window.addEventListener('afterprint',clean);
+  setTimeout(function(){try{window.print();}catch(e){clean();}},50);
 }
 
 function askId(msg){
