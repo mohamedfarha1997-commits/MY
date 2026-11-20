@@ -4926,7 +4926,7 @@ var ACT_CAT={
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
   recvOk:['stock','تأكيد الاستلام','w'],recvClose:['stock','إلغاء الاستلام','r'],filter:['stock','فلتر الخامات','r'],
-  toggleMat:['stock','فتح تفاصيل مكوّن','r'],groupMat:['stock','تجميع مكوّن','r'],
+  toggleMat:['prep','تعليم خامة في التحضير','w'],groupMat:['prep','تعليم خامة للمجموعة','w'],
   wasteAdd:['waste','تسجيل هالك','w'],wasteToggle:['waste','فتح تفاصيل الهالك','r'],wasteFilter:['waste','فلتر الهالك','r'],
   wasteGrpOpen:['waste','فتح مجموعة الهالك','r'],
   newProd:['recipes','وصفة جديدة','w'],editProd:['recipes','تعديل وصفة','w'],copyProd:['recipes','نسخ وصفة','w'],
@@ -4951,7 +4951,11 @@ var ACT_CAT={
   exportBackup:['settings','تنزيل نسخة احتياطية','r'],importBackup:['settings','استيراد نسخة احتياطية','w'],
   lockMonth:['settings','قفل الشهر','w'],monthDelArchive:['settings','حذف أرشيف شهر','w'],monthPdf:['settings','تصدير الشهر PDF','r'],
   archDel:['settings','حذف الأرشيف','w'],toggleSeason:['settings','إظهار/إخفاء موسم','w'],
-  plAll:['settings','تحديد سجل الإنتاج','w'],plToggle:['settings','تحديد سجل إنتاج','w'],plDel:['settings','حذف سجل الإنتاج','w']
+  plAll:['settings','تحديد سجل الإنتاج','w'],plToggle:['settings','تحديد سجل إنتاج','w'],plDel:['settings','حذف سجل الإنتاج','w'],
+  calDay:['calendar','فتح يوم في التقويم','r'],calNav:['calendar','تنقل بين الشهور','r'],calToday:['calendar','الرجوع لليوم الحالي','r'],calClose:['calendar','إغلاق نافذة اليوم','r'],
+  cleanStart:['stock','بدء تفريغ المخزن','w'],
+  uFilter:['settings','فلترة المستخدمين','r'],uSort:['settings','ترتيب المستخدمين','r'],userEditCancel:['settings','إلغاء تعديل المستخدم','r'],
+  sChangeStart:['settings','تغيير الـ PIN','w'],sLock:['settings','قفل الإعدادات','w']
 };
 function actAllowed(act){
   if(!limited())return true;
@@ -4976,27 +4980,46 @@ function applyActGuards(){
     if(el.tagName==='BUTTON')el.style.display='none';
   });
 }
+/* كل التبويبات اللي ليها صلاحية في الجدول فوق، بنفس الترتيب والأسامي */
+function permTabList(){
+  var out=[];
+  PERM_GROUPS.forEach(function(g){
+    g.rows.forEach(function(t){
+      out.push({k:t.k,l:t.l,g:g.l});
+      (t.sub||[]).forEach(function(s){out.push({k:s.k,l:s.l,g:g.l+' · '+t.l});});
+    });
+  });
+  return out;
+}
+/* تبويبات ليها إجراءات بتتبع تبويب تاني، أو مفيش ليها إجراءات منفصلة */
+var PERM_TAB_ALIAS={shopOrders:'orders',reserved:'orders',shopProducts:'recipes',fillrun:'filling',filladd:'filling'};
 function permActsHTML(sel){
-  var secs=Object.keys(PERM_SEC_LABEL);
-  var cur=(U.permSec&&PERM_SEC_LABEL[U.permSec])?U.permSec:secs[0];
+  var tabs=permTabList();
+  var curTab=(U.permSec&&tabs.filter(function(t){return t.k===U.permSec;}).length)?U.permSec:'orders';
+  var key=PERM_TAB_ALIAS[curTab]||curTab;
   var o=(pref('aperms',{})[sel.code])||{};
-  var chips='<select class="permSecSel" data-permsec="1" aria-label="اختار التبويب">'+secs.map(function(s){return '<option value="'+s+'"'+(s===cur?' selected':'')+'>'+PERM_SEC_LABEL[s]+'</option>';}).join('')+'</select>';
+  var chips='<select class="permSecSel" data-permsec="1" aria-label="اختار التبويب">'+tabs.map(function(t){return '<option value="'+t.k+'"'+(t.k===curTab?' selected':'')+'>'+esc(t.g)+' · '+esc(t.l)+'</option>';}).join('')+'</select>';
   var bulk=[['def','رجّع للتبويب'],['on','سماح للكل'],['off','منع الكل']].map(function(x){
-    return '<button class="btn ghost sm" data-act="permActAll" data-u="'+esc(sel.id)+'" data-s="'+cur+'" data-lv="'+x[0]+'">'+x[1]+'</button>';
+    return '<button class="btn ghost sm" data-act="permActAll" data-u="'+esc(sel.id)+'" data-s="'+key+'" data-lv="'+x[0]+'">'+x[1]+'</button>';
   }).join('');
-  var list=Object.keys(ACT_CAT).filter(function(a){return ACT_CAT[a][0]===cur;});
+  var list=Object.keys(ACT_CAT).filter(function(a){return ACT_CAT[a][0]===key;});
+  var tabName=(tabs.filter(function(t){return t.k===key;})[0]||{}).l||key;
+  var note=PERM_TAB_ALIAS[curTab]?'<p class="meta" style="margin:0">إجراءات التبويب ده بتتبع تبويب «'+esc(tabName)+'»، وتتعدّل من هناك.</p>':'';
   var rows=list.map(function(a){
     var c=ACT_CAT[a], st=o[a]||'def';
-    var seg=[['def','حسب التبويب'],['on','مسموح'],['off','ممنوع']].map(function(x){
+    var seg=[['def','حسب صلاحية التبويب'],['on','مسموح'],['off','ممنوع']].map(function(x){
       var cls=st===x[0]?' on '+(x[0]==='off'?'none':x[0]==='on'?'edit':'view'):'';
       return '<button class="pseg-b'+cls+'" data-act="permActSet" data-u="'+esc(sel.id)+'" data-a="'+a+'" data-lv="'+x[0]+'" aria-pressed="'+(st===x[0])+'">'+x[1]+'</button>';
     }).join('');
-    return '<div class="prow"><div class="pinfo"><b>'+esc(c[1])+'</b><small>'+(c[2]==='w'?'بيغيّر البيانات':'عرض أو تحكم في الشاشة')+'</small></div><div class="pseg">'+seg+'</div></div>';
+    return '<div class="prow"><div class="pinfo"><b>'+esc(c[1])+'</b><small>'+(c[2]==='w'?'بيضيف أو يعدّل أو يحذف بيانات':'بيفتح شاشة أو يعرض معلومات بس')+'</small></div><div class="pseg">'+seg+'</div></div>';
   }).join('');
+  var empty='<p class="meta">التبويب ده مفيش فيه إجراءات منفصلة، صلاحيته من فوق (لا يرى / يعرض / يعدّل).</p>';
   return '<div class="pgrp"><div class="pgrp-h">الإجراءات داخل التبويبات</div>'+
+    '<p class="meta" style="margin:0">اختار التبويب من القايمة، وبعدين حدد لكل إجراء: حسب صلاحية التبويب، أو مسموح، أو ممنوع.</p>'+
     '<div class="pusers">'+chips+'</div>'+
+    note+
     '<div class="ppresets">'+bulk+'</div>'+
-    (rows||'<p class="meta">مفيش إجراءات مسجلة في القسم ده</p>')+'</div>';
+    (rows||(note?'':empty))+'</div>';
 }
 
 /* ===== إدارة المستخدمين ===== */
