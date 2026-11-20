@@ -685,7 +685,7 @@ img,svg,canvas,video{max-width:100%;height:auto}
 #psBoot{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:hidden;
   background:radial-gradient(120% 70% at 50% 18%,#1d2c86 0%,#0c1233 48%,#05071a 100%);color:#fff;
   transition:opacity .6s ease,visibility .6s;}
-#psBoot.done{opacity:0;visibility:hidden;pointer-events:none}
+/* شاشة واحدة من البداية للنهاية: مفيش طبقات زيادة فوق شاشة التحميل */#psBoot::before,#psBoot::after{display:none!important;content:none!important;animation:none!important}.fx-bg,.fx-bg *{display:none!important}#psBoot #ldHost svg{animation:none!important}#psBoot #ldHost .ld-decor{display:none!important}#psBoot.done{opacity:0;visibility:hidden;pointer-events:none}
 #psBoot::before{content:"";position:absolute;inset:-20%;background:radial-gradient(closest-side,rgb(79 93 255 / .35),transparent);animation:psbGlow 2.4s ease-out both}
 .psb-wrap{position:relative;display:flex;flex-direction:column;align-items:center}
 .psb-mark{width:112px;height:112px;margin-bottom:28px;animation:psbIn .6s ease-out both;transform:none}
@@ -5913,7 +5913,7 @@ restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='f
   /* ---- شاشة الفتح: تنتهي لما التحميل الفعلي يخلص (إشارة rmy:loaded) ---- */
   var psb=document.getElementById('psBoot');
   var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var t0=Date.now(),minShow=reduce?300:900,loaded=false;
+  var t0=Date.now(),minShow=0,loaded=false;
   function bootDone(){
     if(!psb)return;
     var el=psb;psb=null;el.classList.add('done');
