@@ -1139,8 +1139,10 @@ function userCodeTaken(c,exceptId){
 function userLeaveActive(u,todayK){
   if(!u||!todayK)return false;
   if(u.leave===todayK)return true;
+  var mv=weekMoveOf(u);
+  if(mv&&todayK===mv.to)return true;
   var wo=weekOffOf(u);
-  if(wo!==null&&weekdayOfKey(todayK)===wo)return true;
+  if(wo!==null&&weekdayOfKey(todayK)===wo&&!(mv&&todayK===mv.from))return true;
   return !!(u.leaveFrom&&u.leaveTo&&todayK>=u.leaveFrom&&todayK<=u.leaveTo);
 }
 /* تغيير كود مستخدم: بنحوّل تفضيلاته وسجلات الإنتاج والجلسة لكوده الجديد عشان الحركات القديمة تفضل منسوبة ليه */
@@ -1171,6 +1173,14 @@ function kickDeletedUser(){
   if(!c||userByCode(c))return false;
   try{localStorage.removeItem(AUTH_KEY);}catch(e){}
   lockSettings();U.view='home';U.bioPrompt=false;U.loginErr='الحساب ده اتحذف، سجّل دخول تاني أو كلم المالك.';
+  return true;
+}
+function cardOffMsg(){return 'الكارت ده موقوف، والحساب مش شغال دلوقتي. كلم المالك عشان يفعّله.';}
+function kickStoppedUser(){
+  var c=sessionCode();if(!c)return false;
+  var u=userByCode(c);if(!u||u.cardActive!==false)return false;
+  try{localStorage.removeItem(AUTH_KEY);}catch(e){}
+  lockSettings();U.view='home';U.bioPrompt=false;U.loginErr=cardOffMsg();
   return true;
 }
 function actorCode(){var c=sessionCode();if(c)return c;return 'CHEF MYF';}
@@ -3331,7 +3341,7 @@ function cairoDateKey(ms){
 /* إجازة المستخدم: بتتحدد بيوم بعينه (تاريخ القاهرة)، وبتخلص لوحدها بعد اليوم ده. true = في إجازة، false = لأ، null = مش عارفين الوقت */
 function onLeaveToday(){
   var u=sessionCode()?userByCode(sessionCode()):null;
-  if(!u||(!u.leave&&!u.leaveFrom&&weekOffOf(u)===null))return false;
+  if(!u||(!u.leave&&!u.leaveFrom&&weekOffOf(u)===null&&!weekMoveOf(u)))return false;
   var ms=trustedNow();
   if(ms===null)return null;
   return userLeaveActive(u,cairoDateKey(ms));
@@ -3752,6 +3762,7 @@ function render(){
   applyTheme();
   if(U.view!=='filling')U.fillTab=null;
   kickDeletedUser();
+  kickStoppedUser();
   var hadSheet=!!document.querySelector('#app .sheet');
   if(bioLocked()){document.getElementById('app').innerHTML=loginHTML()+updOverlay();FX.after({key:'login',hadSheet:false});return;}
   if(!authed()&&!U.updChecked){U.updChecked=true;updCheck();}
@@ -4675,7 +4686,7 @@ var ACT_CAT={
   tplAdd:['boxes','إضافة قالب','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
   approve:['approve','اعتماد الدفعة','w'],
   userAdd:['settings','إضافة مستخدم','w'],userDel:['settings','حذف مستخدم','w'],userEditOpen:['settings','تعديل مستخدم','w'],
-  userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],
+  userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],weekMoveClear:['settings','مسح تأجيل الإجازة','w'],
   userHoursToggle:['settings','ساعات المستخدم','w'],hrToggle:['settings','ساعات العمل','w'],cardsExport:['settings','تصدير الكروت','r'],cardsImport:['settings','استيراد الكروت','w'],userCardToggle:['settings','تفعيل/إيقاف الكارت','w'],
   exportBackup:['settings','تنزيل نسخة احتياطية','r'],importBackup:['settings','استيراد نسخة احتياطية','w'],
   lockMonth:['settings','قفل الشهر','w'],monthDelArchive:['settings','حذف أرشيف شهر','w'],monthPdf:['settings','تصدير الشهر PDF','r'],
@@ -4788,6 +4799,7 @@ document.addEventListener('input',function(e){
 });
 var WEEK_DAYS_AR=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 function weekOffOf(u){return (u&&u.weekOff!=null&&u.weekOff!=='')?Number(u.weekOff):null;}
+function weekMoveOf(u){var m=u&&u.weekMove;return (m&&m.from&&m.to)?m:null;}
 function weekdayOfKey(k){return new Date(k+'T12:00:00Z').getUTCDay();}
 function weekOffOptions(cur){return '<option value="">بدون</option>'+WEEK_DAYS_AR.map(function(n,i){return '<option value="'+i+'"'+(String(cur)===String(i)?' selected':'')+'>'+n+'</option>';}).join('');}
 function usersCardHTML(){
@@ -4801,7 +4813,7 @@ function usersCardHTML(){
   var editBox='';
   var eu=U.editUser?list.filter(function(x){return x.id===U.editUser;})[0]:null;
   if(eu){
-    var onNow=userLeaveActive(eu,todayK);
+    var onNow=userLeaveActive(eu,todayK);var mv=weekMoveOf(eu);
     var period=(eu.leaveFrom&&eu.leaveTo)?('من '+eu.leaveFrom+' إلى '+eu.leaveTo):'مفيش فترة إجازة';
     editBox='<div class="uedit">'+
       '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
@@ -4820,7 +4832,11 @@ function usersCardHTML(){
         '<div class="fld"><label for="uEditPw">باسورد جديد</label><input id="uEditPw" type="password" autocomplete="new-password" placeholder="اتركه فاضي لو مش عايز تغيّره"></div></div>'+
       '<div class="ugrp"><span class="sec-l">يوم الإجازة الأسبوعي</span>'+
         '<div class="fld"><label for="uWeekOff">اليوم اللي بيتكرر كل أسبوع</label><select id="uWeekOff">'+weekOffOptions(eu.weekOff)+'</select></div>'+
-        '<small class="uhint">المستخدم بياخد إجازة في اليوم ده كل أسبوع تلقائي، ومش محتاج تفعّله كل مرة.</small></div>'+
+        '<small class="uhint">المستخدم بياخد إجازة في اليوم ده كل أسبوع تلقائي، ومش محتاج تفعّله كل مرة.</small>'+
+        '<div class="urow"><div class="fld"><label for="uWeekMoveFrom">يوم الإجازة الأصلي</label><input id="uWeekMoveFrom" type="date" value="'+esc(mv?mv.from:'')+'"></div>'+
+        '<div class="fld"><label for="uWeekMoveTo">اتأجلت ليوم</label><input id="uWeekMoveTo" type="date" value="'+esc(mv?mv.to:'')+'"></div></div>'+
+        '<small class="uhint">التأجيل ده لمرة واحدة بس: الإجازة بتتنقل لليوم ده، وبعده المستخدم يرجع ياخد إجازته في اليوم الأساسي كل أسبوع.</small>'+
+        '<div class="ubtns"><button class="btn ghost sm" data-act="weekMoveClear">مسح التأجيل</button></div></div>'+
       '<div class="ugrp"><span class="sec-l">الإجازة التلقائية</span>'+
         '<div class="urow"><div class="fld"><label for="uLeaveFrom">من يوم</label><input id="uLeaveFrom" type="date" value="'+esc(eu.leaveFrom||'')+'"></div>'+
         '<div class="fld"><label for="uLeaveTo">لحد يوم</label><input id="uLeaveTo" type="date" value="'+esc(eu.leaveTo||'')+'"></div></div>'+
@@ -4979,7 +4995,8 @@ var ACT={
     checkPin(p).then(function(ok){
       if(ok){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
       return findUserByPw(p).then(function(u){
-        if(u){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
+        if(u&&u.cardActive===false){U.loginErr=cardOffMsg();}
+        else if(u){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.loginErr=null;U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
         else{U.loginErr='الباسورد غلط';}
         render();
       });
@@ -5427,7 +5444,7 @@ var ACT={
     if(!u){U.editUser=null;return false;}
     var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
     var n=g('uEditName'),c=g('uEditCode'),pw=g('uEditPw'),lf=g('uLeaveFrom'),lt=g('uLeaveTo'),wo=g('uWeekOff');
-    var jb=g('uEditJob'),jd=g('uEditJoin');
+    var jb=g('uEditJob'),jd=g('uEditJoin');var mf=g('uWeekMoveFrom'),mt=g('uWeekMoveTo');
     var wa=waDigits(g('uEditWa'));
     if(wa&&!/^[0-9]{10,15}$/.test(wa)){toast('اكتب رقم الواتساب صح');return false;}
     if(!n){toast('اكتب اسم المستخدم');return false;}
@@ -5435,6 +5452,10 @@ var ACT={
     if(c.toLowerCase()!==String(u.code).toLowerCase()&&userCodeTaken(c,u.id)){toast('الكود ده مستخدم قبل كده، اختار غيره');return false;}
     if((lf&&!lt)||(lt&&!lf)){toast('حدد بداية ونهاية الإجازة');return false;}
     if(lf&&lt&&lt<lf){toast('نهاية الإجازة لازم تكون بعد البداية');return false;}
+    var woN=(wo===''?null:Number(wo));
+    if((mf&&!mt)||(mt&&!mf)){toast('حدد اليوم الأصلي واليوم اللي اتأجل ليه');return false;}
+    if(mf&&(woN===null||weekdayOfKey(mf)!==woN)){toast('اليوم الأصلي لازم يكون يوم الإجازة الأسبوعي');return false;}
+    if(mf&&mt&&mf===mt){toast('اليوم الجديد لازم يكون غير اليوم الأصلي');return false;}
     if(pw&&pw.length<4){toast('الباسورد لازم يكون 4 حروف أو أرقام على الأقل');return false;}
     var finish=function(){
       var old=u.code;
@@ -5444,6 +5465,7 @@ var ACT={
       u.leaveFrom=lf||null;u.leaveTo=lt||null;
       var ca=document.querySelector('[data-cactive]');if(ca)u.cardActive=ca.checked;
       u.weekOff=wo===''?null:Number(wo);
+      u.weekMove=(mf&&mt)?{from:mf,to:mt}:null;
       U.editUser=null;U.pwUser=null;save();
       toast('اتحفظت التعديلات'+(c!==old?' · الكود الجديد '+c:''));render();
     };
@@ -5456,6 +5478,10 @@ var ACT={
       u.salt=salt;u.h=r[2];u.iter=200000;
       finish();
     }).catch(function(){toast('حصل خطأ، جرّب تاني');});
+    return false;
+  },
+  weekMoveClear:function(){
+    ['uWeekMoveFrom','uWeekMoveTo'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     return false;
   },
   userLeaveClear:function(){
@@ -5856,6 +5882,7 @@ ACT.resetSend=function(){
   var fail=function(msg,mark){resetShowErr(msg);resetMarks(mark);return false;};
   if(!code)return fail('اكتب الكود بتاعك');
   if(!u)return fail('الكود ده مش موجود',{code:'bad'});
+  if(u.cardActive===false)return fail('الكارت ده موقوف، مينفعش تغيّر الـ PIN دلوقتي. كلم المالك عشان يفعّله الأول',{code:'ok'});
   var waD=waDigits(u.wa);
   if(!waD)return fail('المستخدم ده مش متسجل عنده رقم واتساب، كلم المالك',{code:'ok'});
   if(!/^[0-9]{4}$/.test(last))return fail('اكتب آخر ٤ أرقام من رقم الواتساب',{code:'ok'});
@@ -5887,6 +5914,7 @@ ACT.resetApprove=function(d){
   if(!r)return false;
   var u=usersList().filter(function(x){return x.code===r.code;})[0];
   if(!u){toast('المستخدم ده مش موجود');}
+  else if(u.cardActive===false){toast('الكارت ده موقوف، فعّله الأول عشان تغيّر الـ PIN');return false;}
   else{
     u.salt=r.salt;u.h=r.h;u.iter=r.iter;
     toast('اتغيّر الـ PIN بتاع '+u.name);
@@ -6128,13 +6156,14 @@ function clearStaleLeaves(){
   var last=null;try{last=localStorage.getItem('khat-leave-day');}catch(e){}
   if(last===today)return;
   var changed=false;
-  usersList().forEach(function(u){if(u.leave&&u.leave!==today){u.leave=null;changed=true;}});
+  usersList().forEach(function(u){if(u.leave&&u.leave!==today){u.leave=null;changed=true;}if(u.weekMove&&u.weekMove.to<today){u.weekMove=null;changed=true;}});
   try{localStorage.setItem('khat-leave-day',today);}catch(e){}
   if(changed)save();
 }
 setInterval(function(){
   clearStaleLeaves();
   if(!limited())return;
+  if(kickStoppedUser()){render();return;}
   var o=onLeaveToday()===false?workOpenNow():false;
   if(o===true)markOpenSeen();
   var blocked=onLeaveToday()!==false||o!==true;
@@ -6397,6 +6426,19 @@ function showCard(c){
   if(c.wa)fields+='<div class="field full"><div class="k">WhatsApp · واتساب</div><div class="v en">'+esc(c.wa)+'</div></div>';
 
   var act=c.active!==false;
+  if(!act){
+    var waStop='https://wa.me/201508999341?text='+encodeURIComponent('السلام عليكم، الكارت بتاعي (ID: '+c.code+') اتوقف، ممكن أستفسر؟');
+    out.innerHTML='<div class="panel" role="alert"><div class="ico">!</div>'+
+      '<h2>الكارت ده موقوف</h2>'+
+      '<p>المسئول قام بإيقاف الكارت ده، ومش هتقدر تستخدمه دلوقتي.</p>'+
+      '<p>لو عايز تعرف السبب أو تفعّل الكارت تاني، تواصل مع المسئول على الواتساب:</p>'+
+      '<p><a class="btn" href="'+waStop+'" target="_blank" rel="noopener">تواصل مع المسئول على واتساب</a></p>'+
+      '<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>'+
+    '</div>';
+    var anotherStop=document.getElementById('anotherLink');
+    if(anotherStop)anotherStop.onclick=function(e){e.preventDefault();askId();};
+    return;
+  }
   out.innerHTML='<div class="idc" id="card">'+
     '<div class="head">'+
       '<div class="mark">'+LOGO+'<div><b>RMY</b><small>Identification</small></div></div>'+
