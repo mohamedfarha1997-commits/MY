@@ -1515,7 +1515,7 @@ function withTimeout(p,ms){
   });
 }
 /* every edit starts a sync right away (no delay), and the 1s loop catches anything that came in while busy */
-function saveSoon(){if(!GD.on)return;clearTimeout(GD.wt);GD.wt=setTimeout(gdSync,SYNC_WAIT);}
+function saveSoon(){if(!GD.on)return;gdOutboxQueue();clearTimeout(GD.wt);GD.wt=setTimeout(gdSync,SYNC_WAIT);}
 function fsStart(){baseline();gdStart();window.RMY_NEEDS_DATA=!!GD.on;}
 
 /* ---------- Google Drive sync (Drive API, drive.file scope) ----------
@@ -1562,13 +1562,38 @@ function gdTokCb(r){
       if(GD.pend){var z=GD.pend;GD.pend=null;z.rej({code:'tap'});}
       GD.shown=null;gdPaint();return;
     }}catch(x){}
-    GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;
+    GD.tok=r.access_token;GD.exp=Date.now()+((r.expires_in||3600)-120)*1000;GD.needTap=false;GD.err=null;gdScheduleRefresh();
     try{localStorage.setItem('khat-gd-tok',JSON.stringify({t:GD.tok,e:GD.exp}));}catch(e){}
     if(GD.pend){var p=GD.pend;GD.pend=null;p.res();}else gdSync();
   }else{
     GD.needTap=true;GD.ok=false;GD.err='تعذّر الربط بجوجل ('+((r&&r.error)||'خطأ')+')';
     if(GD.pend){var q=GD.pend;GD.pend=null;q.rej({code:'tap'});}
     gdArm();GD.shown=null;gdPaint();
+  }
+}
+/* تجديد التوكن قبل ما ينتهي بـ 10 دقايق وإحنا فاتحين التطبيق، عشان لما المستخدم يرجع يلاقي الاتصال شغال */
+function gdScheduleRefresh(){
+  clearTimeout(GD.rt);
+  if(!GD.on||!GD.exp)return;
+  var ms=GD.exp-Date.now()-10*60*1000;
+  GD.rt=setTimeout(function(){if(GD.on&&GD.tc&&!document.hidden)gdRequest();},Math.max(ms,30000));
+}
+/* صندوق الرفع (IndexedDB): الصفحة بتكتب فيه آخر تعديلات، والـ service worker بيرفعها لدرايف حتى لو التطبيق مقفول */
+var OB_DB='rmy-outbox';
+function obOpen(){return new Promise(function(res,rej){var r=indexedDB.open(OB_DB,1);r.onupgradeneeded=function(){r.result.createObjectStore('q',{keyPath:'id'});};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
+function obPut(item){return obOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('q','readwrite');tx.objectStore('q').put(item);tx.oncomplete=function(){db.close();res();};tx.onerror=function(){rej(tx.error);};});});}
+function obDel(id){return obOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('q','readwrite');tx.objectStore('q').delete(id);tx.oncomplete=function(){db.close();res();};tx.onerror=function(){rej(tx.error);};});});}
+function obRegister(){
+  try{navigator.serviceWorker.ready.then(function(reg){if(reg.sync)return reg.sync.register('rmy-sync');}).catch(function(){});}catch(e){}
+}
+function gdOutboxQueue(){
+  if(!GD.on||!GD.id||!GD.ver||!gdTokOk()||!window.indexedDB||!navigator.serviceWorker)return;
+  obPut({id:'main',fileId:GD.id,baseVersion:GD.ver,token:GD.tok,body:gdBody(),at:Date.now()}).then(obRegister).catch(function(){});
+  if(GD.cardsId){
+    var cards=usersList().map(cardData);
+    if(JSON.stringify(cards)!==GD.cardsLast){
+      obPut({id:'cards',fileId:GD.cardsId,token:GD.tok,body:JSON.stringify({app:'rmy-cards',v:1,updated:new Date().toISOString(),cards:cards},null,2),at:Date.now()}).then(obRegister).catch(function(){});
+    }
   }
 }
 function gdTokErr(e){
@@ -1762,7 +1787,7 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
+  }).then(function(){obDel('main').catch(function(){});gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 /* ملف الكروت: ملف منفصل على درايف بيتقري من صفحة الكروت (وأي حد معاه الرابط يقدر يقراه) */
@@ -1790,7 +1815,7 @@ function gdCardsSync(){
   return (GD.cardsId?Promise.resolve(GD.cardsId):gdCardsFind().then(function(id){return id||gdCardsCreate();}))
     .then(function(id){
       return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',{method:'PATCH',headers:{'Content-Type':'application/json'},body:body})
-        .then(function(){GD.cardsId=id;GD.cardsLast=arr;gdSaveCfg();});
+        .then(function(){GD.cardsId=id;GD.cardsLast=arr;gdSaveCfg();obDel('cards').catch(function(){});});
     })
     .catch(function(e){
       if(e&&e.code===404){GD.cardsId=null;GD.cardsLast=null;gdSaveCfg();}
@@ -1801,6 +1826,7 @@ function gdStart(){
   gdLoadGis();
   document.addEventListener('visibilitychange',function(){if(!document.hidden)gdSync();});
   if(GD.on&&!gdTokOk())gdArm();
+  if(GD.on&&gdTokOk())gdScheduleRefresh();
 }
 /* حالة درايف في الهيدر: أيقونة متحركة بتوضح نوع الاتصال الحالي */
 function driveHTML(){
