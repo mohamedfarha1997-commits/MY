@@ -1025,10 +1025,12 @@ body::before{ /* subtle dot texture */
   .idc{box-shadow:none;border:1px solid #cfd3e6}
   .scratch canvas{display:none}
   /* تصدير الكارت: بنطبع الكارت بس وبالألوان الأصلية */
-  body.card-print *{visibility:hidden}
-  body.card-print #card,body.card-print #card *{visibility:visible;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body.card-print #card{position:absolute;left:0;top:0;width:100%;margin:0;box-shadow:none!important;border:0!important}
-  body.card-print .scratch canvas{display:block!important}
+  body.card-print>*:not(#cardPrint){display:none!important}
+  body.card-print #cardPrint{display:block!important;position:static;width:100%;max-width:400px;margin:0 auto;padding:6mm 0}
+  body.card-print #cardPrint,body.card-print #cardPrint *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body.card-print #cardPrint .idc{box-shadow:none!important;border:0!important;break-inside:avoid;page-break-inside:avoid}
+  body.card-print #cardPrint .scratch canvas{display:block!important}
+  body.card-print #cardPrint .noprint{display:none!important}
 }</style>
 <script>var RMY_CARD=(function(){var p=new URLSearchParams(location.search);return p.has('id')||p.has('card');})();if(!RMY_CARD)document.getElementById('cardCss').disabled=true;</script>
 </head><body>
@@ -4969,12 +4971,14 @@ function actAllowed(act){
   var lvl=permLevel(def[0]);
   return def[2]==='w'?lvl==='edit':lvl!=='none';
 }
+/* إجراءات بتتعدى الفحص: النظام، وأي إجراء عرض مش مسجل في جدول الصلاحيات. الباقي كله بيتفحص حسب صلاحيته */
+function actBypass(a){return !!(ACT_SYS[a]||(READ_ACTS[a]&&!ACT_CAT[a]));}
 /* بنخفي الزراير اللي الإجراء بتاعها ممنوع، ونعلّم باقي العناصر */
 function applyActGuards(){
   if(!limited())return;
   document.querySelectorAll('[data-act]').forEach(function(el){
     var a=el.getAttribute('data-act');
-    if(ACT_SYS[a]||READ_ACTS[a])return;
+    if(actBypass(a))return;
     if(actAllowed(a))return;
     el.setAttribute('data-denied','1');
     if(el.tagName==='BUTTON')el.style.display='none';
@@ -6417,7 +6421,7 @@ document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
   var fn=ACT[t.dataset.act];if(!fn)return;
-  if(!READ_ACTS[t.dataset.act]&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
+  if(!actBypass(t.dataset.act)&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
   if(fn(t.dataset)===false)return;
   save();render();
 });
@@ -6950,8 +6954,14 @@ function downloadPdf(){
   /* التصدير بيستخدم محرك الطباعة في المتصفح نفسه، فالكارت بيطلع بالألوان والتدرجات زي ما هو قدامك بالظبط.
      من نافذة الطباعة اختار "Save as PDF" / "حفظ كـ PDF" */
   if(!el)return;
+  /* نسخة نضيفة من الكارت بتتطبع لوحدها، والكانفاس بتاع الخربشة بننقل صورته للنسخة */
+  var wrap=document.createElement('div');wrap.id='cardPrint';
+  var c=el.cloneNode(true);c.removeAttribute('id');
+  var src=el.querySelectorAll('canvas'),dst=c.querySelectorAll('canvas');
+  src.forEach(function(s,i){var d=dst[i];if(!d)return;d.width=s.width;d.height=s.height;try{d.getContext('2d').drawImage(s,0,0);}catch(e){}});
+  wrap.appendChild(c);document.body.appendChild(wrap);
   document.body.classList.add('card-print');
-  var clean=function(){document.body.classList.remove('card-print');window.removeEventListener('afterprint',clean);};
+  var clean=function(){document.body.classList.remove('card-print');if(wrap.parentNode)wrap.parentNode.removeChild(wrap);window.removeEventListener('afterprint',clean);};
   window.addEventListener('afterprint',clean);
   setTimeout(function(){try{window.print();}catch(e){clean();}},50);
 }
