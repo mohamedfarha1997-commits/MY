@@ -1632,7 +1632,7 @@ function gdUpload(){
     .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;gdWriteShards();});
 }
 function gdFail(e){
-  var c=e&&e.code;GD.ok=false;
+  var c=e&&e.code;GD.ok=false;if(!GD.seeded)setTimeout(render,0);
   if(!navigator.onLine||/fetch|Load failed|NetworkError/i.test(String(e&&e.message)))netShow();
   if(c==='tap'||c===401){GD.needTap=true;GD.err='محتاج تأكيد من جوجل، اضغط أي مكان في الشاشة';gdArm();}
   else if(c===404){GD.id=null;GD.ver=null;gdSaveCfg();GD.err='الملف اتمسح من درايف، هيتعمل من جديد';}
@@ -1654,13 +1654,14 @@ function gdSync(){
   if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
   GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
+  gdStage('جاري الاتصال بجوجل درايف…');
   var g0=guardState(S,GD.snap);if(g0!==S){S=g0;bind(S);}
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
     return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
       if(m.trashed){GD.id=null;GD.ver=null;gdSaveCfg();return;}
       var pull=!GD.ver||String(m.version)!==String(GD.ver);
-      return (pull?gdDownload():Promise.resolve(undefined)).then(function(remote){
+      return (pull?(gdStage('جاري تنزيل البيانات…'),gdDownload()):Promise.resolve(undefined)).then(function(remote){
         markEdits();
         var need=false;
         if(remote!==undefined){
@@ -1680,7 +1681,7 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();})
+  }).then(function(){var firstLoad=!GD.seeded;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad)render();})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 function gdStart(){
@@ -3602,9 +3603,23 @@ function bioPromptHTML(){
     '<button class="btn" data-act="bioEnableAct">فعّل البصمة أو الوجه</button>'+
     '<button class="btn ghost sm" data-act="bioLater">لاحقاً</button></div></section>';
 }
+/* شاشة التحميل: بتظهر لحد ما أول مزامنة من درايف تخلص، ولو فشلت بتعرض السبب وزرار المحاولة */
+function gdStage(t){GD.stage=t;var el=document.getElementById('ldMsg');if(el)el.textContent=t;}
+function loaderHTML(){
+  var failed=!!GD.err&&!GD.busy;
+  var msg=failed?String(GD.err):(GD.needTap?'محتاج تأكيد من جوجل':(GD.stage||'جاري تحميل البيانات من جوجل درايف…'));
+  return '<style>@keyframes ldRun{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}</style>'+
+    '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:14px">'+
+    '<div style="font-weight:800;font-size:18px;color:#2B3595">RMY Pro</div>'+
+    (failed?'':'<div style="width:220px;height:4px;background:rgba(43,53,149,.15);border-radius:4px;overflow:hidden"><div style="width:40%;height:100%;background:#2B3595;border-radius:4px;animation:ldRun 1.2s ease-in-out infinite"></div></div>')+
+    '<div id="ldMsg" style="color:#555;font-size:14px;max-width:300px">'+esc(msg)+'</div>'+
+    ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
+    '</div>';
+}
 function render(){
   /* صفحة إعادة تعيين الـ PIN مفتوحة: مانعيدش رسمها في الخلفية (المزامنة وغيرها) عشان البيانات اللي اتكتبت ماتتمسحش */
   if(!authed()&&U.reset&&!U.resetDone&&document.getElementById('rCode'))return;
+  if(GD.on&&!GD.seeded){document.getElementById('app').innerHTML=loaderHTML();return;}
   applyTheme();
   if(U.view!=='filling')U.fillTab=null;
   kickDeletedUser();
@@ -4691,6 +4706,7 @@ var ACT={
       .catch(function(){U.sErr='ما اتعرّفش عليك، جرّب تاني أو استخدم الـ PIN';render();});
     return false;
   },
+  loaderRetry:function(){GD.err=null;gdStage('جاري المحاولة…');gdSync();},
   bioEnableAct:function(){bioEnable().then(function(){U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
