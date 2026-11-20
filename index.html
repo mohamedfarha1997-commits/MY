@@ -1186,12 +1186,6 @@ function cardOffPopupHTML(closeAttr){
       '<a href="'+wa+'" target="_blank" rel="noopener" style="display:block;margin-top:14px;padding:12px;border-radius:999px;background:#25D366;color:#fff;text-decoration:none;font-weight:700">تواصل مع المسئول على واتساب</a>'+
     '</div></div>';
 }
-function showCardOffOverlay(){
-  var prev=document.getElementById('cardOffWrap');if(prev)prev.remove();
-  var w=document.createElement('div');w.id='cardOffWrap';w.innerHTML=cardOffPopupHTML('data-cardoff-x');
-  document.body.appendChild(w);
-  var x=w.querySelector('[data-cardoff-x]');if(x)x.onclick=function(){w.remove();};
-}
 function kickStoppedUser(){
   var c=sessionCode();if(!c)return false;
   var u=userByCode(c);if(!u||u.cardActive!==false)return false;
@@ -6476,22 +6470,6 @@ function fmtDate(d){
   return isNaN(t)?d:t.toLocaleDateString('ar-EG',{year:'numeric',month:'long',day:'numeric'});
 }
 
-/* popup الإيقاف لصفحة الكارت: الدوال اللي في التطبيق مش متعرّفة هنا (الكود بتاعه متقفّل بـ RMY_CARD)، فعملنا نسخة جوه الصفحة */
-function showCardOffOverlay(){
-  var prev=document.getElementById('cardOffWrap');if(prev)prev.remove();
-  var wa='https://wa.me/201508999341?text='+encodeURIComponent('السلام عليكم، حسابي في RMY Pro موقوف، ممكن أستفسر؟');
-  var w=document.createElement('div');w.id='cardOffWrap';
-  w.innerHTML='<div style="position:fixed;inset:0;z-index:9999;background:rgba(5,8,25,.72);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;direction:rtl">'+
-    '<div role="dialog" aria-modal="true" style="position:relative;width:100%;max-width:340px;box-sizing:border-box;padding:26px 20px 20px;border-radius:18px;background:#16204a;color:#fff;border:1px solid rgba(255,255,255,.14);text-align:center;font-family:Tajawal,Tahoma,sans-serif;box-shadow:0 20px 50px -10px rgba(0,0,0,.6)">'+
-      '<button data-cardoff-x aria-label="إغلاق" style="position:absolute;top:6px;left:8px;background:none;border:0;color:#fff;font-size:28px;line-height:1;cursor:pointer;padding:4px 8px">×</button>'+
-      '<div style="font-size:30px;color:#fbbf24;margin-bottom:6px">!</div>'+
-      '<h3 style="margin:0 0 8px;font-size:18px;font-weight:800">الحساب ده موقوف حالياً</h3>'+
-      '<p style="margin:0;font-size:14px;line-height:1.7;color:rgba(255,255,255,.75)">مش هتقدر تدخل التطبيق دلوقتي. لو عايز تفعّله تاني، تواصل مع المسئول.</p>'+
-      '<a href="'+wa+'" target="_blank" rel="noopener" style="display:block;margin-top:14px;padding:12px;border-radius:999px;background:#25D366;color:#fff;text-decoration:none;font-weight:700">تواصل مع المسئول على واتساب</a>'+
-    '</div></div>';
-  document.body.appendChild(w);
-  var x=w.querySelector('[data-cardoff-x]');if(x)x.onclick=function(){w.remove();};
-}
 function showCard(c){
   currentCode=c.code;
   var initial=String(c.name||c.code||'?').trim().charAt(0).toUpperCase();
@@ -6512,7 +6490,6 @@ function showCard(c){
       '<p><a class="btn" href="'+waStop+'" target="_blank" rel="noopener">تواصل مع المسئول على واتساب</a></p>'+
       '<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>'+
     '</div>';
-    showCardOffOverlay();
     var anotherStop=document.getElementById('anotherLink');
     if(anotherStop)anotherStop.onclick=function(e){e.preventDefault();askId();};
     return;
