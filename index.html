@@ -3876,14 +3876,18 @@ function beep(){
     });
   }catch(e){}
 }
-function buzz(){try{if(navigator.vibrate)navigator.vibrate([500,150,500,150,500]);}catch(e){}}
+/* المتصفح بيمنع الاهتزاز قبل أي لمسة من المستخدم، فبنتجاهله لحد ما يحصل تفاعل */
+function canVibrate(){return !!(navigator.vibrate&&navigator.userActivation&&navigator.userActivation.hasBeenActive);}
+function buzz(){try{if(canVibrate())navigator.vibrate([500,150,500,150,500]);}catch(e){}}
 function ringing(){return S.batches.some(function(b){return b.ringing;});}
 function alarmTick(){if(!ringing()){stopAlarmLoop();return;}beep();buzz();}
 function startAlarmLoop(){if(alarmTimer)return;alarmTick();alarmTimer=Date.now();}
 function alarmDue(){if(alarmTimer&&Date.now()-alarmTimer>=1800){alarmTimer=Date.now();alarmTick();}}
 function stopAlarmLoop(){
+  var wasOn=!!alarmTimer;
   alarmTimer=null;
-  try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}
+  /* بنوقف الاهتزاز بس لو كان شغال فعلاً، عشان الدالة دي بتتنادى مع كل رسم للشاشة */
+  try{if(wasOn&&canVibrate())navigator.vibrate(0);}catch(e){}
   try{if(AC&&AC.state==='running')AC.suspend();}catch(e){}
 }
 function wakeSync(){
@@ -6232,7 +6236,7 @@ function onScanned(text){
   }
   scanner.active=false;cancelAnimationFrame(scanner.raf);
   beep();
-  if(navigator.vibrate)navigator.vibrate([80,40,80]);
+  if(canVibrate())navigator.vibrate([80,40,80]);
   scanMsg('تم القراءة ✓');
   setTimeout(function(){closeScanner();go(code);},250);
 }
