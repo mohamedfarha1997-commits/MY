@@ -1573,12 +1573,15 @@ function gdDownloadMain(){
 }
 /* المرحلة 2: نقرأ ملفات الأقسام كلها. لو أي ملف ناقص أو قديم عن الملف الأساسي، بنرجع للأساسي */
 function gdFetchShardParts(){
+  var n=0;gdStage('جاري تنزيل البيانات…',25);
   return Promise.all(SHARD_FILES.map(function(sf){
     return gdShardLookup(sf.f).then(function(id){
       if(!id)return null;
       return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media').then(function(r){return r.text();})
         .then(function(t){return t&&t.trim()?parseTolerant(t):null;});
-    }).catch(function(){delete GD_SHARD_IDS[sf.f];gdSaveCfg();return null;});
+    }).catch(function(){delete GD_SHARD_IDS[sf.f];gdSaveCfg();return null;}).then(function(v){
+      n++;gdStage('جاري تنزيل البيانات ('+n+'/'+SHARD_FILES.length+')',25+Math.round(65*n/SHARD_FILES.length));return v;
+    });
   }));
 }
 
@@ -1586,6 +1589,7 @@ function gdDownload(){
   return Promise.all([gdDownloadMain(),gdFetchShardParts()]).then(function(r){
     var main=r[0],mainAt=main?(main.savedAt||0):0;
     var sh=combineShards(r[1],mainAt);
+    gdStage('جاري تجهيز الشاشة…',95);
     if(!sh)return main;
     return fix(Object.assign({},sh.data,{savedAt:sh.savedAt}));
   });
@@ -1654,14 +1658,14 @@ function gdSync(){
   if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
   GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
-  gdStage('جاري الاتصال بجوجل درايف…');
+  if(!GD.seeded)GD.pct=0;gdStage('جاري الاتصال بجوجل درايف…',5);
   var g0=guardState(S,GD.snap);if(g0!==S){S=g0;bind(S);}
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
     return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
       if(m.trashed){GD.id=null;GD.ver=null;gdSaveCfg();return;}
       var pull=!GD.ver||String(m.version)!==String(GD.ver);
-      return (pull?(gdStage('جاري تنزيل البيانات…'),gdDownload()):Promise.resolve(undefined)).then(function(remote){
+      return (pull?(gdStage('جاري فحص البيانات…',20),gdDownload()):(gdStage('البيانات محدّثة',95),Promise.resolve(undefined))).then(function(remote){
         markEdits();
         var need=false;
         if(remote!==undefined){
@@ -1681,7 +1685,7 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){var firstLoad=!GD.seeded;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad)render();})
+  }).then(function(){var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad)render();})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 function gdStart(){
@@ -3604,22 +3608,51 @@ function bioPromptHTML(){
     '<button class="btn ghost sm" data-act="bioLater">لاحقاً</button></div></section>';
 }
 /* شاشة التحميل: بتظهر لحد ما أول مزامنة من درايف تخلص، ولو فشلت بتعرض السبب وزرار المحاولة */
-function gdStage(t){GD.stage=t;var el=document.getElementById('ldMsg');if(el)el.textContent=t;}
+function gdStage(t,pct){
+  GD.stage=t;if(pct!=null)GD.pct=Math.max(GD.pct||0,Math.min(100,pct));
+  var el=document.getElementById('ldMsg');if(el)el.textContent=t;
+  var p=document.getElementById('ldPct');if(p)p.textContent=Math.round(GD.pct||0)+'%';
+}
+/* شاشة التحميل: موجة السائل داخل حروف الشعار، والنسبة بتتحكم في مستوى الموجة */
+var LD_LETTERS=['M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z','M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z','M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z'];
+var LD_RUN=false;
+function ldWaveD(p,t){
+  if(p>=100)return 'M0 0 H600 V600 H0 Z';
+  var top=300-(p/100)*100-6, amp=4*(1-p/100)+1, d='M60 300 L60 '+top.toFixed(2)+' ';
+  for(var x=60;x<=460;x+=8){
+    var y=top+amp*Math.sin(x*0.06+t*4)+amp*0.5*Math.sin(x*0.11-t*2.6);
+    d+='L'+x+' '+y.toFixed(2)+' ';
+  }
+  return d+'L460 300 Z';
+}
+function ldFrame(){
+  var w=document.getElementById('ldWave');
+  if(!w){LD_RUN=false;return;}
+  w.setAttribute('d',ldWaveD(Math.max(0,Math.min(100,GD.pct||0)),performance.now()/1000));
+  requestAnimationFrame(ldFrame);
+}
+function ldStart(){if(!LD_RUN){LD_RUN=true;requestAnimationFrame(ldFrame);}}
 function loaderHTML(){
   var failed=!!GD.err&&!GD.busy;
   var msg=failed?String(GD.err):(GD.needTap?'محتاج تأكيد من جوجل':(GD.stage||'جاري تحميل البيانات من جوجل درايف…'));
-  return '<style>@keyframes ldRun{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}</style>'+
-    '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:14px">'+
-    '<div style="font-weight:800;font-size:18px;color:#2B3595">RMY Pro</div>'+
-    (failed?'':'<div style="width:220px;height:4px;background:rgba(43,53,149,.15);border-radius:4px;overflow:hidden"><div style="width:40%;height:100%;background:#2B3595;border-radius:4px;animation:ldRun 1.2s ease-in-out infinite"></div></div>')+
-    '<div id="ldMsg" style="color:#555;font-size:14px;max-width:300px">'+esc(msg)+'</div>'+
+  var pct=Math.round(GD.pct||0);
+  var uid='ld'+Math.random().toString(36).slice(2,6);
+  var ghost=LD_LETTERS.map(function(d){return '<path d="'+d+'" fill="#2B3595" fill-opacity=".35" fill-rule="evenodd"/>';}).join('');
+  var lit=LD_LETTERS.map(function(d){return '<path d="'+d+'" fill="url(#'+uid+'g)" fill-rule="evenodd" clip-path="url(#'+uid+'c)"/>';}).join('');
+  var svg='<svg viewBox="84 206 342 98" style="width:240px;height:auto;overflow:visible" aria-hidden="true">'+
+    '<defs><linearGradient id="'+uid+'g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2B3595"/><stop offset="1" stop-color="#4F5DFF"/></linearGradient>'+
+    '<clipPath id="'+uid+'c"><path id="ldWave" d=""/></clipPath></defs>'+ghost+lit+'</svg>';
+  return '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:16px">'+
+    svg+
+    '<div id="ldPct" style="font-weight:800;color:#2B3595;font-size:18px;font-variant-numeric:tabular-nums">'+pct+'%</div>'+
+    '<div id="ldMsg" style="color:#5F6E7F;font-size:14px;max-width:300px">'+esc(msg)+'</div>'+
     ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
     '</div>';
 }
 function render(){
   /* صفحة إعادة تعيين الـ PIN مفتوحة: مانعيدش رسمها في الخلفية (المزامنة وغيرها) عشان البيانات اللي اتكتبت ماتتمسحش */
   if(!authed()&&U.reset&&!U.resetDone&&document.getElementById('rCode'))return;
-  if(GD.on&&!GD.seeded){document.getElementById('app').innerHTML=loaderHTML();return;}
+  if(GD.on&&!GD.seeded){document.getElementById('app').innerHTML=loaderHTML();ldStart();return;}
   applyTheme();
   if(U.view!=='filling')U.fillTab=null;
   kickDeletedUser();
@@ -4706,7 +4739,7 @@ var ACT={
       .catch(function(){U.sErr='ما اتعرّفش عليك، جرّب تاني أو استخدم الـ PIN';render();});
     return false;
   },
-  loaderRetry:function(){GD.err=null;gdStage('جاري المحاولة…');gdSync();},
+  loaderRetry:function(){GD.err=null;gdStage('جاري المحاولة…',Math.min(GD.pct||0,5));gdSync();},
   bioEnableAct:function(){bioEnable().then(function(){U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
