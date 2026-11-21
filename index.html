@@ -7146,7 +7146,7 @@ function loopScan(){
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
 /* مطابقة مرنة: بتتجاهل المسافات والشرط والأرقام العربي/الإنجليزي */
-function codeKey(x){return String(x||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).toUpperCase().replace(/[^A-Z0-9]/g,'');}
+function codeKey(x){return String(x||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^0+(?=.)/,'');}
 function findCardLoose(id){var k=codeKey(id);if(!k)return null;return DATA.cards.filter(function(c){return codeKey(c.code)===k;})[0]||null;}
 /* أي خطأ في الجافاسكربت يظهر على شاشة الماسح عشان نعرف السبب */
 window.addEventListener('error',function(e){var el=document.getElementById('scanT');if(el)el.textContent='خطأ: '+(e&&e.message);});
