@@ -3954,9 +3954,11 @@ function updStart(id){
   UPD.pct=0;updLoop();
   var dur=up.dur||30,t0=Date.now();
   var fmt=function(x){return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
+  var etaWait=false;/* الوقت المتوقع بيظهر بس وإحنا مستنيين النسخة الجديدة تتنشر، ويختفي وقت التحميل والتثبيت */
   var eta=function(){
     var el=$('updEta');
     if(!el){clearInterval(etaT);return;}
+    if(!etaWait){el.textContent='';return;}
     var left=Math.max(0,dur-Math.floor((Date.now()-t0)/1000));
     el.textContent=left>0?'الوقت المتوقع للتحديث: '+fmt(left):'أوشك على الانتهاء...';
   };
@@ -3968,6 +3970,7 @@ function updStart(id){
   };
   var setMsg=function(t,s){if($('updT'))$('updT').textContent=t;if($('updS'))$('updS').textContent=s;};
   var install=function(){
+    etaWait=false;eta();
     setMsg('جاري تثبيت التحديث','متقفلش الصفحة لحد ما التثبيت يخلص');
     setPct(100);
     var bar=$('updBar');bar.style.width='';bar.className='sweep';
@@ -3980,6 +3983,7 @@ function updStart(id){
   };
   var attempt=function(){
     if(!$('updOv'))return;
+    etaWait=false;eta();
     setPct(0);setMsg('جاري تحميل التحديث','الإصدار '+up.ver);
     downloadLive(setPct).then(function(txt){
       if(!$('updOv'))return;
@@ -3988,6 +3992,7 @@ function updStart(id){
       if(!live||verCmp(live,up.ver)<0){
         setPct(0);
         setMsg('برجاء الانتظار','برجاء عدم الخروج من واجهة التطبيق لضمان التحديث بشكل صحيح');
+        etaWait=true;eta();
         setTimeout(attempt,15000);
         return;
       }
@@ -3996,6 +4001,7 @@ function updStart(id){
       if(!$('updOv'))return;
       setPct(0);
       setMsg('تعذّر بدء التحميل','برجاء الانتظار داخل شاشة التطبيق لحين الانتهاء');
+      etaWait=true;eta();
       setTimeout(attempt,10000);
     });
   };
