@@ -3895,7 +3895,12 @@ function updGraceEnd(id){
   var m=window.UPD_GRACE_T,k='khat-upd-first-'+id;
   if(!m[id]){
     var t=0;try{t=+sessionStorage.getItem(k)||0;}catch(e){}
-    m[id]=t||Date.now();
+    if(!t){
+      t=Date.now();
+      /* لو التحديث ظهر أول دقيقة بعد الدخول، بيتفرض على طول. لو كان ظاهر وإنت شغال، بتاخد المهلة */
+      if(window.UPD_AUTH_T&&Date.now()-window.UPD_AUTH_T<60000)t=Date.now()-UPD_GRACE;
+    }
+    m[id]=t;
     try{sessionStorage.setItem(k,String(m[id]));}catch(e){}
   }
   return m[id]+UPD_GRACE;
@@ -3943,6 +3948,7 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
   var vin=document.getElementById('updVer');
   if(vin&&!vin.dataset.auto){vin.dataset.auto='1';updLiveVer().then(function(v){var el=document.getElementById('updVer');if(v&&el)el.value=v;});}
   if(!authed()||document.getElementById('updOv'))return;
+  if(!window.UPD_AUTH_T)window.UPD_AUTH_T=Date.now();/* وقت أول ما الدخول بيتحسب في الصفحة دي */
   var pendNow=updPendingList();
   if(!pendNow.length){var tb=document.getElementById('updTop');if(tb)tb.remove();return;}
   if(!window.UPD_BUSY){
