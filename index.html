@@ -3729,7 +3729,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.9';
+var APP_VERSION='1.2.0';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3809,7 +3809,6 @@ function updatesCardHTML(){
     '<b style="display:block;margin-bottom:8px">نشر تحديث جديد</b>'+
     '<div class="fld"><label for="updVer">رقم الإصدار (بيتجاب من GitHub تلقائي)</label><input id="updVer" type="text" placeholder="مثال: 1.1.1" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updTitle">عنوان التحديث</label><input id="updTitle" type="text" placeholder="مثال: تحسينات الفواتير" style="'+inp+'"></div>'+
-    '<div class="fld"><label for="updItems">التغييرات (كل تغيير في سطر لوحده)</label><textarea id="updItems" rows="4" style="'+inp+';height:auto"></textarea></div>'+
     '<div class="fld"><label for="updDur">مدة التحديث المتوقعة</label><div style="display:flex;gap:8px"><input id="updDur" type="number" min="1" max="7200" value="30" placeholder="مثلاً 30" style="'+inp+';flex:1"><select id="updDurU" style="'+inp+';width:auto;flex:0 0 110px"><option value="s" selected>ثانية</option><option value="m">دقيقة</option></select></div></div>'+
     '<button class="btn block" data-act="updAdd">نشر التحديث</button></div>':'';
   var rows=list.map(function(up){
@@ -3837,6 +3836,13 @@ function updatesCardHTML(){
 /* أي إصدار الجهاز شغّاله فعلاً بيتسجل على الحساب تلقائي (مرة واحدة) */
 function updAutoRecord(){
   var have=updDoneList(),add=[];
+  /* التحقق بعد التحديث: لو المحاولة الأخيرة لسه الإصدار الشغال أقل منها، يبقى التحديث ما اتثبتش */
+  var tryId='';try{tryId=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
+  if(tryId){
+    var tu=updFind(tryId);
+    if(tu&&verCmp(tu.ver,APP_VERSION)>0)toast('التحديث ما اتثبتش، اضغط تحديث تاني');
+    try{sessionStorage.removeItem('khat-upd-try');}catch(e){}
+  }
   updList().forEach(function(u){if(verCmp(u.ver,APP_VERSION)<=0&&have.indexOf(u.id)<0)add.push(u.id);});
   if(add.length)setPref(updKey(),have.concat(add));
 }
@@ -3881,6 +3887,41 @@ function updPendingItems(list){
       '<ul>'+(up.items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>';
   }).join('');
 }
+/* مهلة 5 دقايق بعد ما التحديث يظهر: في الفترة دي بيظهر شريط فوق بس، وبعدها الشاشة الإجبارية */
+var UPD_GRACE=5*60*1000;
+/* المهلة بتبدأ من أول مرة يظهر فيها التحديث في الجلسة دي (فتحة التطبيق)، مش من آخر مرة اتفتح فيها */
+window.UPD_GRACE_T=window.UPD_GRACE_T||{};
+function updGraceEnd(id){
+  var m=window.UPD_GRACE_T,k='khat-upd-first-'+id;
+  if(!m[id]){
+    var t=0;try{t=+sessionStorage.getItem(k)||0;}catch(e){}
+    m[id]=t||Date.now();
+    try{sessionStorage.setItem(k,String(m[id]));}catch(e){}
+  }
+  return m[id]+UPD_GRACE;
+}
+function updTopCss(){
+  if(document.getElementById('updTopCss'))return;
+  var st=document.createElement('style');st.id='updTopCss';
+  st.textContent='.updtop{position:fixed;top:0;left:0;right:0;z-index:350;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 10px;background:linear-gradient(90deg,#1d2c86,#0c1233);color:#fff;font-size:14px;font-weight:700;box-shadow:0 8px 20px -10px #000}'+
+    '.updtop-t{min-width:0;line-height:1.5}'+
+    '.updtop-btn{flex:none;border:0;border-radius:999px;padding:7px 14px;background:#fff;color:#1d2c86;font:inherit;font-weight:800;cursor:pointer}';
+  document.head.appendChild(st);
+}
+function updTopBar(up,endAt){
+  if(document.getElementById('updOv'))return;
+  updTopCss();
+  var left=Math.max(0,Math.ceil((endAt-Date.now())/1000));
+  var txt='فيه تحديث جديد (الإصدار '+esc(up.ver)+')، هيتفرض بعد '+String(Math.floor(left/60))+':'+String(left%60).padStart(2,'0');
+  var bar=document.getElementById('updTop');
+  if(!bar){
+    bar=document.createElement('div');bar.id='updTop';bar.className='updtop';bar.setAttribute('role','status');
+    bar.innerHTML='<span class="updtop-t"></span><button class="updtop-btn" data-act="updGo">تحديث الآن</button>';
+    document.body.appendChild(bar);
+  }
+  bar.querySelector('.updtop-t').textContent=txt;
+  bar.querySelector('.updtop-btn').setAttribute('data-id',up.id);
+}
 /* الإشعار اللي بيظهر أول ما يفتح التطبيق */
 function updPrompt(){
   var pend=updPendingList();
@@ -3901,13 +3942,22 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
   if(authed()&&(!GD.on||GD.seeded))updAutoRecord();
   var vin=document.getElementById('updVer');
   if(vin&&!vin.dataset.auto){vin.dataset.auto='1';updLiveVer().then(function(v){var el=document.getElementById('updVer');if(v&&el)el.value=v;});}
-  if(!authed()||document.getElementById('updPrompt')||document.getElementById('updOv'))return;
-  if(updPendingList().length&&!window.UPD_BUSY){
-    /* ما نقفلش الشاشة إلا لما الإصدار الجديد يكون موجود فعلاً على GitHub، عشان الرفع لوحده ما يعملش قفل */
+  if(!authed()||document.getElementById('updOv'))return;
+  var pendNow=updPendingList();
+  if(!pendNow.length){var tb=document.getElementById('updTop');if(tb)tb.remove();return;}
+  if(!window.UPD_BUSY){
+    /* ما نعرضش أي تنبيه إلا لما الإصدار الجديد يكون موجود فعلاً على GitHub */
     window.UPD_BUSY=true;
     updLiveVer().then(function(v){
       window.UPD_BUSY=false;
-      if(v&&verCmp(v,updLatestVer())>=0&&!document.getElementById('updPrompt')&&!document.getElementById('updOv'))updPrompt();
+      if(!v||verCmp(v,updLatestVer())<0)return;
+      var up=pendNow[0],endAt=updGraceEnd(up.id);
+      if(Date.now()>=endAt){
+        var tb2=document.getElementById('updTop');if(tb2)tb2.remove();
+        if(!document.getElementById('updPrompt'))updPrompt();
+      }else{
+        updTopBar(up,endAt);
+      }
     });
   }
 },2000);}
@@ -3916,12 +3966,16 @@ var UPD_SIZE=600000;
 function downloadLive(onProg){
   return fetch('index.html?t='+Date.now(),{cache:'no-store'}).then(function(res){
     if(!res.ok)throw new Error('http '+res.status);
+    /* الحجم الحقيقي من السيرفر لو الملف مش مضغوط؛ لو مضغوط بنستخدم تقدير */
+    var enc=(res.headers.get('content-encoding')||'').toLowerCase();
+    var len=parseInt(res.headers.get('content-length')||'',10);
+    var total=((!enc||enc==='identity')&&len>0)?len:UPD_SIZE;
     if(!res.body||!window.ReadableStream){onProg(100);return res.text();}
     var reader=res.body.getReader(),chunks=[],got=0;
     var pump=function(){return reader.read().then(function(r){
       if(r.done)return;
       chunks.push(r.value);got+=r.value.length;
-      onProg(Math.min(99,got/UPD_SIZE*100));
+      onProg(Math.min(99,got/total*100));
       return pump();
     });};
     return pump().then(function(){onProg(100);return new Blob(chunks).text();});
@@ -3931,11 +3985,16 @@ function downloadLive(onProg){
 function updLiveVer(){
   var c=window.UPD_LIVE;
   if(c&&Date.now()-c.t<30000)return Promise.resolve(c.v);
-  return downloadLive(function(){}).then(function(txt){
-    var m=/var APP_VERSION='([\d.]+)'/.exec(txt);
-    var v=m?m[1]:'';
-    window.UPD_LIVE={v:v,t:Date.now()};
-    return v;
+  /* HEAD الأول: لو الملف ماتغيرش (نفس الـ ETag) بنرجّع الإصدار المحفوظ من غير تحميل */
+  return fetch('index.html?t='+Date.now(),{method:'HEAD',cache:'no-store'}).then(function(r){
+    var tag=r.ok?(r.headers.get('etag')||r.headers.get('last-modified')||''):'';
+    if(tag&&c&&c.tag===tag){window.UPD_LIVE={v:c.v,t:Date.now(),tag:tag};return c.v;}
+    return downloadLive(function(){}).then(function(txt){
+      var m=/var APP_VERSION='([\d.]+)'/.exec(txt);
+      var v=m?m[1]:'';
+      window.UPD_LIVE={v:v,t:Date.now(),tag:tag};
+      return v;
+    });
   }).catch(function(){return '';});
 }
 /* التحديث: بننزّل الكود من GitHub بنسبة حقيقية، ولو الإصدار اللي نزل لسه قديم بنعيد المحاولة لوحدنا */
@@ -3943,6 +4002,7 @@ function updStart(id){
   var up=updFind(id);
   if(!up||document.getElementById('updOv'))return;
   updCss();
+  var tb0=document.getElementById('updTop');if(tb0)tb0.remove();
   var $=function(x){return document.getElementById(x);};
   var ov=document.createElement('div');
   ov.id='updOv';ov.className='updov';ov.setAttribute('role','alertdialog');ov.setAttribute('aria-modal','true');
@@ -5801,9 +5861,8 @@ var ACT={
     if(sessionCode())return false;
     var v=((document.getElementById('updVer')||{}).value||'').trim();
     var t=((document.getElementById('updTitle')||{}).value||'').trim();
-    var items=((document.getElementById('updItems')||{}).value||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
+    var items=[];
     if(!t){toast('اكتب عنوان التحديث');return false;}
-    if(!items.length){toast('اكتب التغييرات، كل تغيير في سطر');return false;}
     if(!/^\d+(\.\d+){0,2}$/.test(v)){toast('اكتب رقم الإصدار زي 1.1.1');return false;}
     if(verCmp(v,updLatestVer())<=0){toast('الإصدار لازم يكون أعلى من آخر إصدار منشور');return false;}
     var list=updList().slice();
