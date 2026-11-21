@@ -3747,7 +3747,7 @@ function updStart(id){
 function updFinish(id){
   updMarkDone(id);
   var $=function(x){return document.getElementById(x);};
-  if($('updAct'))$('updAct').innerHTML='<p class="updov-msg">جاري حفظ التحديث على حسابك...</p>';
+  if($('updAct'))$('updAct').innerHTML='<p class="updov-msg">جاري إعادة تشغيل التطبيق...</p>';
   var t0=Date.now();
   var check=function(){
     if(!$('updAct'))return;
