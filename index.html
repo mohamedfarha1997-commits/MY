@@ -3597,6 +3597,7 @@ function hoursCardHTML(){
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
+  updates:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5l2 2"/>',
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 15c2.4.2 4.3 1.8 5 4.5"/>',
   tabs:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 9v11"/>',
@@ -3608,11 +3609,21 @@ var SET_IC={
   gd:'<path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9.5 4 4 0 0 1 17 18H7z"/>',
   install:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>'
 };
+/* سجل التحديثات: كل الإصدارات، والمستخدم بيشوف بس التغييرات اللي تخص صلاحياته */
+function updatesCardHTML(){
+  var rows=APP_CHANGELOG.map(function(e){
+    var items=e.items.filter(function(it){return !it.perm||!limited()||canUse(it.perm);});
+    if(!items.length)return '';
+    return '<div style="margin:12px 0 6px"><b>'+esc(e.v)+'</b> <span class="meta">'+esc(e.date)+'</span></div>'+
+      '<ul style="margin:0 0 6px;padding-inline-start:20px;line-height:1.7">'+items.map(function(it){return '<li>'+esc(it.t)+'</li>';}).join('')+'</ul>';
+  }).join('');
+  return '<section class="card" style="--c:var(--settings)"><h3>سجل التحديثات</h3>'+(rows||'<p class="meta">مفيش تحديثات تخص صلاحياتك.</p>')+'</section>';
+}
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
     [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],
-    [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],
+    [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],[updatesCardHTML(),'updates'],
     [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
   var secs=pairs.map(function(x){return x[0];});
@@ -3948,13 +3959,20 @@ var APP_CHANGELOG=[
   ]}
 ];
 function whatsNewPending(){
-  var key='rmy_seen_'+(sessionCode()||'owner');
-  var seen='';try{seen=localStorage.getItem(key)||'';}catch(e){}
+  var code=sessionCode()||'owner',key='rmy_seen_'+code;
+  var seen=(pref('seenUpd',{})||{})[code]||'';
+  try{seen=seen||localStorage.getItem(key)||'';}catch(e){}
   var latest=APP_CHANGELOG[0];
   if(!latest||seen===latest.v)return null;
   var items=latest.items.filter(function(it){return !it.perm||!limited()||canUse(it.perm);});
   if(!items.length){try{localStorage.setItem(key,latest.v);}catch(e){}return null;}
-  return {entry:latest,items:items,key:key};
+  return {entry:latest,items:items,key:key,code:code};
+}
+/* بنسجّل إن المستخدم شاف التحديث في بياناته (بتتزامن مع درايف) عشان ميشوفوش تاني من جهاز تاني */
+function markSeenUpd(code,v){
+  var m=Object.assign({},pref('seenUpd',{}));
+  m[code]=v;
+  setPref('seenUpd',m);
 }
 function syncWhatsNew(){
   var old=document.getElementById('whatsNew');
@@ -3976,6 +3994,7 @@ function syncWhatsNew(){
   document.body.appendChild(d);
   document.getElementById('whatsNewOk').onclick=function(){
     try{localStorage.setItem(p.key,p.entry.v);}catch(e){}
+    markSeenUpd(p.code,p.entry.v);
     d.remove();
   };
 }
