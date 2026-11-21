@@ -3941,7 +3941,7 @@ function loaderHTML(dark){
    perm اختياري: اسم القسم (زي orders, stock, prod, recipes, settings, verify...). لو متحددش، بيظهر للكل. */
 var APP_VERSION='2026.11.21';
 var APP_CHANGELOG=[
-  {v:'2026.11.21',date:'2026-11-21',items:[
+  {v:'v1',date:'2026-11-21',items:[
     {t:'تم تحسين قراءة باركود الكروت وفتحها بسرعة'},
     {t:'مثال: تعديل شاشة الطلبات (اكتب التغيير الحقيقي هنا)',perm:'orders'},
     {t:'مثال: تعديل إعدادات المستخدمين (اكتب التغيير الحقيقي هنا)',perm:'settings'}
@@ -3968,11 +3968,11 @@ function syncWhatsNew(){
   d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');
   d.style.cssText='position:fixed;inset:0;z-index:310;display:grid;place-items:center;padding:20px;background:rgb(5 7 26 / .88)';
   d.innerHTML='<div style="width:min(92vw,380px);max-height:80vh;overflow:auto;background:#fff;color:#111;border-radius:24px;padding:24px 22px;direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)">'+
-    '<h3 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#2B3595">تحديث جديد وصل للتطبيق</h3>'+
-    '<p style="margin:0 0 12px;font-size:13px;color:#666">الإصدار '+esc(p.entry.v)+' · '+esc(p.entry.date)+'</p>'+
+    '<h3 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#2B3595">تم تحديث الاصدار</h3>'+
+    '<p style="margin:0 0 12px;font-size:13px;color:#666">'+esc(p.entry.v)+' · '+esc(p.entry.date)+'</p>'+
     '<ul style="margin:0 0 18px;padding-inline-start:20px;font-size:15px;line-height:1.7;color:#222">'+
       p.items.map(function(it){return '<li>'+esc(it.t)+'</li>';}).join('')+'</ul>'+
-    '<button id="whatsNewOk" style="width:100%;height:46px;border:0;border-radius:999px;background:#2B3595;color:#fff;font-weight:700;font-size:16px;cursor:pointer">تمام، فهمت</button></div>';
+    '<button id="whatsNewOk" style="width:100%;height:46px;border:0;border-radius:999px;background:#2B3595;color:#fff;font-weight:700;font-size:16px;cursor:pointer">تم</button></div>';
   document.body.appendChild(d);
   document.getElementById('whatsNewOk').onclick=function(){
     try{localStorage.setItem(p.key,p.entry.v);}catch(e){}
