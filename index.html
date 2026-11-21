@@ -3936,6 +3936,52 @@ function loaderHTML(dark){
     ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
     '</div>';
 }
+/* ---------- تحديثات التطبيق: نافذة بتظهر لكل مستخدم لحد ما يضغط "تمام"، وبتعرض بس التغييرات اللي تخص صلاحياته ----------
+   عشان تضيف تحديث: حط الإصدار الجديد في أول APP_CHANGELOG (فوق خالص).
+   perm اختياري: اسم القسم (زي orders, stock, prod, recipes, settings, verify...). لو متحددش، بيظهر للكل. */
+var APP_VERSION='2026.11.21';
+var APP_CHANGELOG=[
+  {v:'2026.11.21',date:'2026-11-21',items:[
+    {t:'تم تحسين قراءة باركود الكروت وفتحها بسرعة'},
+    {t:'مثال: تعديل شاشة الطلبات (اكتب التغيير الحقيقي هنا)',perm:'orders'},
+    {t:'مثال: تعديل إعدادات المستخدمين (اكتب التغيير الحقيقي هنا)',perm:'settings'}
+  ]}
+];
+function whatsNewPending(){
+  var key='rmy_seen_'+(sessionCode()||'owner');
+  var seen='';try{seen=localStorage.getItem(key)||'';}catch(e){}
+  var latest=APP_CHANGELOG[0];
+  if(!latest||seen===latest.v)return null;
+  var items=latest.items.filter(function(it){return !it.perm||!limited()||canUse(it.perm);});
+  if(!items.length){try{localStorage.setItem(key,latest.v);}catch(e){}return null;}
+  return {entry:latest,items:items,key:key};
+}
+function syncWhatsNew(){
+  var old=document.getElementById('whatsNew');
+  if(!authed()){if(old)old.remove();return;}
+  var p=whatsNewPending();
+  if(!p){if(old)old.remove();return;}
+  if(old&&old.getAttribute('data-v')===p.entry.v)return;
+  if(old)old.remove();
+  var d=document.createElement('div');
+  d.id='whatsNew';d.setAttribute('data-v',p.entry.v);
+  d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');
+  d.style.cssText='position:fixed;inset:0;z-index:310;display:grid;place-items:center;padding:20px;background:rgb(5 7 26 / .88)';
+  d.innerHTML='<div style="width:min(92vw,380px);max-height:80vh;overflow:auto;background:#fff;color:#111;border-radius:24px;padding:24px 22px;direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)">'+
+    '<h3 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#2B3595">تحديث جديد وصل للتطبيق</h3>'+
+    '<p style="margin:0 0 12px;font-size:13px;color:#666">الإصدار '+esc(p.entry.v)+' · '+esc(p.entry.date)+'</p>'+
+    '<ul style="margin:0 0 18px;padding-inline-start:20px;font-size:15px;line-height:1.7;color:#222">'+
+      p.items.map(function(it){return '<li>'+esc(it.t)+'</li>';}).join('')+'</ul>'+
+    '<button id="whatsNewOk" style="width:100%;height:46px;border:0;border-radius:999px;background:#2B3595;color:#fff;font-weight:700;font-size:16px;cursor:pointer">تمام، فهمت</button></div>';
+  document.body.appendChild(d);
+  document.getElementById('whatsNewOk').onclick=function(){
+    try{localStorage.setItem(p.key,p.entry.v);}catch(e){}
+    d.remove();
+  };
+}
+/* بعد كل رسم للتطبيق: نتأكد إن النافذة ظاهرة لو فيه تحديث لم يُشاهد */
+var __renderBase=render;
+render=function(){__renderBase.apply(this,arguments);try{syncWhatsNew();}catch(e){}};
 function render(){
   if(U.view&&!routeAllowed(U.view))U.view='home';
   /* صفحة إعادة تعيين الـ PIN مفتوحة: مانعيدش رسمها في الخلفية (المزامنة وغيرها) عشان البيانات اللي اتكتبت ماتتمسحش */
@@ -7080,7 +7126,7 @@ function cropVideo(v,r){
 function zoomTo(c,v){
   var tr=scanner.track,z=scanner.zoomCaps;
   if(!tr||!z||c.w>=0.4*v.videoWidth)return;
-  if(Date.now()-(scanner.lastZoom||0)<600)return;
+  if(Date.now()-(scanner.lastZoom||0)<300)return;
   scanner.lastZoom=Date.now();
   var cur=scanner.curZoom||z.min,top=Math.min(z.max,4);
   var nz=Math.min(top,cur*(0.4*v.videoWidth)/c.w);
@@ -7090,17 +7136,16 @@ function zoomTo(c,v){
 }
 function detectFrame(v){
   var cand=locateCandidate(v);
-  var first=scanner.det?detectOn(v):detectOn(frameOf(v).canvas);
-  return first.then(function(hit){
-    if(hit||!cand)return hit;
+  if(cand){
+    /* لقينا مكان الباركود: نقراه من القص فوراً (أسرع)، والزوم بيحصل في الخلفية */
     zoomTo(cand,v);
     var cr=cropVideo(v,cand);
     return detectOn(cr.canvas).then(function(h){
-      if(!h)return null;
-      h.pts=h.pts.map(function(p){return {x:cr.x+p.x*cr.sx,y:cr.y+p.y*cr.sy};});
-      return h;
+      if(h){h.pts=h.pts.map(function(p){return {x:cr.x+p.x*cr.sx,y:cr.y+p.y*cr.sy};});return h;}
+      return scanner.det?detectOn(v):detectOn(frameOf(v).canvas);
     });
-  });
+  }
+  return scanner.det?detectOn(v):detectOn(frameOf(v).canvas);
 }
 /* التكبير التلقائي: لو ماشفناش باركود، الكاميرا بتكبّر وتصغّر بالتدريج لحد ما تلاقيه على أي بُعد */
 function clearBox(){var cv=document.getElementById('scanC');if(cv){var c=cv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);}}
@@ -7141,7 +7186,8 @@ function loopScan(){
   detectFrame(v).then(function(hit){
     if(!scanner.active)return;
     if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
-    if(!scanner.cand)sweepZoom();
+    if(scanner.cand){var c=scanner.cand;drawBox([{x:c.x,y:c.y},{x:c.x+c.w,y:c.y},{x:c.x+c.w,y:c.y+c.h},{x:c.x,y:c.y+c.h}],v,'#ffffff');}
+    else{clearBox();sweepZoom();}
     scanner.raf=requestAnimationFrame(loopScan);
   }).catch(function(e){scanMsg('خطأ: '+(e&&e.message||e)+' · '+(e&&e.stack?String(e.stack).split('\n')[1]:''));if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
@@ -7213,7 +7259,7 @@ function shareCard(){
 function openScanner(){
   closeScanner();
   var ov=document.createElement('div');ov.id='scanOv';
-  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v8</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v10</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
