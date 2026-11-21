@@ -2268,9 +2268,21 @@ function dshCss(){
     '.dsh-card.live{border-color:color-mix(in srgb,var(--prod) 55%,var(--line))}'+
     '.dsh-card.live .dsh-num{font-size:18px;color:var(--prod)}'+
     '.dsh-card.live{border-color:transparent;box-shadow:0 0 22px -10px var(--prod)}'+
+    '.dsh-card.live .dsh-ico{background:radial-gradient(circle at 50% 70%,rgba(251,146,60,.55),rgba(124,45,18,.15) 70%);animation:dshGlow 1.2s ease-in-out infinite alternate}'+
+    '.dsh-fire{overflow:visible;filter:drop-shadow(0 0 3px rgba(249,115,22,.9)) drop-shadow(0 0 9px rgba(234,88,12,.6))}'+
+    '.dsh-fire .f1{transform-origin:12px 18px;animation:dshFlick1 .9s ease-in-out infinite alternate}'+
+    '.dsh-fire .f2{transform-origin:12px 18px;animation:dshFlick2 .6s ease-in-out infinite alternate}'+
+    '@keyframes dshFlick1{0%{transform:scale(1,1) skewX(-3deg)}100%{transform:scale(1.05,1.12) skewX(3deg)}}'+
+    '@keyframes dshFlick2{0%{transform:scale(1,.92) translateY(1px)}100%{transform:scale(.94,1.08) translateY(-1px)}}'+
+    '@keyframes dshGlow{from{box-shadow:0 0 8px -4px rgba(249,115,22,.5)}to{box-shadow:0 0 22px 0 rgba(249,115,22,.9)}}'+
+    '@media (prefers-reduced-motion:reduce){.dsh-fire *,.dsh-card.live .dsh-ico{animation:none!important}}'+
     '.dsh-card.live::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;background:conic-gradient(var(--prod) calc(var(--p) * 1%),color-mix(in srgb,var(--line) 85%,transparent) 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}';
   document.head.appendChild(st);
 }
+var DSH_FIRE='<defs><linearGradient id="dshFG" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#dc2626"/><stop offset=".55" stop-color="#f97316"/><stop offset="1" stop-color="#fde047"/></linearGradient></defs>'+
+  '<path class="f1" fill="url(#dshFG)" stroke="none" d="M12 2.5c.7 3.6 5.2 5.6 5.2 10.6a5.2 5.2 0 0 1-10.4 0c0-2.1 1-3.5 2.3-4.6.1 1.8 1 2.8 2.1 3.1C10.9 8.2 10.7 5 12 2.5z"/>'+
+  '<path class="f2" fill="#fef9c3" stroke="none" d="M12 10.2c.4 2 2.6 3.1 2.6 5.4a2.6 2.6 0 0 1-5.2 0c0-1.2.6-2 1.4-2.6.1 1 .5 1.5 1.1 1.7-.2-1.4 0-2.7.1-4.5z"/>'+
+  '<path d="M7 21.5h10" stroke="#f97316" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
 function dshCard(x){
   var c=(x.k==='shopOrders'||x.k==='reserved')?'orders':x.k==='shopProducts'?'recipes':x.k==='fgstock'?'stock':x.k;
   var cd=!!(x.live&&x.k==='prod');
@@ -2278,7 +2290,7 @@ function dshCard(x){
   var num=cd?'<span class="dsh-num hcdt">'+cdText()+'</span><i class="hcd" hidden></i>':'<span class="dsh-num">'+x.n+'</span>';
   var unit=cd?'قيد التشغيل':x.u;
   return '<button class="'+cls+'" style="--c:var(--'+c+');--p:'+(cd?pctOf(prodCountdown()):0)+'" data-act="tab" data-v="'+x.k+'">'+
-    '<span class="dsh-ico"><svg viewBox="0 0 24 24" aria-hidden="true">'+(DSH_IC[x.k]||IC[x.k]||'')+'</svg></span>'+
+    '<span class="dsh-ico">'+(cd?'<svg viewBox="0 0 24 24" class="dsh-fire" aria-hidden="true">'+DSH_FIRE+'</svg>':'<svg viewBox="0 0 24 24" aria-hidden="true">'+(DSH_IC[x.k]||IC[x.k]||'')+'</svg>')+'</span>'+
     '<span class="dsh-txt"><span class="dsh-name">'+x.l+'</span><span class="dsh-unit">'+unit+'</span></span>'+
     num+(x.warn?'<i class="dsh-dot"></i>':'')+
   '</button>';
@@ -3704,7 +3716,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.5';
+var APP_VERSION='1.1.6';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3721,44 +3733,83 @@ function updMarkDone(id){
   if(list.indexOf(id)<0)list.push(id);
   setPref(updKey(),list);
 }
-/* الحسابات اللي نفّذت التحديث ده (المالك + المستخدمين) */
-function updDoneBy(id){
-  var p=S.prefs||{},out=[];
-  Object.keys(p).forEach(function(k){
-    if(k.indexOf('updDone:')!==0||!Array.isArray(p[k])||p[k].indexOf(id)<0)return;
-    var code=k.slice(8);
-    if(code==='owner'){out.push('المالك');return;}
-    var u=userByCode(code);
-    out.push(u&&u.name?u.name:code);
+/* كل الحسابات (المالك + كل المستخدمين) وحالة كل تحديث عندهم */
+function updAccounts(){return [{key:'owner',name:'المالك'}].concat(usersList().map(function(u){return {key:u.code,name:u.name||u.code};}));}
+function updStatus(id){
+  var p=S.prefs||{},done=[],pend=[];
+  updAccounts().forEach(function(a){
+    var l=p['updDone:'+a.key];
+    (Array.isArray(l)&&l.indexOf(id)>-1?done:pend).push(a.name);
   });
-  return out;
+  return {done:done,pend:pend};
+}
+function updFmtDur(sec){
+  if(!sec)return '—';
+  return (sec>=60&&sec%60===0)?(sec/60)+' دقيقة':sec+' ثانية';
+}
+function updPanelCss(){
+  if(document.getElementById('updPanelCss'))return;
+  var st=document.createElement('style');st.id='updPanelCss';
+  st.textContent='.updp{display:flex;flex-direction:column;gap:14px;margin-top:10px}'+
+    '.updp-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'+
+    '@media (min-width:640px){.updp-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}'+
+    '.updp-k{border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface)}'+
+    '.updp-k small{display:block;font-size:12px;color:var(--muted);font-weight:600}'+
+    '.updp-k b{display:block;margin-top:4px;font-family:var(--f-disp);font-size:20px;font-variant-numeric:tabular-nums}'+
+    '.updp-banner{border-radius:14px;padding:12px 14px;font-size:14px;font-weight:700}'+
+    '.updp-banner.ok{background:color-mix(in srgb,#16a34a 12%,transparent);color:#15803d}'+
+    '.updp-banner.new{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn)}'+
+    '.updp-item{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--surface);display:flex;flex-direction:column;gap:10px}'+
+    '.updp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}'+
+    '.updp-t{font-weight:800;font-size:15px}'+
+    '.updp-meta{font-size:12px;color:var(--muted);margin-top:2px}'+
+    '.updp-chip{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:color-mix(in srgb,var(--settings) 12%,transparent);color:var(--settings)}'+
+    '.updp-bar{height:8px;border-radius:999px;background:var(--line);overflow:hidden}'+
+    '.updp-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#4F5DFF,#16a34a);transition:width .4s}'+
+    '.updp-lbl{font-size:12px;font-weight:700;color:var(--muted)}'+
+    '.updp-names{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}'+
+    '.updp-names span{padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}'+
+    '.updp-names .ok{color:#15803d;border-color:color-mix(in srgb,#16a34a 40%,var(--line))}'+
+    '.updp-names .no{color:var(--warn)}';
+  document.head.appendChild(st);
 }
 function updatesCardHTML(){
-  var done=updDoneList(),owner=!sessionCode(),list=updList();
+  updPanelCss();
+  var owner=!sessionCode(),list=updList(),latest=updLatestVer(),acc=updAccounts(),pendNow=updPendingList();
+  var newest=list[0]||null;
+  var newSt=newest?updStatus(newest.id):{done:[],pend:[]};
+  var k=function(l,v){return '<div class="updp-k"><small>'+esc(l)+'</small><b>'+esc(String(v))+'</b></div>';};
+  var banner=!list.length?'<div class="updp-banner ok">مفيش تحديثات منشورة حالياً</div>':
+    (pendNow.length?'<div class="updp-banner new">فيه '+pendNow.length+' تحديث متاح على الجهاز ده</div>':'<div class="updp-banner ok">الجهاز ده على آخر إصدار</div>');
+  var kpis='<div class="updp-kpis">'+k('الإصدار الشغال',APP_VERSION)+k('آخر إصدار منشور',latest==='0'?'—':latest)+
+    k('عدد الحسابات',acc.length)+k(owner?'لسه ماحدّثوش':'تحديثات عليك',owner?newSt.pend.length:pendNow.length)+'</div>';
   var inp='width:100%;border:1.5px solid var(--field);border-radius:10px;padding:8px 10px;font:inherit;background:var(--surface);color:var(--ink);box-sizing:border-box';
-  var form=owner?'<div style="margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px">'+
-    '<b style="display:block;margin-bottom:6px">تحديث جديد</b>'+
+  var form=owner?'<div style="padding:12px;border:1px solid var(--line);border-radius:14px">'+
+    '<b style="display:block;margin-bottom:8px">نشر تحديث جديد</b>'+
     '<div class="fld"><label for="updVer">رقم الإصدار (بيتجاب من GitHub تلقائي)</label><input id="updVer" type="text" placeholder="مثال: 1.1.1" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updTitle">عنوان التحديث</label><input id="updTitle" type="text" placeholder="مثال: تحسينات الفواتير" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updItems">التغييرات (كل تغيير في سطر لوحده)</label><textarea id="updItems" rows="4" style="'+inp+';height:auto"></textarea></div>'+
-    '<div class="fld"><label for="updDur">مدة التحديث المتوقعة (بالدقايق)</label><input id="updDur" type="number" min="1" max="120" placeholder="مثلاً 3" style="'+inp+'"></div>'+
+    '<div class="fld"><label for="updDur">مدة التحديث المتوقعة</label><div style="display:flex;gap:8px"><input id="updDur" type="number" min="1" max="7200" value="30" placeholder="مثلاً 30" style="'+inp+';flex:1"><select id="updDurU" style="'+inp+';width:auto;flex:0 0 110px"><option value="s" selected>ثانية</option><option value="m">دقيقة</option></select></div></div>'+
     '<button class="btn block" data-act="updAdd">نشر التحديث</button></div>':'';
   var rows=list.map(function(up){
-    var isDone=done.indexOf(up.id)>-1;
-    var items=(up.items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('');
-    var btn=isDone?'<span class="upill">تم التحديث ✓</span>':'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>';
-    var del=owner?' <button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>':'';
-    return '<div style="border-bottom:1px solid var(--line);padding:12px 0">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b>'+esc(up.title)+'</b><span class="meta">الإصدار '+esc(up.ver)+' · '+esc(up.date)+(up.dur?' · المدة '+Math.round(up.dur/60)+' د':'')+'</span></div>'+
-      '<ul style="margin:8px 0;padding-right:18px;font-size:13px;line-height:1.8">'+items+'</ul>'+
-      (owner?'<div class="meta" style="margin-bottom:8px">اتحدّث على: '+esc(updDoneBy(up.id).join('، ')||'لسه محدش')+'</div>':'')+
-      '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+btn+del+'</div>'+
-    '</div>';
+    var st=updStatus(up.id),total=acc.length,dn=st.done.length,pct=total?Math.round(dn/total*100):0;
+    var mine=pendNow.some(function(x){return x.id===up.id;});
+    var items='<ul style="margin:0;padding-right:18px;font-size:13px;line-height:1.7">'+(up.items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('')+'</ul>';
+    var detail=owner?'<div class="updp-bar"><i style="width:'+pct+'%"></i></div>'+
+      '<div class="updp-meta">اتحدّث '+dn+' من '+total+' حساب</div>'+
+      '<div class="updp-lbl">اتحدّث</div><div class="updp-names">'+(st.done.map(function(n){return '<span class="ok">'+esc(n)+'</span>';}).join('')||'<span>محدش لسه</span>')+'</div>'+
+      '<div class="updp-lbl">لسه</div><div class="updp-names">'+(st.pend.map(function(n){return '<span class="no">'+esc(n)+'</span>';}).join('')||'<span>الكل اتحدّث</span>')+'</div>':'';
+    var act=owner?'<button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>':
+      (mine?'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>':'<span class="upill">تم التحديث ✓</span>');
+    return '<div class="updp-item"><div class="updp-top"><div><div class="updp-t">'+esc(up.title)+'</div>'+
+      '<div class="updp-meta">'+esc(up.date)+' · المدة '+esc(updFmtDur(up.dur))+'</div></div>'+
+      '<span class="updp-chip">الإصدار '+esc(up.ver)+'</span></div>'+items+detail+
+      '<div style="display:flex;justify-content:flex-end">'+act+'</div></div>';
   }).join('');
-  if(!list.length)rows='<div class="meta" style="margin-top:8px">مفيش تحديثات منشورة حالياً</div>';
-  return '<section class="card" style="--c:var(--settings)"><h3>التحديثات</h3>'+
-    '<p class="meta" style="margin:0">'+(owner?'اكتب التحديث هنا وانشره، هيظهر للمستخدمين أول ما يفتحوا التطبيق.':'التحديثات الجديدة للتطبيق بتظهر هنا. لما تضغط تحديث، التحديث بيتثبت على حسابك ومش هيتكرر على أي جهاز.')+'</p>'+
-    form+rows+'</section>';
+  if(!list.length)rows='<div class="meta">مفيش تحديثات منشورة حالياً</div>';
+  var desc=owner?'انشر التحديث وتابع مين اتحدّث ومين لسه، من غير ما تخرج من الشاشة دي.':'التحديثات الجديدة للتطبيق بتظهر هنا، ولما تضغط تحديث التطبيق بيتحدّث على حسابك.';
+  return '<section class="card" style="--c:var(--settings)"><h3>إدارة التحديثات</h3><p class="meta" style="margin:0">'+desc+'</p>'+
+    '<div class="updp">'+banner+kpis+form+rows+'</div></section>';
 }
 /* الإشعار اللي بيظهر للمستخدم أول ما يفتح التطبيق: التحديثات اللي لسه ماتنفذتش على الحساب */
 /* أي إصدار الجهاز شغّاله فعلاً بيتسجل على الحساب تلقائي (مرة واحدة) */
@@ -3870,7 +3921,7 @@ function updStart(id){
     '<p class="updov-msg" id="updS">الإصدار '+esc(up.ver)+'</p><p class="updov-msg" id="updEta"></p><div id="updAct"></div>';
   document.body.appendChild(ov);
   UPD.pct=0;updLoop();
-  var dur=up.dur||180,t0=Date.now();
+  var dur=up.dur||30,t0=Date.now();
   var fmt=function(x){return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
   var eta=function(){
     var el=$('updEta');
@@ -3913,7 +3964,7 @@ function updStart(id){
     }).catch(function(){
       if(!$('updOv'))return;
       setPct(0);
-      setMsg('مقدرناش نوصل لـ GitHub','اتأكد من النت، هنعيد المحاولة تلقائي');
+      setMsg('تعذّر بدء التحميل','برجاء الانتظار داخل شاشة التطبيق لحين الانتهاء');
       setTimeout(attempt,10000);
     });
   };
@@ -5717,8 +5768,10 @@ var ACT={
     if(!/^\d+(\.\d+){0,2}$/.test(v)){toast('اكتب رقم الإصدار زي 1.1.1');return false;}
     if(verCmp(v,updLatestVer())<=0){toast('الإصدار لازم يكون أعلى من آخر إصدار منشور');return false;}
     var list=updList().slice();
-    var dm=parseFloat(((document.getElementById('updDur')||{}).value||'').trim());
-    var dur=(dm>0&&dm<=120)?Math.round(dm*60):180;
+    var dv=parseFloat(((document.getElementById('updDur')||{}).value||'').trim());
+    var du=((document.getElementById('updDurU')||{}).value)||'s';
+    var dur=dv>0?Math.round(du==='s'?dv:dv*60):30;
+    dur=Math.max(5,Math.min(7200,dur));
     list.unshift({id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items,dur:dur});
     setPref('appUpdates',list);
     toast('تم نشر التحديث');
