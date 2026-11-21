@@ -3844,7 +3844,21 @@ function updAutoRecord(){
     try{sessionStorage.removeItem('khat-upd-try');}catch(e){}
   }
   updList().forEach(function(u){if(verCmp(u.ver,APP_VERSION)<=0&&have.indexOf(u.id)<0)add.push(u.id);});
+  var justDone=updList().filter(function(u){return add.indexOf(u.id)>-1&&verCmp(u.ver,APP_VERSION)===0;});
   if(add.length)setPref(updKey(),have.concat(add));
+  if(justDone.length)updSuccessShow(justDone[0]);
+}
+/* رسالة "تم التحديث بنجاح" بتظهر مرة واحدة لكل تحديث، أول ما الجهاز يفتح على الإصدار الجديد */
+function updSuccessShow(up){
+  if(document.getElementById('updDone'))return;
+  updCss();
+  var ov=document.createElement('div');
+  ov.id='updDone';ov.className='updov';ov.setAttribute('role','alertdialog');ov.setAttribute('aria-modal','true');
+  ov.innerHTML='<h3>تم التحديث بنجاح</h3>'+
+    '<p class="updov-msg">الإصدار '+esc(up.ver)+'</p>'+
+    '<div class="updov-list" style="text-align:center"><b>'+esc(up.title)+'</b></div>'+
+    '<button class="updov-btn" data-act="updSeen">تمام</button>';
+  document.body.appendChild(ov);
 }
 function updPendingList(){return updList().filter(function(u){return verCmp(u.ver,APP_VERSION)>0;});}
 var UPD={pct:0};
@@ -5401,7 +5415,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -5888,6 +5902,7 @@ var ACT={
     return true;
   },
   updClose:function(){return false;},
+  updSeen:function(){var o=document.getElementById('updDone');if(o)o.remove();return false;},
   updGo:function(d){var p=document.getElementById('updPrompt');if(p)p.remove();updStart(d.id);return false;},
   updStart:function(d){updStart(d.id);return false;},
   updFinish:function(d){updFinish(d.id);return false;},
