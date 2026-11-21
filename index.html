@@ -7143,7 +7143,7 @@ function loopScan(){
     if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
     if(!scanner.cand)sweepZoom();
     scanner.raf=requestAnimationFrame(loopScan);
-  }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
+  }).catch(function(e){scanMsg('خطأ: '+(e&&e.message||e)+' · '+(e&&e.stack?String(e.stack).split('\n')[1]:''));if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
 /* مطابقة مرنة: بتتجاهل المسافات والشرط والأرقام العربي/الإنجليزي */
 function codeKey(x){return String(x||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^0+(?=.)/,'');}
