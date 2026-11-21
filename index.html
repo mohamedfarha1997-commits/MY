@@ -2267,8 +2267,8 @@ function dshCss(){
     '.dsh-dot{position:absolute;top:10px;inset-inline-end:10px;width:8px;height:8px;border-radius:50%;background:var(--warn)}'+
     '.dsh-card.live{border-color:color-mix(in srgb,var(--prod) 55%,var(--line))}'+
     '.dsh-card.live .dsh-num{font-size:18px;color:var(--prod)}'+
-    '.dsh-bar{position:absolute;bottom:0;inset-inline-start:0;height:3px;width:calc(var(--p) * 1%);background:var(--prod);transition:width 1s linear}'+
-    '@media (prefers-reduced-motion:reduce){.dsh-bar{transition:none}}';
+    '.dsh-card.live{border-color:transparent;box-shadow:0 0 22px -10px var(--prod)}'+
+    '.dsh-card.live::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;background:conic-gradient(var(--prod) calc(var(--p) * 1%),color-mix(in srgb,var(--line) 85%,transparent) 0);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}';
   document.head.appendChild(st);
 }
 function dshCard(x){
@@ -2280,7 +2280,7 @@ function dshCard(x){
   return '<button class="'+cls+'" style="--c:var(--'+c+');--p:'+(cd?pctOf(prodCountdown()):0)+'" data-act="tab" data-v="'+x.k+'">'+
     '<span class="dsh-ico"><svg viewBox="0 0 24 24" aria-hidden="true">'+(DSH_IC[x.k]||IC[x.k]||'')+'</svg></span>'+
     '<span class="dsh-txt"><span class="dsh-name">'+x.l+'</span><span class="dsh-unit">'+unit+'</span></span>'+
-    num+(x.warn?'<i class="dsh-dot"></i>':'')+(cd?'<i class="dsh-bar"></i>':'')+
+    num+(x.warn?'<i class="dsh-dot"></i>':'')+
   '</button>';
 }
 function homeHTML(){
@@ -2300,6 +2300,15 @@ function homeHTML(){
   }).join('');
   return '<div class="dsh" aria-label="الأقسام">'+out+'</div>';
 }
+/* عداد الإنتاج: الدايرة اللي حوالين الكارت والوقت بيتحدثوا كل ثانية */
+if(!window.DSH_TICK){window.DSH_TICK=setInterval(function(){
+  var c=document.querySelector('.dsh-card.live');
+  if(!c)return;
+  var b=prodCountdown();
+  if(b)c.style.setProperty('--p',pctOf(b));
+  var t=c.querySelector('.hcdt');
+  if(t)t.textContent=cdText();
+},1000);}
 /* زرار الرجوع بيتعرض في صف تحت الهيدر */
 function backHTML(){
   return '<div class="backrow"><button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button></div>';
@@ -3695,7 +3704,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.3';
+var APP_VERSION='1.1.4';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3732,6 +3741,7 @@ function updatesCardHTML(){
     '<div class="fld"><label for="updVer">رقم الإصدار (بيتجاب من GitHub تلقائي)</label><input id="updVer" type="text" placeholder="مثال: 1.1.1" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updTitle">عنوان التحديث</label><input id="updTitle" type="text" placeholder="مثال: تحسينات الفواتير" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updItems">التغييرات (كل تغيير في سطر لوحده)</label><textarea id="updItems" rows="4" style="'+inp+';height:auto"></textarea></div>'+
+    '<div class="fld"><label for="updDur">مدة التحديث المتوقعة (بالدقايق)</label><input id="updDur" type="number" min="1" max="120" placeholder="مثلاً 3" style="'+inp+'"></div>'+
     '<button class="btn block" data-act="updAdd">نشر التحديث</button></div>':'';
   var rows=list.map(function(up){
     var isDone=done.indexOf(up.id)>-1;
@@ -3739,7 +3749,7 @@ function updatesCardHTML(){
     var btn=isDone?'<span class="upill">تم التحديث ✓</span>':'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>';
     var del=owner?' <button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>':'';
     return '<div style="border-bottom:1px solid var(--line);padding:12px 0">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b>'+esc(up.title)+'</b><span class="meta">الإصدار '+esc(up.ver)+' · '+esc(up.date)+'</span></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b>'+esc(up.title)+'</b><span class="meta">الإصدار '+esc(up.ver)+' · '+esc(up.date)+(up.dur?' · المدة '+Math.round(up.dur/60)+' د':'')+'</span></div>'+
       '<ul style="margin:8px 0;padding-right:18px;font-size:13px;line-height:1.8">'+items+'</ul>'+
       (owner?'<div class="meta" style="margin-bottom:8px">اتحدّث على: '+esc(updDoneBy(up.id).join('، ')||'لسه محدش')+'</div>':'')+
       '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+btn+del+'</div>'+
@@ -3857,9 +3867,18 @@ function updStart(id){
   ov.innerHTML=updLogo(0)+'<div class="updov-pct" id="updPct">0%</div>'+
     '<h3 id="updT">جاري تحميل التحديث</h3>'+
     '<div class="updov-bar"><i id="updBar"></i></div>'+
-    '<p class="updov-msg" id="updS">الإصدار '+esc(up.ver)+'</p><div id="updAct"></div>';
+    '<p class="updov-msg" id="updS">الإصدار '+esc(up.ver)+'</p><p class="updov-msg" id="updEta"></p><div id="updAct"></div>';
   document.body.appendChild(ov);
   UPD.pct=0;updLoop();
+  var dur=up.dur||180,t0=Date.now();
+  var fmt=function(x){return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');};
+  var eta=function(){
+    var el=$('updEta');
+    if(!el){clearInterval(etaT);return;}
+    var left=Math.max(0,dur-Math.floor((Date.now()-t0)/1000));
+    el.textContent=left>0?'الوقت المتوقع للتحديث: '+fmt(left):'أوشك على الانتهاء...';
+  };
+  var etaT=setInterval(eta,1000);eta();
   var setPct=function(p){
     p=Math.max(0,Math.min(100,p));UPD.pct=p;
     if($('updBar')){$('updBar').className='';$('updBar').style.width=p+'%';}
@@ -3886,7 +3905,7 @@ function updStart(id){
       var live=m?m[1]:'';
       if(!live||verCmp(live,up.ver)<0){
         setPct(0);
-        setMsg('برجاء الانتظار','سيتم التحديث قريبا، برجاء عدم الخروج من التطبيق لضمان وصول التحديث بصورة سلمية');
+        setMsg('برجاء الانتظار','برجاء عدم الخروج من واجهة التطبيق لضمان التحديث بشكل صحيح');
         setTimeout(attempt,15000);
         return;
       }
@@ -5698,7 +5717,9 @@ var ACT={
     if(!/^\d+(\.\d+){0,2}$/.test(v)){toast('اكتب رقم الإصدار زي 1.1.1');return false;}
     if(verCmp(v,updLatestVer())<=0){toast('الإصدار لازم يكون أعلى من آخر إصدار منشور');return false;}
     var list=updList().slice();
-    list.unshift({id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items});
+    var dm=parseFloat(((document.getElementById('updDur')||{}).value||'').trim());
+    var dur=(dm>0&&dm<=120)?Math.round(dm*60):180;
+    list.unshift({id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items,dur:dur});
     setPref('appUpdates',list);
     toast('تم نشر التحديث');
     return true;
