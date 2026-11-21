@@ -7162,7 +7162,7 @@ function onScanned(text){
   code=card.code;
   scanner.active=false;cancelAnimationFrame(scanner.raf);
   beep();
-  if(canVibrate())navigator.vibrate([80,40,80]);
+  try{if(navigator.vibrate&&navigator.userActivation&&navigator.userActivation.hasBeenActive)navigator.vibrate([80,40,80]);}catch(e){}
   scanMsg('تم القراءة ✓');
   setTimeout(function(){closeScanner();go(code);},250);
 }
@@ -7213,7 +7213,7 @@ function shareCard(){
 function openScanner(){
   closeScanner();
   var ov=document.createElement('div');ov.id='scanOv';
-  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v7</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v8</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
