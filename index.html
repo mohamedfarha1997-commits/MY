@@ -3729,7 +3729,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.8';
+var APP_VERSION='1.1.9';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3783,7 +3783,15 @@ function updPanelCss(){
     '.updp-names{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}'+
     '.updp-names span{padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}'+
     '.updp-names .ok{color:#15803d;border-color:color-mix(in srgb,#16a34a 40%,var(--line))}'+
-    '.updp-names .no{color:var(--warn)}';
+    '.updp-names .no{color:var(--warn)}'+
+    '.updp-item{display:block}'+
+    '.updp-item>summary{list-style:none;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}'+
+    '.updp-item>summary::-webkit-details-marker{display:none}'+
+    '.updp-item>summary:focus-visible{outline:2px solid var(--settings);outline-offset:4px;border-radius:10px}'+
+    '.updp-sum-r{display:inline-flex;align-items:center;gap:8px;flex:none}'+
+    '.updp-caret{width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);transition:transform .2s;margin:0 4px 3px 2px}'+
+    '.updp-item[open] .updp-caret{transform:rotate(-135deg);margin-top:3px;margin-bottom:0}'+
+    '.updp-body{display:flex;flex-direction:column;gap:10px;margin-top:10px}';
   document.head.appendChild(st);
 }
 function updatesCardHTML(){
@@ -3814,10 +3822,11 @@ function updatesCardHTML(){
       '<div class="updp-lbl">لسه</div><div class="updp-names">'+(st.pend.map(function(n){return '<span class="no">'+esc(n)+'</span>';}).join('')||'<span>الكل اتحدّث</span>')+'</div>':'';
     var act=owner?((mine?'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button> ':'')+'<button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>'):
       (mine?'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>':'<span class="upill">تم التحديث ✓</span>');
-    return '<div class="updp-item"><div class="updp-top"><div><div class="updp-t">'+esc(up.title)+'</div>'+
+    return '<details class="updp-item" data-uid="'+esc(up.id)+'"><summary class="updp-top"><div><div class="updp-t">'+esc(up.title)+'</div>'+
       '<div class="updp-meta">'+esc(up.date)+' · المدة '+esc(updFmtDur(up.dur))+'</div></div>'+
-      '<span class="updp-chip">الإصدار '+esc(up.ver)+'</span></div>'+items+detail+
-      '<div style="display:flex;justify-content:flex-end">'+act+'</div></div>';
+      '<span class="updp-sum-r"><span class="updp-chip">الإصدار '+esc(up.ver)+'</span><span class="updp-caret" aria-hidden="true"></span></span></summary>'+
+      '<div class="updp-body">'+items+detail+
+      '<div style="display:flex;justify-content:flex-end">'+act+'</div></div></details>';
   }).join('');
   if(!list.length)rows='<div class="meta">مفيش تحديثات منشورة حالياً</div>';
   var desc=owner?'انشر التحديث وتابع مين اتحدّث ومين لسه، من غير ما تخرج من الشاشة دي.':'التحديثات الجديدة للتطبيق بتظهر هنا، ولما تضغط تحديث التطبيق بيتحدّث على حسابك.';
@@ -3884,7 +3893,7 @@ function updPrompt(){
   var msgHTML=stale?'<p class="updov-msg">النسخة الجديدة لسه مش متاحة على السيرفر، استنى دقيقة واضغط تاني</p>':'<p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p>';
   ov.innerHTML=updLogo(100)+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+
     '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+
-    (sessionCode()?'':'<button class="updov-ghost" data-act="updClose">إغلاق</button>');
+    '';
   document.body.appendChild(ov);
 }
 /* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
@@ -3893,7 +3902,7 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
   var vin=document.getElementById('updVer');
   if(vin&&!vin.dataset.auto){vin.dataset.auto='1';updLiveVer().then(function(v){var el=document.getElementById('updVer');if(v&&el)el.value=v;});}
   if(!authed()||document.getElementById('updPrompt')||document.getElementById('updOv'))return;
-  if(updPendingList().length&&!window.UPD_BUSY&&!(window.UPD_OWNER_HIDE&&!sessionCode())){
+  if(updPendingList().length&&!window.UPD_BUSY){
     /* ما نقفلش الشاشة إلا لما الإصدار الجديد يكون موجود فعلاً على GitHub، عشان الرفع لوحده ما يعملش قفل */
     window.UPD_BUSY=true;
     updLiveVer().then(function(v){
@@ -3941,7 +3950,6 @@ function updStart(id){
     '<h3 id="updT">جاري تحميل التحديث</h3>'+
     '<div class="updov-bar"><i id="updBar"></i></div>'+
     '<p class="updov-msg" id="updS">الإصدار '+esc(up.ver)+'</p><p class="updov-msg" id="updEta"></p><div id="updAct"></div>';
-  if(!sessionCode())ov.insertAdjacentHTML('afterbegin','<button class="updov-x" data-act="updClose" aria-label="إغلاق">×</button>');
   document.body.appendChild(ov);
   UPD.pct=0;updLoop();
   var dur=up.dur||30,t0=Date.now();
@@ -5808,13 +5816,7 @@ var ACT={
     setPref('appUpdates',updList().filter(function(x){return x.id!==d.id;}));
     return true;
   },
-  updClose:function(){
-    if(sessionCode())return false;
-    var p=document.getElementById('updPrompt'),o=document.getElementById('updOv');
-    if(p)p.remove();if(o)o.remove();
-    window.UPD_OWNER_HIDE=true;
-    return false;
-  },
+  updClose:function(){return false;},
   updGo:function(d){var p=document.getElementById('updPrompt');if(p)p.remove();updStart(d.id);return false;},
   updStart:function(d){updStart(d.id);return false;},
   updFinish:function(d){updFinish(d.id);return false;},
