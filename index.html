@@ -3998,6 +3998,22 @@ function syncWhatsNew(){
     d.remove();
   };
 }
+/* رسالة "مفيش إنترنت": بتظهر بس لما الاتصال يقع فعلاً وإنت جوه التطبيق (مش لما ترجع للشاشة) */
+function netBanner(show){
+  var b=document.getElementById('netBanner');
+  if(!show){if(b)b.remove();return;}
+  if(b)return;
+  b=document.createElement('div');b.id='netBanner';b.setAttribute('role','alert');
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:320;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:#b42318;color:#fff;font-weight:700;font-size:15px;direction:rtl;box-shadow:0 6px 20px rgba(0,0,0,.35)';
+  b.innerHTML='<span>مفيش إنترنت، حاول الاتصال مرة أخرى</span><button id="netRetry" style="border:0;border-radius:999px;padding:8px 14px;background:#fff;color:#b42318;font-weight:700;cursor:pointer">حاول تاني</button>';
+  document.body.appendChild(b);
+  document.getElementById('netRetry').onclick=function(){
+    if(navigator.onLine){netBanner(false);try{render();}catch(e){}}
+  };
+}
+window.addEventListener('offline',function(){netBanner(true);});
+window.addEventListener('online',function(){netBanner(false);});
+if(navigator.onLine===false)netBanner(true);
 /* بعد كل رسم للتطبيق: نتأكد إن النافذة ظاهرة لو فيه تحديث لم يُشاهد */
 var __renderBase=render;
 render=function(){__renderBase.apply(this,arguments);try{syncWhatsNew();}catch(e){}};
