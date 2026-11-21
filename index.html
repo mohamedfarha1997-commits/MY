@@ -3606,14 +3606,104 @@ var SET_IC={
   months:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   backup:'<path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/>',
   gd:'<path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9.5 4 4 0 0 1 17 18H7z"/>',
+  updates:'<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 21h16"/>',
   install:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>'
 };
+/* ===== تبويب التحديثات ===== */
+/* التحديثات بتتكتب هنا يدوي. كل تحديث له id ثابت، وممنوع تغيّره بعد ما يتنشر */
+var APP_UPDATES=[
+  {id:'upd-1.1.0',ver:'1.1.0',date:'2026-11-21',title:'تبويب التحديثات',items:['إضافة تبويب التحديثات في الإعدادات','تحسينات بسيطة في الأداء']}
+];
+function updFind(id){return APP_UPDATES.filter(function(x){return x.id===id;})[0]||null;}
+/* التحديثات اللي الحساب ده نفّذها: محفوظة على الحساب نفسه (بتتزامن مع درايف) عشان متتكررش على أي جهاز */
+function updDoneList(){
+  var c=sessionCode(),u=c?userByCode(c):null;
+  return u?(u.updDone||[]):(pref('updDone',[])||[]);
+}
+function updMarkDone(id){
+  var c=sessionCode(),u=c?userByCode(c):null;
+  var list=updDoneList().slice();
+  if(list.indexOf(id)<0)list.push(id);
+  if(u){u.updDone=list;save();}
+  else setPref('updDone',list);
+}
+function updatesCardHTML(){
+  var done=updDoneList();
+  var rows=APP_UPDATES.map(function(up){
+    var isDone=done.indexOf(up.id)>-1;
+    var items=(up.items||[]).map(function(i){return '<li>'+esc(i)+'</li>';}).join('');
+    return '<div style="border-bottom:1px solid var(--line);padding:12px 0">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><b>'+esc(up.title)+'</b><span class="meta">الإصدار '+esc(up.ver)+' · '+esc(up.date)+'</span></div>'+
+      '<ul style="margin:8px 0;padding-right:18px;font-size:13px;line-height:1.8">'+items+'</ul>'+
+      (isDone?'<span class="upill">تم التحديث ✓</span>':'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>')+
+    '</div>';
+  }).join('');
+  if(!APP_UPDATES.length)rows='<div class="meta" style="margin-top:8px">مفيش تحديثات حالياً</div>';
+  return '<section class="card" style="--c:var(--settings)"><h3>التحديثات</h3>'+
+    '<p class="meta" style="margin:0">التحديثات الجديدة للتطبيق بتظهر هنا. لما تضغط تحديث، التحديث بيتثبت على حسابك ومش هيتكرر على أي جهاز.</p>'+rows+'</section>';
+}
+function updCss(){
+  if(document.getElementById('updCss'))return;
+  var st=document.createElement('style');st.id='updCss';
+  st.textContent='.updov{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:20px;background:rgba(5,7,26,.85);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}'+
+    '.updov-card{width:min(92vw,340px);background:#fff;color:#111;border-radius:24px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)}'+
+    '.updov-ico{width:64px;height:64px;border-radius:50%;background:#EEF0FF;color:#2B3595;display:grid;place-items:center;font-size:28px;font-weight:800}'+
+    '.updov-ico.ok{background:#DCFCE7;color:#16a34a}'+
+    '.updov h3{margin:0;font-size:19px;font-weight:800;color:#2B3595}'+
+    '.updov p{margin:0;font-size:14px;line-height:1.6;color:#444}'+
+    '.updov-bar{width:100%;height:10px;border-radius:999px;background:#E5E7EB;overflow:hidden}'+
+    '.updov-bar i{display:block;height:100%;width:0;background:#2B3595;border-radius:999px;transition:width .15s linear}'+
+    '.updov-spin{width:28px;height:28px;border:3px solid #C7CCF5;border-top-color:#2B3595;border-radius:50%;animation:updspin .8s linear infinite}'+
+    '@keyframes updspin{to{transform:rotate(360deg)}}'+
+    '.updov-btn{width:100%;height:46px;border-radius:999px;border:0;background:#2B3595;color:#fff;font:inherit;font-weight:800;font-size:16px;cursor:pointer}';
+  document.head.appendChild(st);
+}
+/* التحديث الوهمي: تحميل، بعدين تثبيت، بعدين رسالة النجاح */
+function updStart(id){
+  var up=updFind(id);
+  if(!up||document.getElementById('updOv')||updDoneList().indexOf(id)>-1)return;
+  updCss();
+  var $=function(x){return document.getElementById(x);};
+  var ov=document.createElement('div');
+  ov.id='updOv';ov.className='updov';ov.setAttribute('role','alertdialog');ov.setAttribute('aria-modal','true');
+  ov.innerHTML='<div class="updov-card"><div class="updov-ico" id="updIco">&#8595;</div><h3 id="updT">جاري تحميل التحديث</h3><p id="updS"></p><div class="updov-bar"><i id="updBar"></i></div><b id="updPct">0%</b><div id="updAct"></div></div>';
+  document.body.appendChild(ov);
+  $('updS').textContent='الإصدار '+up.ver;
+  var p=0;
+  var dl=setInterval(function(){
+    if(!$('updOv')){clearInterval(dl);return;}
+    p=Math.min(100,p+2+Math.random()*6);
+    $('updBar').style.width=p+'%';
+    $('updPct').textContent=Math.round(p)+'%';
+    if(p>=100){
+      clearInterval(dl);
+      $('updT').textContent='جاري تثبيت التحديث';
+      $('updS').textContent='متقفلش الصفحة لحد ما التثبيت يخلص';
+      $('updIco').innerHTML='<span class="updov-spin"></span>';
+      setTimeout(function(){
+        if(!$('updOv'))return;
+        $('updIco').className='updov-ico ok';
+        $('updIco').innerHTML='&#10003;';
+        $('updT').textContent='تم التحديث بنجاح';
+        $('updS').textContent='الإصدار '+up.ver+' اتثبّت';
+        $('updAct').innerHTML='<button class="updov-btn" data-act="updFinish" data-id="'+esc(id)+'">تم</button>';
+      },1500);
+    }
+  },160);
+}
+/* ضغطة تم: بنسجّل التحديث على الحساب، وبعدين بنعمل تحديث للصفحة */
+function updFinish(id){
+  updMarkDone(id);
+  var a=document.getElementById('updAct');
+  if(a)a.innerHTML='<p>جاري تحديث الصفحة...</p>';
+  setTimeout(function(){location.reload();},1000);
+}
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
     [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],
     [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],
-    [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[installHTML(),'install']
+    [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[updatesCardHTML(),'updates'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
   var secs=pairs.map(function(x){return x[0];});
   var fine=footFine();
@@ -4926,7 +5016,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -5388,6 +5478,8 @@ var ACT={
     setPref('tabsHidden',a);
     render();return false;
   },
+  updStart:function(d){updStart(d.id);return false;},
+  updFinish:function(d){updFinish(d.id);return false;},
   settingsSubmit:function(){
     var st=sPwStored(),mode=!st?'setup':(U.sChange?'change':'unlock');
     var get=function(id){var e=document.getElementById(id);return e?e.value:'';};
