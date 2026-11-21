@@ -3613,6 +3613,14 @@ var SET_IC={
 /* التحديثات بتتكتب هنا يدوي. كل تحديث له id ثابت، وممنوع تغيّره بعد ما يتنشر */
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
+/* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
+var APP_VERSION='1.1.0';
+function verCmp(a,b){
+  var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
+  for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
+  return 0;
+}
+function updLatestVer(){return updList().reduce(function(m,u){return verCmp(u.ver,m)>0?String(u.ver):m;},'0');}
 function updFind(id){return updList().filter(function(x){return x.id===id;})[0]||null;}
 /* التحديثات اللي كل حساب نفّذها: كل حساب ليه إعداد خاص بيه في البيانات (بيتزامن مع درايف).
    مش بنكتبها جوه بيانات المستخدم نفسه، لأن المستخدم بيتم استرجاع بياناته من آخر نسخة عند كل مزامنة */
@@ -3662,7 +3670,13 @@ function updatesCardHTML(){
     form+rows+'</section>';
 }
 /* الإشعار اللي بيظهر للمستخدم أول ما يفتح التطبيق: التحديثات اللي لسه ماتنفذتش على الحساب */
-function updPendingList(){var d=updDoneList();return updList().filter(function(u){return d.indexOf(u.id)<0;});}
+/* أي إصدار الجهاز شغّاله فعلاً بيتسجل على الحساب تلقائي (مرة واحدة) */
+function updAutoRecord(){
+  var have=updDoneList(),add=[];
+  updList().forEach(function(u){if(verCmp(u.ver,APP_VERSION)<=0&&have.indexOf(u.id)<0)add.push(u.id);});
+  if(add.length)setPref(updKey(),have.concat(add));
+}
+function updPendingList(){return updList().filter(function(u){return verCmp(u.ver,APP_VERSION)>0;});}
 var UPD={pct:0};
 function updCss(){
   if(document.getElementById('updCss'))return;
@@ -3709,19 +3723,23 @@ function updPrompt(){
   updCss();
   var ov=document.createElement('div');
   ov.id='updPrompt';ov.className='updov';ov.setAttribute('role','alertdialog');ov.setAttribute('aria-modal','true');
-  ov.innerHTML=updLogo(100)+'<h3>لازم تحدّث التطبيق</h3><p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p><div class="updov-list">'+updPendingItems(pend)+'</div>'+
+  var tried='';try{tried=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
+  var stale=!!tried&&pend.some(function(u){return u.id===tried;});
+  var msgHTML=stale?'<p class="updov-msg">النسخة الجديدة لسه مش متاحة على السيرفر، استنى دقيقة واضغط تاني</p>':'<p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p>';
+  ov.innerHTML=updLogo(100)+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+
     '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>';
   document.body.appendChild(ov);
 }
 /* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
 if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
+  if(authed()&&(!GD.on||GD.seeded))updAutoRecord();
   if(!authed()||document.getElementById('updPrompt')||document.getElementById('updOv'))return;
   if(updPendingList().length)updPrompt();
 },2000);}
 /* التحديث الوهمي: تحميل بشريط نسبة، بعدين تثبيت بشريط متحرك، بعدين نجاح */
 function updStart(id){
   var up=updFind(id);
-  if(!up||document.getElementById('updOv')||updDoneList().indexOf(id)>-1)return;
+  if(!up||document.getElementById('updOv'))return;
   updCss();
   var $=function(x){return document.getElementById(x);};
   var ov=document.createElement('div');
@@ -3755,25 +3773,13 @@ function updStart(id){
     }
   },160);
 }
-/* ضغطة تم: بنسجّل التحديث على الحساب، ومستنيين لحد ما يتحفظ على درايف، وبعدين بنعمل تحديث للصفحة.
-   لو الحفظ ما خلصش (النت وحش مثلاً) بنفضل في النافذة ونطلب من المستخدم يضغط تاني، عشان ما يضيعش التسجيل */
+/* ضغطة تم: بنعلّم إن المحاولة اتعملت، وبعدين بنعمل تحديث حقيقي للصفحة (مسح الكاش وتحميل الكود من GitHub).
+   التسجيل على الحساب بيحصل تلقائي بعد ما الكود الجديد يشتغل فعلاً */
 function updFinish(id){
-  updMarkDone(id);
-  var $=function(x){return document.getElementById(x);};
-  if($('updAct'))$('updAct').innerHTML='<p class="updov-msg">جاري إعادة تشغيل التطبيق...</p>';
-  var t0=Date.now();
-  var check=function(){
-    if(!$('updAct'))return;
-    var busy=GD.busy||GD.again||hasPending();
-    if(!busy&&!GD.err){location.reload();return;}
-    if(Date.now()-t0>25000||GD.err){
-      $('updAct').innerHTML='<p class="updov-msg">مقدرناش نحفظ التحديث دلوقتي، اتأكد من النت واضغط تاني</p>'+
-        '<button class="updov-btn" data-act="updFinish" data-id="'+esc(id)+'">تم</button>';
-      return;
-    }
-    setTimeout(check,400);
-  };
-  setTimeout(check,600);
+  try{sessionStorage.setItem('khat-upd-try',id);}catch(e){}
+  var a=document.getElementById('updAct');
+  if(a)a.innerHTML='<p class="updov-msg">جاري إعادة تشغيل التطبيق...</p>';
+  setTimeout(deepRefresh,600);
 }
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
@@ -5562,6 +5568,8 @@ var ACT={
     var items=((document.getElementById('updItems')||{}).value||'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
     if(!t){toast('اكتب عنوان التحديث');return false;}
     if(!items.length){toast('اكتب التغييرات، كل تغيير في سطر');return false;}
+    if(!/^\d+(\.\d+){0,2}$/.test(v)){toast('اكتب رقم الإصدار زي 1.1.1');return false;}
+    if(verCmp(v,updLatestVer())<=0){toast('الإصدار لازم يكون أعلى من آخر إصدار منشور');return false;}
     var list=updList().slice();
     list.unshift({id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items});
     setPref('appUpdates',list);
