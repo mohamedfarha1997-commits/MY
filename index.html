@@ -3729,7 +3729,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.7';
+var APP_VERSION='1.1.8';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3812,7 +3812,7 @@ function updatesCardHTML(){
       '<div class="updp-meta">اتحدّث '+dn+' من '+total+' حساب</div>'+
       '<div class="updp-lbl">اتحدّث</div><div class="updp-names">'+(st.done.map(function(n){return '<span class="ok">'+esc(n)+'</span>';}).join('')||'<span>محدش لسه</span>')+'</div>'+
       '<div class="updp-lbl">لسه</div><div class="updp-names">'+(st.pend.map(function(n){return '<span class="no">'+esc(n)+'</span>';}).join('')||'<span>الكل اتحدّث</span>')+'</div>':'';
-    var act=owner?'<button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>':
+    var act=owner?((mine?'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button> ':'')+'<button class="btn ghost sm" data-act="updDel" data-id="'+esc(up.id)+'">حذف</button>'):
       (mine?'<button class="btn sm" data-act="updStart" data-id="'+esc(up.id)+'">تحديث</button>':'<span class="upill">تم التحديث ✓</span>');
     return '<div class="updp-item"><div class="updp-top"><div><div class="updp-t">'+esc(up.title)+'</div>'+
       '<div class="updp-meta">'+esc(up.date)+' · المدة '+esc(updFmtDur(up.dur))+'</div></div>'+
@@ -3845,6 +3845,7 @@ function updCss(){
     '.updov-bar i.sweep{width:40%;transition:none;animation:updSweep 1.1s ease-in-out infinite}'+
     '@keyframes updSweep{from{transform:translateX(-120%)}to{transform:translateX(320%)}}'+
     '.updov-btn{min-width:200px;height:46px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(135deg,#5b68ff 0%,#293394 100%);color:#fff;font:inherit;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 12px 26px -12px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35)}'+
+    '.updov-x{position:absolute;top:12px;inset-inline-end:14px;background:none;border:0;color:#dfe4ff;font-size:28px;line-height:1;cursor:pointer;padding:4px 8px}'+
     '.updov-ghost{background:none;border:0;color:#dfe4ff;font:inherit;font-weight:700;cursor:pointer;padding:6px}'+
     '.updov-list{width:100%;max-width:320px;max-height:34vh;overflow:auto;text-align:right;font-size:13px;color:#dfe4ff;line-height:1.7}'+
     '.updov-list b{color:#fff;font-size:15px}'+
@@ -3882,7 +3883,8 @@ function updPrompt(){
   var stale=!!tried&&pend.some(function(u){return u.id===tried;});
   var msgHTML=stale?'<p class="updov-msg">النسخة الجديدة لسه مش متاحة على السيرفر، استنى دقيقة واضغط تاني</p>':'<p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p>';
   ov.innerHTML=updLogo(100)+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+
-    '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>';
+    '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+
+    (sessionCode()?'':'<button class="updov-ghost" data-act="updClose">إغلاق</button>');
   document.body.appendChild(ov);
 }
 /* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
@@ -3891,7 +3893,14 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
   var vin=document.getElementById('updVer');
   if(vin&&!vin.dataset.auto){vin.dataset.auto='1';updLiveVer().then(function(v){var el=document.getElementById('updVer');if(v&&el)el.value=v;});}
   if(!authed()||document.getElementById('updPrompt')||document.getElementById('updOv'))return;
-  if(updPendingList().length)updPrompt();
+  if(updPendingList().length&&!window.UPD_BUSY&&!(window.UPD_OWNER_HIDE&&!sessionCode())){
+    /* ما نقفلش الشاشة إلا لما الإصدار الجديد يكون موجود فعلاً على GitHub، عشان الرفع لوحده ما يعملش قفل */
+    window.UPD_BUSY=true;
+    updLiveVer().then(function(v){
+      window.UPD_BUSY=false;
+      if(v&&verCmp(v,updLatestVer())>=0&&!document.getElementById('updPrompt')&&!document.getElementById('updOv'))updPrompt();
+    });
+  }
 },2000);}
 /* تحميل الصفحة من GitHub بنسبة فعلية، وبيرجّع النص كامل عشان نقرا منه الإصدار */
 var UPD_SIZE=600000;
@@ -3932,6 +3941,7 @@ function updStart(id){
     '<h3 id="updT">جاري تحميل التحديث</h3>'+
     '<div class="updov-bar"><i id="updBar"></i></div>'+
     '<p class="updov-msg" id="updS">الإصدار '+esc(up.ver)+'</p><p class="updov-msg" id="updEta"></p><div id="updAct"></div>';
+  if(!sessionCode())ov.insertAdjacentHTML('afterbegin','<button class="updov-x" data-act="updClose" aria-label="إغلاق">×</button>');
   document.body.appendChild(ov);
   UPD.pct=0;updLoop();
   var dur=up.dur||30,t0=Date.now();
@@ -5311,7 +5321,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -5797,6 +5807,13 @@ var ACT={
     if(!confirm('تحذف التحديث ده؟'))return false;
     setPref('appUpdates',updList().filter(function(x){return x.id!==d.id;}));
     return true;
+  },
+  updClose:function(){
+    if(sessionCode())return false;
+    var p=document.getElementById('updPrompt'),o=document.getElementById('updOv');
+    if(p)p.remove();if(o)o.remove();
+    window.UPD_OWNER_HIDE=true;
+    return false;
   },
   updGo:function(d){var p=document.getElementById('updPrompt');if(p)p.remove();updStart(d.id);return false;},
   updStart:function(d){updStart(d.id);return false;},
