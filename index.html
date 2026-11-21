@@ -7148,7 +7148,10 @@ function loopScan(){
 /* مطابقة مرنة: بتتجاهل المسافات والشرط والأرقام العربي/الإنجليزي */
 function codeKey(x){return String(x||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).toUpperCase().replace(/[^A-Z0-9]/g,'');}
 function findCardLoose(id){var k=codeKey(id);if(!k)return null;return DATA.cards.filter(function(c){return codeKey(c.code)===k;})[0]||null;}
+/* أي خطأ في الجافاسكربت يظهر على شاشة الماسح عشان نعرف السبب */
+window.addEventListener('error',function(e){var el=document.getElementById('scanT');if(el)el.textContent='خطأ: '+(e&&e.message);});
 function onScanned(text){
+  scanMsg('قريت: "'+String(text).slice(0,60)+'"');
   var code=parseCode(text);
   var card=findCard(code)||findCardLoose(code);
   if(!card){
@@ -7210,7 +7213,7 @@ function shareCard(){
 function openScanner(){
   closeScanner();
   var ov=document.createElement('div');ov.id='scanOv';
-  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v5</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود، الماسح بيدوّر عليه وبيكبّره<br><small style="opacity:.6">نسخة v6</small></div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
