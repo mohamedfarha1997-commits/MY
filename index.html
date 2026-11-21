@@ -7070,7 +7070,10 @@ function cropVideo(v,r){
   var k=Math.min(2,Math.max(1,800/w));
   var c=scanner.crop||(scanner.crop=document.createElement('canvas'));
   c.width=Math.round(w*k);c.height=Math.round(h*k);
-  c.getContext('2d',{willReadFrequently:true}).drawImage(v,x,y,w,h,0,0,c.width,c.height);
+  var cx=c.getContext('2d',{willReadFrequently:true});
+  try{cx.filter='grayscale(1) contrast(1.8) brightness(1.1)';}catch(e){}
+  cx.drawImage(v,x,y,w,h,0,0,c.width,c.height);
+  try{cx.filter='none';}catch(e){}
   return {canvas:c,x:x,y:y,sx:w/c.width,sy:h/c.height};
 }
 /* تكبير الكاميرا نحو الكود: يقرب لحد ما الباركود يبقى حوالي 40% من عرض الشاشة */
@@ -7138,9 +7141,7 @@ function loopScan(){
   detectFrame(v).then(function(hit){
     if(!scanner.active)return;
     if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
-    var c=scanner.cand;
-    if(c){drawBox([{x:c.x,y:c.y},{x:c.x+c.w,y:c.y},{x:c.x+c.w,y:c.y+c.h},{x:c.x,y:c.y+c.h}],v,'#ffffff');scanMsg('لقيت الباركود، جاري القراية...');}
-    else{clearBox();sweepZoom();}
+    if(!scanner.cand)sweepZoom();
     scanner.raf=requestAnimationFrame(loopScan);
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
