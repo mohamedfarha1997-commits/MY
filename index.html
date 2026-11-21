@@ -3597,7 +3597,6 @@ function hoursCardHTML(){
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
-  updates:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="M16.5 4.5l2 2"/>',
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 15c2.4.2 4.3 1.8 5 4.5"/>',
   tabs:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 9v11"/>',
@@ -3609,21 +3608,11 @@ var SET_IC={
   gd:'<path d="M7 18a5 5 0 0 1-.6-9.96A6 6 0 0 1 18 9.5 4 4 0 0 1 17 18H7z"/>',
   install:'<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>'
 };
-/* سجل التحديثات: كل الإصدارات، والمستخدم بيشوف بس التغييرات اللي تخص صلاحياته */
-function updatesCardHTML(){
-  var rows=APP_CHANGELOG.map(function(e){
-    var items=e.items.filter(function(it){return !it.perm||!limited()||canUse(it.perm);});
-    if(!items.length)return '';
-    return '<div style="margin:12px 0 6px"><b>'+esc(e.v)+'</b> <span class="meta">'+esc(e.date)+'</span></div>'+
-      '<ul style="margin:0 0 6px;padding-inline-start:20px;line-height:1.7">'+items.map(function(it){return '<li>'+esc(it.t)+'</li>';}).join('')+'</ul>';
-  }).join('');
-  return '<section class="card" style="--c:var(--settings)"><h3>سجل التحديثات</h3>'+(rows||'<p class="meta">مفيش تحديثات تخص صلاحياتك.</p>')+'</section>';
-}
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
     [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],
-    [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],[updatesCardHTML(),'updates'],
+    [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],
     [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
   var secs=pairs.map(function(x){return x[0];});
@@ -3947,57 +3936,6 @@ function loaderHTML(dark){
     ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
     '</div>';
 }
-/* ---------- تحديثات التطبيق: نافذة بتظهر لكل مستخدم لحد ما يضغط "تمام"، وبتعرض بس التغييرات اللي تخص صلاحياته ----------
-   عشان تضيف تحديث: حط الإصدار الجديد في أول APP_CHANGELOG (فوق خالص).
-   perm اختياري: اسم القسم (زي orders, stock, prod, recipes, settings, verify...). لو متحددش، بيظهر للكل. */
-var APP_VERSION='2026.11.21';
-var APP_CHANGELOG=[
-  {v:'v1',date:'2026-11-21',items:[
-    {t:'تم تحسين قراءة باركود الكروت وفتحها بسرعة'},
-    {t:'مثال: تعديل شاشة الطلبات (اكتب التغيير الحقيقي هنا)',perm:'orders'},
-    {t:'مثال: تعديل إعدادات المستخدمين (اكتب التغيير الحقيقي هنا)',perm:'settings'}
-  ]}
-];
-function whatsNewPending(){
-  var code=sessionCode()||'owner',key='rmy_seen_'+code;
-  var seen=(pref('seenUpd',{})||{})[code]||'';
-  try{seen=seen||localStorage.getItem(key)||'';}catch(e){}
-  var latest=APP_CHANGELOG[0];
-  if(!latest||seen===latest.v)return null;
-  var items=latest.items.filter(function(it){return !it.perm||!limited()||canUse(it.perm);});
-  if(!items.length){try{localStorage.setItem(key,latest.v);}catch(e){}return null;}
-  return {entry:latest,items:items,key:key,code:code};
-}
-/* بنسجّل إن المستخدم شاف التحديث في بياناته (بتتزامن مع درايف) عشان ميشوفوش تاني من جهاز تاني */
-function markSeenUpd(code,v){
-  var m=Object.assign({},pref('seenUpd',{}));
-  m[code]=v;
-  setPref('seenUpd',m);
-}
-function syncWhatsNew(){
-  var old=document.getElementById('whatsNew');
-  if(!authed()){if(old)old.remove();return;}
-  var p=whatsNewPending();
-  if(!p){if(old)old.remove();return;}
-  if(old&&old.getAttribute('data-v')===p.entry.v)return;
-  if(old)old.remove();
-  var d=document.createElement('div');
-  d.id='whatsNew';d.setAttribute('data-v',p.entry.v);
-  d.setAttribute('role','alertdialog');d.setAttribute('aria-modal','true');
-  d.style.cssText='position:fixed;inset:0;z-index:310;display:grid;place-items:center;padding:20px;background:rgb(5 7 26 / .88)';
-  d.innerHTML='<div style="width:min(92vw,380px);max-height:80vh;overflow:auto;background:#fff;color:#111;border-radius:24px;padding:24px 22px;direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)">'+
-    '<h3 style="margin:0 0 6px;font-size:20px;font-weight:800;color:#2B3595">تم تحديث الاصدار</h3>'+
-    '<p style="margin:0 0 12px;font-size:13px;color:#666">'+esc(p.entry.v)+' · '+esc(p.entry.date)+'</p>'+
-    '<ul style="margin:0 0 18px;padding-inline-start:20px;font-size:15px;line-height:1.7;color:#222">'+
-      p.items.map(function(it){return '<li>'+esc(it.t)+'</li>';}).join('')+'</ul>'+
-    '<button id="whatsNewOk" style="width:100%;height:46px;border:0;border-radius:999px;background:#2B3595;color:#fff;font-weight:700;font-size:16px;cursor:pointer">تم</button></div>';
-  document.body.appendChild(d);
-  document.getElementById('whatsNewOk').onclick=function(){
-    try{localStorage.setItem(p.key,p.entry.v);}catch(e){}
-    markSeenUpd(p.code,p.entry.v);
-    d.remove();
-  };
-}
 /* رسالة "مفيش إنترنت": بتظهر بس لما الاتصال يقع فعلاً وإنت جوه التطبيق (مش لما ترجع للشاشة) */
 function netBanner(show){
   var b=document.getElementById('netBanner');
@@ -4014,9 +3952,6 @@ function netBanner(show){
 window.addEventListener('offline',function(){netBanner(true);});
 window.addEventListener('online',function(){netBanner(false);});
 if(navigator.onLine===false)netBanner(true);
-/* بعد كل رسم للتطبيق: نتأكد إن النافذة ظاهرة لو فيه تحديث لم يُشاهد */
-var __renderBase=render;
-render=function(){__renderBase.apply(this,arguments);try{syncWhatsNew();}catch(e){}};
 function render(){
   if(U.view&&!routeAllowed(U.view))U.view='home';
   /* صفحة إعادة تعيين الـ PIN مفتوحة: مانعيدش رسمها في الخلفية (المزامنة وغيرها) عشان البيانات اللي اتكتبت ماتتمسحش */
