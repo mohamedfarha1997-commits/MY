@@ -7152,8 +7152,7 @@ function onScanned(text){
   var code=parseCode(text);
   var card=findCard(code)||findCardLoose(code);
   if(!card){
-    scanMsg('اتقرا: "'+String(code).slice(0,40)+'" ومش موجود في الكروت، كمّل المسح');
-    setTimeout(function(){if(scanner.active)scanMsg('وجّه الكاميرا على الباركود');},1500);
+    scanMsg('اتقرا: "'+String(code).slice(0,40)+'" ومش موجود في الكروت');
     scanner.raf=requestAnimationFrame(loopScan);
     return;
   }
