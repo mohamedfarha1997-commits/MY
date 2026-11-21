@@ -1015,13 +1015,12 @@ body::before{ /* subtle dot texture */
 .scanframe::after{content:"";position:absolute;left:10px;right:10px;height:2px;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:scanln 2s infinite ease-in-out}
 @keyframes scanln{0%{top:6px}50%{top:calc(100% - 8px)}100%{top:6px}}
 #bigBc{position:fixed;inset:0;z-index:1000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:16px;box-sizing:border-box}
-#bigBc svg{width:100%;height:auto;max-height:62vh;display:block}
-#bigBc .bigbc-id{font:700 26px/1 var(--mono);letter-spacing:3px;color:#000;direction:ltr}
+#bigBc svg{width:92vw;height:auto;max-height:70vh;display:block}
 #bigBc .btn{position:absolute;top:14px;left:14px;width:auto;flex:none;padding:10px 16px;background:#0b1030;color:#fff;box-shadow:none;border:0}
 .scantxt{position:absolute;left:16px;right:16px;bottom:150px;text-align:center;font:700 16px/1.5 var(--ar);color:#fff;text-shadow:0 2px 10px #000}
 #scanOv .btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);width:auto;padding:12px 32px}
 .bcwrap{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px}
-.bcwrap svg{width:100%;height:56px;display:block}
+.bcwrap svg{width:100%;height:auto;display:block}
 @media print{
   body{background:#fff;padding:0}
   body::before{display:none}
@@ -6994,7 +6993,7 @@ function beep(){try{if(!audioCtx)return;var o=audioCtx.createOscillator(),g=audi
 function scanMsg(m){var el=document.getElementById('scanT');if(el)el.textContent=m;}
 /* الـ QR ممكن يكون الـ ID نفسه أو لينك فيه ?id= */
 function parseCode(t){try{var u=new URL(t,location.href);var id=u.searchParams.get('id');if(id)return id;var h=(u.hash||'').slice(1);if(h)return h;}catch(e){}return String(t||'').trim();}
-function closeScanner(){scanner.active=false;cancelAnimationFrame(scanner.raf);clearTimeout(scanner.hint);scanner.track=null;scanner.zoomCaps=null;if(scanner.stream){scanner.stream.getTracks().forEach(function(t){t.stop();});scanner.stream=null;}var ov=document.getElementById('scanOv');if(ov)ov.remove();}
+function closeScanner(){scanner.active=false;cancelAnimationFrame(scanner.raf);clearTimeout(scanner.hint);scanner.track=null;scanner.zoomCaps=null;scanner.cand=null;scanner.curZoom=null;clearBox();if(scanner.stream){scanner.stream.getTracks().forEach(function(t){t.stop();});scanner.stream=null;}var ov=document.getElementById('scanOv');if(ov)ov.remove();}
 function frameOf(v){var off=scanner.off||(scanner.off=document.createElement('canvas'));off.width=v.videoWidth;off.height=v.videoHeight;var c=off.getContext('2d',{willReadFrequently:true});c.drawImage(v,0,0,off.width,off.height);return c;}
 /* يرجّع {text, pts} بإحداثيات الفيديو لو لقى باركود/QR في الشاشة كلها، أو null */
 function detectOn(src){
@@ -7003,11 +7002,105 @@ function detectOn(src){
   if(window.jsQR){var img=src.getContext('2d',{willReadFrequently:true}).getImageData(0,0,src.width,src.height);var q=jsQR(img.data,img.width,img.height,{inversionAttempts:'attemptBoth'});if(!q)return Promise.resolve(null);var L=q.location;return Promise.resolve({text:q.data,pts:[L.topLeftCorner,L.topRightCorner,L.bottomRightCorner,L.bottomLeftCorner]});}
   return Promise.resolve(null);
 }
+/* مجموع متوسط لكل نقطة في نافذة (2rx+1)x(2ry+1) باستخدام integral image */
+function boxSum(src,W,H,rx,ry){
+  var I=new Float64Array((W+1)*(H+1));
+  for(var y=0;y<H;y++){var row=0;for(var x=0;x<W;x++){row+=src[y*W+x];I[(y+1)*(W+1)+x+1]=I[y*(W+1)+x+1]+row;}}
+  var out=new Float32Array(W*H);
+  for(var y2=0;y2<H;y2++){
+    var ya=Math.max(0,y2-ry),yb=Math.min(H,y2+ry+1);
+    for(var x2=0;x2<W;x2++){
+      var xa=Math.max(0,x2-rx),xb=Math.min(W,x2+rx+1);
+      var s=I[yb*(W+1)+xb]-I[ya*(W+1)+xb]-I[yb*(W+1)+xa]+I[ya*(W+1)+xa];
+      out[y2*W+x2]=s/((xb-xa)*(yb-ya));
+    }
+  }
+  return out;
+}
+/* يلاقي مكان الباركود (مستطيل فيه تدرّج أفقي قوي وعمودي ضعيف) من غير ما يفك شفرته
+   g: صورة رمادي (Uint8), W,H: أبعادها. يرجّع {x,y,w,h} بإحداثيات الصورة أو null */
+function findBarcodeBox(g,W,H){
+  var gx=new Float32Array(W*H),gy=new Float32Array(W*H);
+  for(var y=0;y<H-1;y++)for(var x=0;x<W-1;x++){var i=y*W+x;gx[i]=Math.abs(g[i+1]-g[i]);gy[i]=Math.abs(g[i+W]-g[i]);}
+  var rx=Math.max(2,Math.round(W/80)),ry=Math.max(2,Math.round(H/80));
+  var ax=boxSum(gx,W,H,rx,ry),ay=boxSum(gy,W,H,rx,ry);
+  var m=new Float32Array(W*H);
+  for(var k=0;k<W*H;k++)m[k]=(ax[k]>40&&ax[k]>2.2*ay[k])?1:0;
+  var cw=Math.max(3,Math.round(W/12));          /* دمج الخطوط الأفقي عشان تبقى كتلة واحدة */
+  var mc=boxSum(m,W,H,cw,1);
+  var bin=new Uint8Array(W*H);
+  for(var q=0;q<W*H;q++)bin[q]=mc[q]>0.5?1:0;
+  var seen=new Uint8Array(W*H),best=null;
+  for(var s0=0;s0<W*H;s0++){
+    if(!bin[s0]||seen[s0])continue;
+    var minx=W,maxx=0,miny=H,maxy=0,n=0,st=[s0];seen[s0]=1;
+    while(st.length){
+      var p=st.pop(),px=p%W,py=(p-px)/W;n++;
+      if(px<minx)minx=px;if(px>maxx)maxx=px;if(py<miny)miny=py;if(py>maxy)maxy=py;
+      if(px>0&&bin[p-1]&&!seen[p-1]){seen[p-1]=1;st.push(p-1);}
+      if(px<W-1&&bin[p+1]&&!seen[p+1]){seen[p+1]=1;st.push(p+1);}
+      if(py>0&&bin[p-W]&&!seen[p-W]){seen[p-W]=1;st.push(p-W);}
+      if(py<H-1&&bin[p+W]&&!seen[p+W]){seen[p+W]=1;st.push(p+W);}
+    }
+    var bw=maxx-minx+1,bh=maxy-miny+1;
+    var ok=bw>=W*0.08&&bw>=1.8*bh&&n>=0.3*bw*bh;   /* مستطيل عريض ومليان */
+    if(ok&&(!best||n>best.n))best={x:minx,y:miny,w:bw,h:bh,n:n};
+  }
+  return best?{x:best.x,y:best.y,w:best.w,h:best.h}:null;
+}
+
+/* يلاقي مكان الباركود في الشاشة كلها (على صورة صغيرة وسريعة) */
+function locateCandidate(v){
+  var k=Math.min(1,480/v.videoWidth),W=Math.round(v.videoWidth*k),H=Math.round(v.videoHeight*k);
+  var c=scanner.loc||(scanner.loc=document.createElement('canvas'));
+  c.width=W;c.height=H;
+  var ctx=c.getContext('2d',{willReadFrequently:true});
+  ctx.drawImage(v,0,0,W,H);
+  var d=ctx.getImageData(0,0,W,H).data,g=new Uint8Array(W*H);
+  for(var i=0,j=0;i<d.length;i+=4,j++)g[j]=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;
+  var b=findBarcodeBox(g,W,H);
+  scanner.cand=b?{x:b.x/k,y:b.y/k,w:b.w/k,h:b.h/k}:null;
+  return scanner.cand;
+}
+/* قص الكود من الفيديو بدقته الأصلية (تكبير رقمي) عشان يتفك */
+function cropVideo(v,r){
+  var pw=r.w*0.15,ph=r.h*0.3;
+  var x=Math.max(0,Math.floor(r.x-pw)),y=Math.max(0,Math.floor(r.y-ph));
+  var w=Math.min(v.videoWidth-x,Math.ceil(r.w+2*pw)),h=Math.min(v.videoHeight-y,Math.ceil(r.h+2*ph));
+  var k=Math.min(2,Math.max(1,800/w));
+  var c=scanner.crop||(scanner.crop=document.createElement('canvas'));
+  c.width=Math.round(w*k);c.height=Math.round(h*k);
+  c.getContext('2d',{willReadFrequently:true}).drawImage(v,x,y,w,h,0,0,c.width,c.height);
+  return {canvas:c,x:x,y:y,sx:w/c.width,sy:h/c.height};
+}
+/* تكبير الكاميرا نحو الكود: يقرب لحد ما الباركود يبقى حوالي 40% من عرض الشاشة */
+function zoomTo(c,v){
+  var tr=scanner.track,z=scanner.zoomCaps;
+  if(!tr||!z||c.w>=0.4*v.videoWidth)return;
+  if(Date.now()-(scanner.lastZoom||0)<600)return;
+  scanner.lastZoom=Date.now();
+  var cur=scanner.curZoom||z.min,top=Math.min(z.max,4);
+  var nz=Math.min(top,cur*(0.4*v.videoWidth)/c.w);
+  if(nz<=cur*1.05)return;
+  scanner.curZoom=nz;
+  tr.applyConstraints({advanced:[{zoom:nz}]}).catch(function(){});
+}
 function detectFrame(v){
-  if(scanner.det)return detectOn(v);          // المتصفح بيقرا الفيديو مباشرة (أسرع وأوضح)
-  return detectOn(frameOf(v).canvas);
+  var cand=locateCandidate(v);
+  var first=scanner.det?detectOn(v):detectOn(frameOf(v).canvas);
+  return first.then(function(hit){
+    if(hit||!cand)return hit;
+    zoomTo(cand,v);
+    var cr=cropVideo(v,cand);
+    return detectOn(cr.canvas).then(function(h){
+      if(!h)return null;
+      h.pts=h.pts.map(function(p){return {x:cr.x+p.x*cr.sx,y:cr.y+p.y*cr.sy};});
+      return h;
+    });
+  });
 }
 /* التكبير التلقائي: لو ماشفناش باركود، الكاميرا بتكبّر وتصغّر بالتدريج لحد ما تلاقيه على أي بُعد */
+function clearBox(){var cv=document.getElementById('scanC');if(cv){var c=cv.getContext('2d');c.setTransform(1,0,0,1,0,0);c.clearRect(0,0,cv.width,cv.height);}}
 function sweepZoom(){
   var tr=scanner.track,z=scanner.zoomCaps;
   if(!tr||!z||Date.now()-(scanner.lastZoom||0)<1200)return;
@@ -7015,10 +7108,11 @@ function sweepZoom(){
   var top=Math.min(z.max,4),lv=[];
   for(var i=0;i<=4;i++)lv.push(z.min+(top-z.min)*i/4);
   scanner.zi=((scanner.zi||0)+1)%lv.length;
+  scanner.curZoom=lv[scanner.zi];
   tr.applyConstraints({advanced:[{zoom:lv[scanner.zi]}]}).catch(function(){});
 }
 /* إطار أخضر بأركان حوالين الباركود المتقري، متظبط على حجم الفيديو المعروض */
-function drawBox(pts,v){
+function drawBox(pts,v,col){
   var cv=document.getElementById('scanC');if(!cv)return;
   var r=v.getBoundingClientRect(),dpr=window.devicePixelRatio||1;
   cv.width=r.width*dpr;cv.height=r.height*dpr;
@@ -7028,7 +7122,7 @@ function drawBox(pts,v){
   var x0=Math.min.apply(null,xs)-10,x1=Math.max.apply(null,xs)+10,y0=Math.min.apply(null,ys)-10,y1=Math.max.apply(null,ys)+10;
   if(y1-y0<60){var cy=(y0+y1)/2;y0=cy-30;y1=cy+30;}
   var L=Math.max(16,Math.min(x1-x0,y1-y0)*0.3);
-  ctx.strokeStyle='#22c55e';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
+  ctx.strokeStyle=col||'#22c55e';ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';
   ctx.shadowColor='rgba(0,0,0,.6)';ctx.shadowBlur=6;
   ctx.beginPath();
   ctx.moveTo(x0,y0+L);ctx.lineTo(x0,y0);ctx.lineTo(x0+L,y0);
@@ -7044,7 +7138,9 @@ function loopScan(){
   detectFrame(v).then(function(hit){
     if(!scanner.active)return;
     if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
-    sweepZoom();
+    var c=scanner.cand;
+    if(c){drawBox([{x:c.x,y:c.y},{x:c.x+c.w,y:c.y},{x:c.x+c.w,y:c.y+c.h},{x:c.x,y:c.y+c.h}],v,'#ffffff');scanMsg('لقيت الباركود، جاري القراية...');}
+    else{clearBox();sweepZoom();}
     scanner.raf=requestAnimationFrame(loopScan);
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
@@ -7078,28 +7174,26 @@ function zxDetect(c){
     return Promise.resolve({text:res.getText(),pts:[{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}]});
   }catch(e){return Promise.resolve(null);}
 }
+/* يخلي الباركود يتكبّر بنسبته الأصلية (مستطيل) من غير ما يتمطّط */
+function fitSvg(svg){
+  var w=parseFloat(svg.getAttribute('width'))||0,h=parseFloat(svg.getAttribute('height'))||0;
+  if(w&&h){svg.setAttribute('viewBox','0 0 '+w+' '+h);svg.removeAttribute('width');svg.removeAttribute('height');}
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+}
 /* باركود Code 128 للكود بتاع الكارت */
 function makeBarcode(code){
   var svg=document.getElementById('bcSvg');if(!svg||!window.JsBarcode)return;
-  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:40,width:3,background:'#ffffff',lineColor:'#0b1030'});svg.setAttribute('preserveAspectRatio','none');}catch(e){}
+  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:true,fontSize:16,textMargin:4,font:'monospace',margin:14,height:46,width:2.4,background:'#ffffff',lineColor:'#000000'});fitSvg(svg);}catch(e){}
 }
-/* باركود كبير على الشاشة كلها: الخطوط بتبقى عريضة، فالكاميرا تقراه من بعيد (مفيد لو الكارت على شاشة) */
+/* باركود كبير على الشاشة: نفس المستطيل والأرقام تحت الخطوط، بس بعرض الشاشة */
 function showBigBarcode(code){
   var old=document.getElementById('bigBc');if(old)old.remove();
   var ov=document.createElement('div');ov.id='bigBc';
-  ov.innerHTML='<svg id="bigBcSvg" role="img" aria-label="باركود كبير"></svg><div class="bigbc-id">'+esc(String(code))+'</div><button class="btn ghost" id="bigBcX">إغلاق</button>';
+  ov.innerHTML='<svg id="bigBcSvg" role="img" aria-label="باركود كبير"></svg><button class="btn ghost" id="bigBcX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('bigBcX').onclick=function(){ov.remove();};
   var svg=document.getElementById('bigBcSvg');if(!window.JsBarcode)return;
-  var avail=Math.min(window.innerWidth*0.92,1400),Q=10;
-  try{
-    JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:10,width:1,background:'#ffffff',lineColor:'#000000'});
-    var mods=parseFloat(svg.getAttribute('width'))||100;
-    var mod=Math.max(2,Math.floor(avail/(mods+2*Q)));
-    JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:Q*mod,height:Math.round(avail*0.5),width:mod,background:'#ffffff',lineColor:'#000000'});
-    var w=parseFloat(svg.getAttribute('width')),h=parseFloat(svg.getAttribute('height'));
-    if(w&&h){svg.setAttribute('viewBox','0 0 '+w+' '+h);svg.removeAttribute('width');svg.removeAttribute('height');}
-  }catch(e){}
+  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:true,fontSize:28,textMargin:8,font:'monospace',margin:24,height:150,width:4,background:'#ffffff',lineColor:'#000000'});fitSvg(svg);}catch(e){}
 }
 /* مشاركة لينك الكارت، ولو المتصفح مش بيدعم المشاركة بننسخه */
 function shareCard(){
