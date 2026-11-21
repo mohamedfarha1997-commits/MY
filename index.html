@@ -3614,17 +3614,14 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 function updFind(id){return updList().filter(function(x){return x.id===id;})[0]||null;}
-/* التحديثات اللي الحساب ده نفّذها: محفوظة على الحساب نفسه (بتتزامن مع درايف) عشان متتكررش على أي جهاز */
-function updDoneList(){
-  var c=sessionCode(),u=c?userByCode(c):null;
-  return u?(u.updDone||[]):(pref('updDone',[])||[]);
-}
+/* التحديثات اللي كل حساب نفّذها: كل حساب ليه إعداد خاص بيه في البيانات (بيتزامن مع درايف).
+   مش بنكتبها جوه بيانات المستخدم نفسه، لأن المستخدم بيتم استرجاع بياناته من آخر نسخة عند كل مزامنة */
+function updKey(){return 'updDone:'+(sessionCode()||'owner');}
+function updDoneList(){var l=pref(updKey(),[]);return Array.isArray(l)?l:[];}
 function updMarkDone(id){
-  var c=sessionCode(),u=c?userByCode(c):null;
   var list=updDoneList().slice();
   if(list.indexOf(id)<0)list.push(id);
-  if(u){u.updDone=list;save();}
-  else setPref('updDone',list);
+  setPref(updKey(),list);
 }
 function updatesCardHTML(){
   var done=updDoneList(),owner=!sessionCode(),list=updList();
@@ -3699,11 +3696,15 @@ function updPrompt(){
   updCss();
   var ov=document.createElement('div');
   ov.id='updPrompt';ov.className='updov';ov.setAttribute('role','alertdialog');ov.setAttribute('aria-modal','true');
-  ov.innerHTML=updLogo(100)+'<h3>فيه تحديث جديد</h3><div class="updov-list">'+updPendingItems(pend)+'</div>'+
-    '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+
-    '<button class="updov-ghost" data-act="updLater">لاحقاً</button>';
+  ov.innerHTML=updLogo(100)+'<h3>لازم تحدّث التطبيق</h3><p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p><div class="updov-list">'+updPendingItems(pend)+'</div>'+
+    '<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>';
   document.body.appendChild(ov);
 }
+/* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
+if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
+  if(!authed()||document.getElementById('updPrompt')||document.getElementById('updOv'))return;
+  if(updPendingList().length)updPrompt();
+},2000);}
 /* التحديث الوهمي: تحميل بشريط نسبة، بعدين تثبيت بشريط متحرك، بعدين نجاح */
 function updStart(id){
   var up=updFind(id);
@@ -3741,12 +3742,25 @@ function updStart(id){
     }
   },160);
 }
-/* ضغطة تم: بنسجّل التحديث على الحساب، وبعدين بنعمل تحديث للصفحة */
+/* ضغطة تم: بنسجّل التحديث على الحساب، ومستنيين لحد ما يتحفظ على درايف، وبعدين بنعمل تحديث للصفحة.
+   لو الحفظ ما خلصش (النت وحش مثلاً) بنفضل في النافذة ونطلب من المستخدم يضغط تاني، عشان ما يضيعش التسجيل */
 function updFinish(id){
   updMarkDone(id);
-  var a=document.getElementById('updAct');
-  if(a)a.innerHTML='<p>جاري تحديث الصفحة...</p>';
-  setTimeout(function(){location.reload();},1000);
+  var $=function(x){return document.getElementById(x);};
+  if($('updAct'))$('updAct').innerHTML='<p class="updov-msg">جاري حفظ التحديث على حسابك...</p>';
+  var t0=Date.now();
+  var check=function(){
+    if(!$('updAct'))return;
+    var busy=GD.busy||GD.again||hasPending();
+    if(!busy&&!GD.err){location.reload();return;}
+    if(Date.now()-t0>25000||GD.err){
+      $('updAct').innerHTML='<p class="updov-msg">مقدرناش نحفظ التحديث دلوقتي، اتأكد من النت واضغط تاني</p>'+
+        '<button class="updov-btn" data-act="updFinish" data-id="'+esc(id)+'">تم</button>';
+      return;
+    }
+    setTimeout(check,400);
+  };
+  setTimeout(check,600);
 }
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
@@ -4113,7 +4127,6 @@ function render(){
     if(open!==true){document.getElementById('app').innerHTML=restHTML(open===null);U.restShown=true;return;}
   }
   U.restShown=false;
-  if(!U.updPrompted&&authed()&&updPendingList().length){U.updPrompted=true;setTimeout(updPrompt,400);}
   if(U.view==='verify'){var fa=document.getElementById('app');fa.classList.remove('has-bbar');if(!fa.querySelector('iframe[data-verify]'))fa.innerHTML=verifyView();return;}
   var app=document.getElementById('app');
   var scrollers=document.querySelectorAll('.sheet,.sbody,main.view');var scSaved=Array.prototype.map.call(scrollers,function(e){return e.scrollTop;});
@@ -5067,7 +5080,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updLater:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -5549,7 +5562,6 @@ var ACT={
     return true;
   },
   updGo:function(d){var p=document.getElementById('updPrompt');if(p)p.remove();updStart(d.id);return false;},
-  updLater:function(){var p=document.getElementById('updPrompt');if(p)p.remove();return false;},
   updStart:function(d){updStart(d.id);return false;},
   updFinish:function(d){updFinish(d.id);return false;},
   settingsSubmit:function(){
