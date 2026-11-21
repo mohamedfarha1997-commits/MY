@@ -2218,7 +2218,72 @@ function footHTML(){
     '<div class="hl">'+home+(tabHidden('refresh')?'':deepBtn())+(tabHidden('theme')?'':themeBtn())+(tabHidden('verify')?'':verifyBtn())+(limited()&&!canUse('settings')?'':settingsBtn())+'</div>'+
     '</nav>';
 }
-function homeHTML(){return navHTML().replace('<nav class="nav" aria-label="مراحل الإنتاج">','<nav class="hgrid" aria-label="الأقسام">');}
+/* الصفحة الرئيسية: أقسام ثابتة، وكروت بمقاس واحد. الأرقام الصفر بتتعرض باهتة، والكروت اللي محتاجة متابعة بتتعلّم */
+var DSH_SECS=[
+  {t:'الأوردرات',keys:['orders','shopOrders','reserved','calendar']},
+  {t:'التحضير والإنتاج',keys:['prep','prod','filling','prepreq']},
+  {t:'المخازن',keys:['stock','fgstock','waste']},
+  {t:'الوصفات',keys:['recipes','shopProducts']}
+];
+function dshCss(){
+  if(document.getElementById('dshCss'))return;
+  var st=document.createElement('style');st.id='dshCss';
+  st.textContent='.dsh{display:flex;flex-direction:column;gap:22px;padding:6px 0 14px}'+
+    '.dsh-sec{display:flex;flex-direction:column;gap:10px}'+
+    '.dsh-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 2px;font-size:13px;font-weight:700;color:var(--muted)}'+
+    '.dsh-w{font-size:12px;font-weight:700;color:var(--warn)}'+
+    '.dsh-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'+
+    '@media (min-width:720px){.dsh-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}}'+
+    '@media (min-width:1100px){.dsh-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}'+
+    '.dsh-card{position:relative;overflow:hidden;display:flex;align-items:center;gap:12px;min-height:76px;padding:14px;border-radius:16px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;text-align:start;cursor:pointer;transition:border-color .2s,box-shadow .2s,transform .15s}'+
+    '.dsh-card:hover{border-color:color-mix(in srgb,var(--c) 45%,var(--line));box-shadow:0 12px 22px -18px var(--c)}'+
+    '.dsh-card:active{transform:scale(.98)}'+
+    '.dsh-card:focus-visible{outline:2px solid var(--c);outline-offset:2px}'+
+    '.dsh-ico{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}'+
+    '.dsh-ico svg{width:22px;height:22px}'+
+    '.dsh-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}'+
+    '.dsh-name{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+    '.dsh-unit{font-size:12px;color:var(--muted)}'+
+    '.dsh-num{flex:none;font-family:var(--f-disp);font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink)}'+
+    '.dsh-card.zero .dsh-num{color:var(--muted);font-weight:700}'+
+    '.dsh-card.warn{border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}'+
+    '.dsh-card.warn .dsh-num{color:var(--warn)}'+
+    '.dsh-dot{position:absolute;top:10px;inset-inline-end:10px;width:8px;height:8px;border-radius:50%;background:var(--warn)}'+
+    '.dsh-card.live{border-color:color-mix(in srgb,var(--prod) 55%,var(--line))}'+
+    '.dsh-card.live .dsh-num{font-size:18px;color:var(--prod)}'+
+    '.dsh-bar{position:absolute;bottom:0;inset-inline-start:0;height:3px;width:calc(var(--p) * 1%);background:var(--prod);transition:width 1s linear}'+
+    '@media (prefers-reduced-motion:reduce){.dsh-bar{transition:none}}';
+  document.head.appendChild(st);
+}
+function dshCard(x){
+  var c=(x.k==='shopOrders'||x.k==='reserved')?'orders':x.k==='shopProducts'?'recipes':x.k==='fgstock'?'stock':x.k;
+  var cd=!!(x.live&&x.k==='prod');
+  var cls='dsh-card'+(cd?' live':'')+(x.warn?' warn':'')+((!cd&&!x.n)?' zero':'');
+  var num=cd?'<span class="dsh-num hcdt">'+cdText()+'</span><i class="hcd" hidden></i>':'<span class="dsh-num">'+x.n+'</span>';
+  var unit=cd?'قيد التشغيل':x.u;
+  return '<button class="'+cls+'" style="--c:var(--'+c+');--p:'+(cd?pctOf(prodCountdown()):0)+'" data-act="tab" data-v="'+x.k+'">'+
+    '<span class="dsh-ico">'+svg(x.k)+'</span>'+
+    '<span class="dsh-txt"><span class="dsh-name">'+x.l+'</span><span class="dsh-unit">'+unit+'</span></span>'+
+    num+(x.warn?'<i class="dsh-dot"></i>':'')+(cd?'<i class="dsh-bar"></i>':'')+
+  '</button>';
+}
+function homeHTML(){
+  dshCss();
+  var st=navItems().filter(function(x){return !tabHidden(x.k)&&['verify','refresh','theme'].indexOf(x.k)<0;});
+  var used={};
+  var secs=DSH_SECS.map(function(sec){
+    var items=sec.keys.map(function(k){used[k]=1;return st.filter(function(x){return x.k===k;})[0];}).filter(Boolean);
+    return {t:sec.t,items:items};
+  });
+  var rest=st.filter(function(x){return !used[x.k];});
+  if(rest.length)secs.push({t:'أخرى',items:rest});
+  var out=secs.filter(function(sec){return sec.items.length;}).map(function(sec){
+    var w=sec.items.filter(function(x){return x.warn;}).length;
+    return '<section class="dsh-sec"><div class="dsh-h"><span>'+sec.t+'</span>'+(w?'<span class="dsh-w">'+w+' تحتاج متابعة</span>':'')+'</div>'+
+      '<div class="dsh-grid">'+sec.items.map(dshCard).join('')+'</div></section>';
+  }).join('');
+  return '<div class="dsh" aria-label="الأقسام">'+out+'</div>';
+}
 /* زرار الرجوع بيتعرض في صف تحت الهيدر */
 function backHTML(){
   return '<div class="backrow"><button class="btn ghost sm ttlback" data-act="tab" data-v="home" aria-label="رجوع"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg><span>رجوع</span></button></div>';
@@ -3614,7 +3679,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.1.1';
+var APP_VERSION='1.1.2';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3805,7 +3870,7 @@ function updStart(id){
       var live=m?m[1]:'';
       if(!live||verCmp(live,up.ver)<0){
         setPct(0);
-        setMsg('النسخة الجديدة لسه بتتنشر على GitHub','هنعيد المحاولة تلقائي خلال ثواني');
+        setMsg('برجاء الانتظار','سيتم التحديث قريبا، برجاء عدم الخروج من التطبيق لضمان وصول التحديث بصورة سلمية');
         setTimeout(attempt,15000);
         return;
       }
