@@ -1011,7 +1011,7 @@ body::before{ /* subtle dot texture */
 #scanOv{position:fixed;inset:0;z-index:999;background:#000;overflow:hidden}
 #scanV{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 #scanC{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.scanframe{position:absolute;left:50%;top:44%;width:min(88vw,360px);height:150px;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);overflow:hidden}
+.scanframe{position:absolute;left:50%;top:44%;width:min(88vw,360px);height:min(88vw,360px);transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.7);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45);overflow:hidden}
 .scanframe::after{content:"";position:absolute;left:10px;right:10px;height:2px;background:#22c55e;box-shadow:0 0 14px #22c55e;animation:scanln 2s infinite ease-in-out}
 @keyframes scanln{0%{top:6px}50%{top:calc(100% - 8px)}100%{top:6px}}
 .scantxt{position:absolute;left:16px;right:16px;bottom:150px;text-align:center;font:700 16px/1.5 var(--ar);color:#fff;text-shadow:0 2px 10px #000}
@@ -1019,7 +1019,8 @@ body::before{ /* subtle dot texture */
 .bcwrap{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px}
 .bcwrap svg{width:100%;height:auto;display:block}
 #bigBc{position:fixed;inset:0;z-index:1000;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:16px;box-sizing:border-box}
-#bigBc svg{width:100%;height:auto;max-height:62vh;display:block}
+#bigBc .bigbc-qr{width:min(92vw,62vh);max-width:100%}
+#bigBc svg{width:100%;height:auto;display:block}
 #bigBc .bigbc-id{font:700 26px/1 var(--mono);letter-spacing:3px;color:#000;direction:ltr}
 #bigBc .btn{position:absolute;top:14px;left:14px;width:auto;flex:none;padding:10px 16px;background:#0b1030;color:#fff;box-shadow:none;border:0}
 @media print{
@@ -6836,12 +6837,12 @@ function showCard(c){
     (fields?'<div class="fields">'+fields+'</div>':'')+
     '<div class="idrow"><div class="k"><span>Employee ID · رقم الـ ID</span><span class="st '+(act?'':'off')+'">'+(act?'Active':'Inactive')+'</span></div>'+
       '<div class="scratch"><span class="num">'+esc(c.code)+'</span><canvas id="scratchC" aria-label="اخربش لكشف الـ ID"></canvas></div>'+
-      '<div class="bcwrap"><svg id="bcSvg" role="img" aria-label="باركود الكارت"></svg></div>'+
+      '<div class="bcwrap" id="bcWrap" role="img" aria-label="QR الكارت"></div>'+
     '</div>'+
     '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
   '</div>'+
   '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="pdfBtn">تصدير PDF</button></div>'+
-  '<div class="noprint actions" style="margin-top:10px"><button class="btn ghost" id="bigBcBtn">باركود كبير للمسح</button></div>'+
+  '<div class="noprint actions" style="margin-top:10px"><button class="btn ghost" id="bigBcBtn">QR كبير للمسح</button></div>'+
   (OWN_MODE?'':'<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>');
 
   document.getElementById('pdfBtn').onclick=downloadPdf;
@@ -6994,42 +6995,42 @@ function beep(){try{if(!audioCtx)return;var o=audioCtx.createOscillator(),g=audi
 function scanMsg(m){var el=document.getElementById('scanT');if(el)el.textContent=m;}
 /* الـ QR ممكن يكون الـ ID نفسه أو لينك فيه ?id= */
 function parseCode(t){try{var u=new URL(t,location.href);var id=u.searchParams.get('id');if(id)return id;var h=(u.hash||'').slice(1);if(h)return h;}catch(e){}return String(t||'').trim();}
-function closeScanner(){scanner.active=false;cancelAnimationFrame(scanner.raf);clearTimeout(scanner.hint);if(scanner.stream){scanner.stream.getTracks().forEach(function(t){t.stop();});scanner.stream=null;}var ov=document.getElementById('scanOv');if(ov)ov.remove();}
+function closeScanner(){scanner.active=false;cancelAnimationFrame(scanner.raf);clearTimeout(scanner.hint);scanner.track=null;scanner.zoomCaps=null;if(scanner.stream){scanner.stream.getTracks().forEach(function(t){t.stop();});scanner.stream=null;}var ov=document.getElementById('scanOv');if(ov)ov.remove();}
 function frameOf(v){var off=scanner.off||(scanner.off=document.createElement('canvas'));off.width=v.videoWidth;off.height=v.videoHeight;var c=off.getContext('2d',{willReadFrequently:true});c.drawImage(v,0,0,off.width,off.height);return c;}
-/* يرجّع {text, pts} لو لقى باركود/QR، أو null. بنقرا الأول منطقة الإطار بس (متكبّرة ومظبوطة التباين)، ولو مالقيناش بنجرب الفريم كله كل 3 فريمات */
-function scanRegion(v){
-  var W=window.innerWidth,H=window.innerHeight;
-  var fw=Math.min(W*0.88,360),fh=150,cx=W/2,cy=H*0.44;
-  var s=Math.max(W/v.videoWidth,H/v.videoHeight),ox=(W-v.videoWidth*s)/2,oy=(H-v.videoHeight*s)/2;
-  var px=fw*0.15,py=fh*0.25;
-  var x0=Math.max(0,Math.floor(((cx-fw/2-px)-ox)/s)),y0=Math.max(0,Math.floor(((cy-fh/2-py)-oy)/s));
-  var x1=Math.min(v.videoWidth,Math.ceil(((cx+fw/2+px)-ox)/s)),y1=Math.min(v.videoHeight,Math.ceil(((cy+fh/2+py)-oy)/s));
-  return {x:x0,y:y0,w:Math.max(1,x1-x0),h:Math.max(1,y1-y0)};
-}
-function cropCanvas(v,r){
-  var k=Math.min(2,Math.max(1,900/r.w));
-  var c=scanner.crop||(scanner.crop=document.createElement('canvas'));
-  c.width=Math.round(r.w*k);c.height=Math.round(r.h*k);
-  var ctx=c.getContext('2d',{willReadFrequently:true});
-  try{ctx.filter='grayscale(1) contrast(1.5)';}catch(e){}
-  ctx.drawImage(v,r.x,r.y,r.w,r.h,0,0,c.width,c.height);
-  try{ctx.filter='none';}catch(e){}
+/* بيدوّر على الكود في الشاشة كلها (مش لازم يتحط في إطار) */
+/* يرجّع {text, pts} بإحداثيات الفيديو، أو null */
+function fullCanvas(v){
+  var k=Math.min(1,1280/v.videoWidth);
+  var c=scanner.full||(scanner.full=document.createElement('canvas'));
+  c.width=Math.round(v.videoWidth*k);c.height=Math.round(v.videoHeight*k);
+  c.getContext('2d',{willReadFrequently:true}).drawImage(v,0,0,c.width,c.height);
   return c;
+}
+function detectFrame(v){
+  scanner.n=(scanner.n||0)+1;
+  var full=(scanner.n%3===0)?frameOf(v).canvas:fullCanvas(v);
+  var kx=v.videoWidth/full.width,ky=v.videoHeight/full.height;
+  return detectOn(full).then(function(hit){
+    if(!hit)return null;
+    hit.pts=hit.pts.map(function(p){return {x:p.x*kx,y:p.y*ky};});
+    return hit;
+  });
+}
+/* التكبير التلقائي: لو ماشفناش كود، الكاميرا بتكبّر وتصغّر بالتدريج عشان تلاقي الكود على أي بُعد */
+function sweepZoom(){
+  var tr=scanner.track,z=scanner.zoomCaps;
+  if(!tr||!z||Date.now()-(scanner.lastZoom||0)<1200)return;
+  scanner.lastZoom=Date.now();
+  var top=Math.min(z.max,4),lv=[];
+  for(var i=0;i<=4;i++)lv.push(z.min+(top-z.min)*i/4);
+  scanner.zi=((scanner.zi||0)+1)%lv.length;
+  tr.applyConstraints({advanced:[{zoom:lv[scanner.zi]}]}).catch(function(){});
 }
 function detectOn(c){
   if(scanner.det)return scanner.det.detect(c).then(function(r){if(!r||!r.length)return null;var b=r[0].boundingBox;return {text:r[0].rawValue,pts:[{x:b.x,y:b.y},{x:b.x+b.width,y:b.y},{x:b.x+b.width,y:b.y+b.height},{x:b.x,y:b.y+b.height}]};}).catch(function(){return null;});
   if(window.ZXing){return zxDetect(c);}
   if(window.jsQR){var img=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height);var q=jsQR(img.data,img.width,img.height,{inversionAttempts:'attemptBoth'});if(!q)return Promise.resolve(null);var L=q.location;return Promise.resolve({text:q.data,pts:[L.topLeftCorner,L.topRightCorner,L.bottomRightCorner,L.bottomLeftCorner]});}
   return Promise.resolve(null);
-}
-function detectFrame(v){
-  var r=scanRegion(v),c=cropCanvas(v,r);
-  return detectOn(c).then(function(hit){
-    if(hit){hit.pts=hit.pts.map(function(p){return {x:r.x+p.x*r.w/c.width,y:r.y+p.y*r.h/c.height};});return hit;}
-    scanner.n=(scanner.n||0)+1;
-    if(scanner.n%3)return null;
-    return detectOn(frameOf(v).canvas);
-  });
 }
 /* إطار أخضر حوالين الـ QR المتقري، متظبط على حجم الفيديو المعروض */
 function drawBox(pts,v){
@@ -7050,6 +7051,7 @@ function loopScan(){
   detectFrame(v).then(function(hit){
     if(!scanner.active)return;
     if(hit&&hit.text){drawBox(hit.pts,v);onScanned(hit.text);return;}
+    sweepZoom();
     scanner.raf=requestAnimationFrame(loopScan);
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
@@ -7057,7 +7059,7 @@ function onScanned(text){
   var code=parseCode(text);
   if(!findCard(code)){
     scanMsg('الكود ده مش موجود، كمّل المسح');
-    setTimeout(function(){if(scanner.active)scanMsg('وجّه الكاميرا على الباركود');},1500);
+    setTimeout(function(){if(scanner.active)scanMsg('وجّه الكاميرا على الـ QR');},1500);
     scanner.raf=requestAnimationFrame(loopScan);
     return;
   }
@@ -7083,34 +7085,20 @@ function zxDetect(c){
     return Promise.resolve({text:res.getText(),pts:[{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}]});
   }catch(e){return Promise.resolve(null);}
 }
-/* باركود Code 128 للكود بتاع الكارت */
-function makeBarcode(code){
-  var svg=document.getElementById('bcSvg');if(!svg||!window.JsBarcode)return;
-  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:30,height:60,width:3,background:'#ffffff',lineColor:'#000000'});fitSvg(svg);}catch(e){}
+/* QR للكود بتاع الكارت: بيتقري أسهل من الباركود، وبيتكبّر بمربعات كبيرة */
+function qrSvg(code){
+  if(typeof qrcode!=='function')return '';
+  var qr=qrcode(0,'M');qr.addData(String(code));qr.make();
+  return qr.createSvgTag({cellSize:10,margin:4,scalable:true});
 }
-/* يحوّل الـ SVG لـ viewBox عشان يتكبّر من غير ما يتمطّط */
-function fitSvg(svg){
-  var w=parseFloat(svg.getAttribute('width'))||0,h=parseFloat(svg.getAttribute('height'))||0;
-  if(w&&h){svg.setAttribute('viewBox','0 0 '+w+' '+h);svg.removeAttribute('width');svg.removeAttribute('height');}
-  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
-}
-/* باركود كبير على الشاشة كلها: الخطوط بتبقى عريضة، فالكاميرا بتقراه من مسافة أبعد (مفيد لو الكارت على شاشة لابتوب) */
+function makeBarcode(code){var w=document.getElementById('bcWrap');if(w)w.innerHTML=qrSvg(code);}
+/* QR كبير على الشاشة كلها عشان الكاميرا تشوفه بمربعات واضحة */
 function showBigBarcode(code){
   var old=document.getElementById('bigBc');if(old)old.remove();
   var ov=document.createElement('div');ov.id='bigBc';
-  ov.innerHTML='<svg id="bigBcSvg" role="img" aria-label="باركود كبير"></svg><div class="bigbc-id">'+esc(String(code))+'</div><button class="btn ghost" id="bigBcX">إغلاق</button>';
+  ov.innerHTML='<div class="bigbc-qr">'+qrSvg(code)+'</div><div class="bigbc-id">'+esc(String(code))+'</div><button class="btn ghost" id="bigBcX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('bigBcX').onclick=function(){ov.remove();};
-  var svg=document.getElementById('bigBcSvg');
-  if(!window.JsBarcode)return;
-  var avail=Math.min(window.innerWidth*0.92,1400),Q=10;
-  try{
-    JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:10,width:1,background:'#ffffff',lineColor:'#000000'});
-    var mods=(parseFloat(svg.getAttribute('width')))||100;
-    var mod=Math.max(2,Math.floor(avail/(mods+2*Q)));
-    JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:Q*mod,height:Math.round(avail*0.5),width:mod,background:'#ffffff',lineColor:'#000000'});
-    fitSvg(svg);
-  }catch(e){}
 }
 /* مشاركة لينك الكارت، ولو المتصفح مش بيدعم المشاركة بننسخه */
 function shareCard(){
@@ -7122,7 +7110,7 @@ function shareCard(){
 function openScanner(){
   closeScanner();
   var ov=document.createElement('div');ov.id='scanOv';
-  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scanframe"></div><div class="scantxt" id="scanT">وجّه الكاميرا على الباركود الموجود على الكارت</div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
+  ov.innerHTML='<video id="scanV" playsinline muted autoplay></video><canvas id="scanC"></canvas><div class="scantxt" id="scanT">وجّه الكاميرا على الكود، الماسح بيدوّر عليه وبيكبّره</div><button class="btn ghost" id="scanTorch" style="display:none;position:absolute;top:64px;left:12px;width:auto;padding:10px 14px">فلاش</button><button class="btn ghost" id="scanX">إغلاق</button>';
   document.body.appendChild(ov);
   document.getElementById('scanX').onclick=closeScanner;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){scanMsg('الكاميرا مش متاحة على المتصفح ده، اكتب الـ ID يدوي');return;}
@@ -7132,10 +7120,11 @@ function openScanner(){
     if(!ov.isConnected){s.getTracks().forEach(function(t){t.stop();});return;}
     scanner.stream=s;scanner.active=true;
     var tr=s.getVideoTracks()[0],caps=(tr&&tr.getCapabilities)?tr.getCapabilities():{};
+    scanner.track=tr;scanner.zoomCaps=(caps.zoom&&caps.zoom.max>caps.zoom.min)?caps.zoom:null;scanner.zi=0;scanner.lastZoom=Date.now();
     if(tr&&caps.focusMode&&caps.focusMode.indexOf('continuous')>-1){tr.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});}
     if(caps.torch){var tb=document.getElementById('scanTorch');if(tb){tb.style.display='block';tb.onclick=function(){var on=tb.dataset.on==='1';tr.applyConstraints({advanced:[{torch:!on}]}).then(function(){tb.dataset.on=on?'0':'1';tb.textContent=on?'فلاش':'إطفاء';}).catch(function(){});};}}
     var v=document.getElementById('scanV');v.srcObject=s;
-    return v.play().then(function(){loopScan();scanner.hint=setTimeout(function(){if(scanner.active)scanMsg('قرّب الكاميرا شوية وثبّتها على الباركود. لو الكارت على شاشة، اعرضه كبير من زرار "باركود كبير"');},7000);});
+    return v.play().then(function(){loopScan();scanner.hint=setTimeout(function(){if(scanner.active)scanMsg('قرّب الكاميرا شوية وثبّتها على الـ QR. لو الكارت على شاشة، اعرضه كبير من زرار "QR كبير"');},7000);});
   }).catch(function(e){scanMsg('الكاميرا ماشتغلتش ('+((e&&e.name)||'خطأ')+'). اسمح بالكاميرا أو اكتب الـ ID يدوي');});
 }
 function go(v){
@@ -7179,7 +7168,7 @@ fetch(CARDS_SRC,{cache:'no-store'})
   fl.href='https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap';
   document.head.appendChild(fl);
   document.body.innerHTML="<div class=\"stage\"><div id=\"out\"><div class=\"loading\"><span></span><span></span><span></span></div></div>";
-  var libs=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js","https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js","https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js","https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"];
+  var libs=["https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js","https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js","https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js","https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js","https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js","https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"];
   Promise.all(libs.map(function(u){return new Promise(function(res){
     var s=document.createElement('script');s.src=u;s.onload=s.onerror=res;document.head.appendChild(s);
   });})).then(function(){window.rmyCardBoot();});
