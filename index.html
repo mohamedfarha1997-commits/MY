@@ -1020,7 +1020,7 @@ body::before{ /* subtle dot texture */
 .scantxt{position:absolute;left:16px;right:16px;bottom:150px;text-align:center;font:700 16px/1.5 var(--ar);color:#fff;text-shadow:0 2px 10px #000}
 #scanOv .btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);width:auto;padding:12px 32px}
 .bcwrap{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px}
-.bcwrap svg{width:100%;height:auto;display:block}
+.bcwrap svg{width:100%;height:56px;display:block}
 @media print{
   body{background:#fff;padding:0}
   body::before{display:none}
@@ -7144,14 +7144,19 @@ function loopScan(){
     scanner.raf=requestAnimationFrame(loopScan);
   }).catch(function(){if(scanner.active)scanner.raf=requestAnimationFrame(loopScan);});
 }
+/* مطابقة مرنة: بتتجاهل المسافات والشرط والأرقام العربي/الإنجليزي */
+function codeKey(x){return String(x||'').replace(/[\u0660-\u0669]/g,function(d){return String(d.charCodeAt(0)-0x0660);}).toUpperCase().replace(/[^A-Z0-9]/g,'');}
+function findCardLoose(id){var k=codeKey(id);if(!k)return null;return DATA.cards.filter(function(c){return codeKey(c.code)===k;})[0]||null;}
 function onScanned(text){
   var code=parseCode(text);
-  if(!findCard(code)){
-    scanMsg('الكود ده مش موجود، كمّل المسح');
+  var card=findCard(code)||findCardLoose(code);
+  if(!card){
+    scanMsg('اتقرا: "'+String(code).slice(0,40)+'" ومش موجود في الكروت، كمّل المسح');
     setTimeout(function(){if(scanner.active)scanMsg('وجّه الكاميرا على الباركود');},1500);
     scanner.raf=requestAnimationFrame(loopScan);
     return;
   }
+  code=card.code;
   scanner.active=false;cancelAnimationFrame(scanner.raf);
   beep();
   if(canVibrate())navigator.vibrate([80,40,80]);
@@ -7183,7 +7188,7 @@ function fitSvg(svg){
 /* باركود Code 128 للكود بتاع الكارت */
 function makeBarcode(code){
   var svg=document.getElementById('bcSvg');if(!svg||!window.JsBarcode)return;
-  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:true,fontSize:16,textMargin:4,font:'monospace',margin:14,height:46,width:2.4,background:'#ffffff',lineColor:'#000000'});fitSvg(svg);}catch(e){}
+  try{JsBarcode(svg,String(code),{format:'CODE128',displayValue:false,margin:0,height:40,width:3,background:'#ffffff',lineColor:'#0b1030'});svg.setAttribute('preserveAspectRatio','none');}catch(e){}
 }
 /* باركود كبير على الشاشة: نفس المستطيل والأرقام تحت الخطوط، بس بعرض الشاشة */
 function showBigBarcode(code){
