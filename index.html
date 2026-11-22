@@ -4424,6 +4424,23 @@ function loginBtnsHTML(){
     '.bioFp{flex:0 0 96px;width:96px;height:46px;border-radius:999px;border:0;padding:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#5b68ff 0%,#293394 100%);box-shadow:0 12px 26px -12px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35);transition:transform .15s ease,box-shadow .2s ease}.bioFp:active{transform:scale(.96)}.bioFp:focus-visible{outline:2px solid #fff;outline-offset:3px}</style>'+
     '<div class="bioRow"><button class="btn block" data-act="login">دخول</button>'+(bio?fp:'')+'</div>';
 }
+/* لوحة أرقام مخصصة لشاشة الدخول بس: بتكتب في خانة الرقم السري، والزرار اللي تحتها بيبدّل بينها وبين كيبورد الجهاز */
+function padHTML(){
+  var css='<style>.lpad{width:100%;max-width:360px;margin:14px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lpad button{height:58px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(255 255 255 / .08);color:#fff;font:700 24px/1 var(--f-disp),system-ui,sans-serif;cursor:pointer;transition:transform .12s ease,background .2s ease;-webkit-tap-highlight-color:transparent}.lpad button:active{transform:scale(.94);background:rgb(255 255 255 / .2)}.lpad .lp-sm{font-size:15px}</style>';
+  if(U.lpadNative)return css+'<div class="lpad" style="grid-template-columns:1fr"><button type="button" class="lp-sm" data-act="padMode">لوحة الأرقام</button></div>';
+  var k=function(n){return '<button type="button" data-act="padKey" data-k="'+n+'">'+n+'</button>';};
+  return css+'<div class="lpad">'+k(1)+k(2)+k(3)+k(4)+k(5)+k(6)+k(7)+k(8)+k(9)+
+    '<button type="button" class="lp-sm" data-act="padMode" aria-label="استخدم كيبورد الجهاز">abc</button>'+k(0)+
+    '<button type="button" data-act="padKey" data-k="del" aria-label="مسح">&#9003;</button></div>';
+}
+/* كيبورد الكمبيوتر: الأرقام والـ Backspace بيشتغلوا في اللوحة وهي شغالة */
+document.addEventListener('keydown',function(e){
+  var el=document.getElementById('lpin');
+  if(!el||!el.readOnly||U.lpadNative)return;
+  if(!/^[0-9]$/.test(e.key)&&e.key!=='Backspace')return;
+  e.preventDefault();
+  ACT.padKey({k:e.key==='Backspace'?'del':e.key});
+});
 function loginHTML(){
   if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
@@ -4435,7 +4452,8 @@ function loginHTML(){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">'+msg+'</p>'+(GD.on?'':gbtn)+'</div></main>';
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
-    '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" inputmode="numeric" autocomplete="current-password" autofocus></div>'+
+    '<div class="fld"><label for="lpin">الرقم السري</label><input id="lpin" type="password" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="current-password" value="'+esc(U.lpinVal||'')+'" autofocus></div>'+
+    padHTML()+
     loginBtnsHTML()+
     '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
 }
@@ -6070,7 +6088,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6492,7 +6510,7 @@ var ACT={
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
-    var p=(document.getElementById('lpin')||{}).value||'';
+    var p=(document.getElementById('lpin')||{}).value||'';U.lpinVal='';
     checkPin(p).then(function(ok){
       if(ok){lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.loginErr=null;U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
       return findUserByPw(p).then(function(u){
@@ -6503,6 +6521,18 @@ var ACT={
       });
     }).catch(function(){U.loginErr='المتصفح مش بيدعم التحقق دلوقتي، افتح الصفحة من HTTPS';render();});
     return false;
+  },
+  padKey:function(d){
+    var el=document.getElementById('lpin');if(!el)return false;
+    var v=el.value||'';
+    if(d.k==='del')v=v.slice(0,-1);
+    else if(v.length<32)v+=d.k;
+    el.value=v;U.lpinVal=v;
+    return false;
+  },
+  padMode:function(){
+    var el=document.getElementById('lpin');U.lpinVal=el?el.value:(U.lpinVal||'');
+    U.lpadNative=!U.lpadNative;render();return false;
   },
   gdConnect:function(){
     if(!GD.tc){gdLoadGis();toast('استنى ثانية لحد ما جوجل يحمّل وجرّب تاني');return false;}
