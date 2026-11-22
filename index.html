@@ -3017,6 +3017,7 @@ function groupNames(){
 }
 /* آخر تشغيل للصنف المحشو: الخامات وكمياتها والناتج اللي بيتخصم ويتضاف تلقائي */
 function fillLastRun(ex){
+  if(ex&&ex.runFrom&&ex.runFrom.length)return {from:ex.runFrom.map(function(x){return {p:x.p,q:x.q};}),out:ex.runOut||1};
   if(!ex||!Array.isArray(ex.fillRuns)||!ex.fillRuns.length)return null;
   var r=ex.fillRuns[ex.fillRuns.length-1];
   var from=(r.from||[]).filter(function(x){return P(x.p)&&Number(x.q)>0;}).map(function(x){return {p:x.p,q:Number(x.q)};});
@@ -3357,6 +3358,35 @@ function wasteView(){
     '<div class="grp" style="margin-top:18px">سجل الهالك</div>'+
     '<div class="list">'+(logHTML||'<div class="meta">مفيش هالك متسجل لسه</div>')+'</div>';
 }
+/* محرر الصنف المحشو: الاسم + الناتج في الدفعة + الخامات وكمية كل خامة لكل دفعة */
+function feSync(){
+  var E=U.fedit;if(!E)return;
+  var nm=document.getElementById('feName'),yl=document.getElementById('feYield');
+  if(nm)E.name=nm.value;
+  if(yl)E.yield=yl.value;
+  (E.rows||[]).forEach(function(r){var el=document.getElementById('feq'+r.p);if(el)r.q=el.value;});
+}
+function feHTML(){
+  var E=U.fedit,isNew=E.id==='new',rows=E.rows||[];
+  var picks=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).map(function(p){
+    var on=rows.some(function(r){return String(r.p)===String(p.id);});
+    return '<button class="btn '+(on?'main':'ghost')+' sm" data-act="feToggle" data-p="'+p.id+'">'+(on?'✓ ':'')+esc(p.name)+'</button>';
+  }).join(' ');
+  var rh=rows.map(function(r){
+    var sp=P(r.p)||{};
+    return '<div class="hist" style="align-items:center"><span><b>'+esc(sp.name||'')+'</b></span>'+
+      '<span style="display:flex;gap:6px;align-items:center"><input id="feq'+r.p+'" inputmode="decimal" value="'+esc(r.q==null?'':String(r.q))+'" placeholder="الكمية لكل دفعة" style="width:110px;padding:6px;border:1px solid var(--line);border-radius:8px"><span class="meta">'+esc(sp.unit||'')+'</span>'+
+      '<button class="btn ghost sm" data-act="feRemove" data-p="'+r.p+'">×</button></span></div>';
+  }).join('');
+  return '<div class="grp">'+(isNew?'صنف محشو جديد':'تعديل: '+esc(E.name||''))+'</div>'+
+    '<div class="fld"><span class="sec-l">اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'"></div>'+
+    '<div class="fld"><span class="sec-l">بيطلع كام قطعة في الدفعة (الناتج)</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'"></div>'+
+    '<div class="meta" style="margin-top:8px">اختار الخامات اللي بتتسحب من مخزن الإنتاج الأساسي:</div>'+
+    '<div class="btns" style="flex-wrap:wrap">'+picks+'</div>'+
+    '<div class="meta" style="margin-top:10px">كمية كل خامة لكل دفعة:</div>'+
+    '<div class="list">'+(rh||'<div class="meta">مفيش خامات لسه</div>')+'</div>'+
+    '<div class="btns" style="margin-top:12px"><button class="btn quiet" data-act="feCancel">إلغاء</button><button class="btn main" data-act="feSave">حفظ الصنف</button></div>';
+}
 function fgStockView(){
   var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
@@ -3373,7 +3403,8 @@ function fgStockView(){
   if(F==='short') body=fgShortHTML(rows,raw);
   else if(F==='fillcust'||F==='fillshop'){
     var fl=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&p.fill===F.slice(4)&&fgSeasonOK(p);});
-    body=fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اعمل صنف من تبويب تحضير حشو.</span></div>';
+    var tb='<div class="btns" style="flex-wrap:wrap;margin-bottom:8px"><button class="btn main sm" data-act="fillEdit" data-id="new">+ صنف جديد</button>'+fl.map(function(p){return '<button class="btn ghost sm" data-act="fillEdit" data-id="'+p.id+'">تعديل '+esc(p.name)+'</button>';}).join(' ')+'</div>';
+    body=U.fedit?feHTML():tb+(fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اضغط "صنف جديد" عشان تضيف.</span></div>');
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
   else body=(nS?'<div class="grp">النواقص اللي محتاجة دفعات ('+nS+')</div>'+fgShortHTML(rows,raw):'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>'+archSection();
@@ -5751,7 +5782,7 @@ var ACT_CAT={
   ingDel:['recipes','حذف مكوّن من الوصفة','w'],compAdd:['recipes','إضافة وصفة فرعية','w'],compDel:['recipes','حذف وصفة فرعية','w'],
   altAdd:['recipes','إضافة بديل','w'],altDel:['recipes','حذف بديل','w'],prodKind:['recipes','نوع الصنف','r'],
   rQty:['recipes','تعديل كمية الوصفة','r'],rSet:['recipes','تعيين كمية الوصفة','r'],
-  fillMake:['filling','اعمل الصنف المحشو','w'],fillTab:['filling','تبويب الحشو','r'],fillSel:['filling','اختيار صنف حشو','r'],
+  fillMake:['filling','اعمل الصنف المحشو','w'],fillEdit:['filling','تعديل صنف حشو','w'],feToggle:['filling','تعديل صنف حشو','w'],feRemove:['filling','تعديل صنف حشو','w'],feSave:['filling','تعديل صنف حشو','w'],feCancel:['filling','تعديل صنف حشو','r'],fillTab:['filling','تبويب الحشو','r'],fillSel:['filling','اختيار صنف حشو','r'],
   fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
   runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
   boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
@@ -6979,6 +7010,50 @@ var ACT={
   fillUnit:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.unit=d.v;},
   fillKind:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.kind=d.v;},
   fillSeason:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.season=d.v;},
+  fillEdit:function(d){
+    var kind=(U.fgf||'fillcust').slice(4);
+    if(d.id==='new'){U.fedit={id:'new',kind:kind,name:'',yield:'',rows:[]};return;}
+    var p=PRODUCTS.filter(function(x){return String(x.id)===String(d.id);})[0];
+    if(!p||!isFill(p))return false;
+    var lr=p.runFrom?null:fillLastRun(p);
+    var src=p.runFrom||(lr?lr.from:[]);
+    var yv=p.runOut!=null?p.runOut:(lr?lr.out:'');
+    U.fedit={id:p.id,kind:p.fill,name:p.name,yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
+  },
+  feToggle:function(d){
+    var E=U.fedit;if(!E)return false;
+    feSync();
+    var real=PRODUCTS.filter(function(x){return String(x.id)===String(d.p);})[0];
+    var pid=real?real.id:d.p,idx=-1;
+    E.rows.forEach(function(r,k){if(String(r.p)===String(pid))idx=k;});
+    if(idx>-1)E.rows.splice(idx,1);else E.rows.push({p:pid,q:''});
+  },
+  feRemove:function(d){return ACT.feToggle(d);},
+  feCancel:function(){U.fedit=null;},
+  feSave:function(){
+    var E=U.fedit;if(!E)return false;
+    feSync();
+    var name=String(E.name||'').trim();
+    if(!name){toast('اكتب اسم الصنف');return false;}
+    var dup=PRODUCTS.filter(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===name&&String(x.id)!==String(E.id);})[0];
+    if(dup){toast('فيه صنف بنفس الاسم ده');return false;}
+    var Y=num(E.yield);
+    if(!(Y>0)){toast('اكتب الناتج في الدفعة');return false;}
+    var rows=(E.rows||[]).map(function(r){return {p:r.p,q:num(r.q)};}).filter(function(r){return r.q>0;});
+    if(!rows.length){toast('اختار خامة واكتب كميتها');return false;}
+    var ex=E.id==='new'?null:PRODUCTS.filter(function(x){return String(x.id)===String(E.id);})[0];
+    if(ex){
+      ex.name=name;ex.runFrom=rows;ex.runOut=Y;
+      toast('اتحفظ '+name);
+    }else{
+      var codes=[];
+      rows.forEach(function(r){var sp=P(r.p);if(sp&&sp.code!=null&&codes.indexOf(String(sp.code))<0)codes.push(String(sp.code));});
+      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:'',unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y};
+      S.products.push(np);S.ready[np.id]=0;allocReady(np.id);
+      toast('اتضاف '+name);
+    }
+    bind(S);U.fedit=null;
+  },
   fillMake:function(){
     var F=U.fill||{name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]};
     var name=String(F.name||'').trim();
