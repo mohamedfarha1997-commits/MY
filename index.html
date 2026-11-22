@@ -2240,6 +2240,10 @@ function smartNoteInfo(){
       else out.push({pr:4,v:'filling',t:'🧁 محتاج تحضر '+n+' صنف حشو للأوردرات'});
     }
   }
+  if(hoursOpenRaw()===false){
+    var nx=nextOpenLabel();
+    out.push({pr:1.5,v:canOrd?'orders':'',t:'🌙 بره مواعيد الشغل، حسابك مسموح له يكمل'+(nx?' · الشغل بيفتح '+nx:'')});
+  }
   out.sort(function(x,y){return x.pr-y.pr;});
   if(out.length)return out[0];
   if(canOrd||canShop)return {pr:9,v:'',t:'مفيش أوردرات مفتوحة، يوم هادي'};
@@ -3816,6 +3820,31 @@ function workOpenNow(){
   }
   if(yest&&yest.on){var a2=hrMins(yest.from),b2=hrMins(yest.to);if(b2<a2&&now<b2)ok=true;}
   return ok;
+}
+/* مواعيد الشغل الفعلية بغض النظر عن استثناء الحساب (عشان نعرف الحسابات المستثناة هل بره المواعيد ولا لأ) */
+function hoursOpenRaw(){
+  var h=pref('hours',null);
+  if(!h||!Array.isArray(h))return true;
+  var ms=trustedNow();if(ms===null)return null;
+  var c=cairoParts(ms),now=c.mins,dow=c.dow;
+  var today=h[dow],yest=h[(dow+6)%7],ok=false;
+  if(today&&today.on){var a=hrMins(today.from),b=hrMins(today.to);if(a===b)ok=true;else if(b>a)ok=now>=a&&now<b;else ok=now>=a;}
+  if(yest&&yest.on){var a2=hrMins(yest.from),b2=hrMins(yest.to);if(b2<a2&&now<b2)ok=true;}
+  return ok;
+}
+/* معاد الفتح الجاي من جدول المواعيد */
+function nextOpenLabel(){
+  var h=pref('hours',null);if(!h||!Array.isArray(h))return '';
+  var ms=trustedNow();if(ms===null)return '';
+  var c=cairoParts(ms);
+  for(var k=0;k<7;k++){
+    var d=(c.dow+k)%7,x=h[d];
+    if(x&&x.on){
+      if(k===0){if(hrMins(x.from)>c.mins)return 'النهارده '+x.from;}
+      else return (k===1?'بكرة':DAY_NAMES[d])+' '+x.from;
+    }
+  }
+  return '';
 }
 /* آخر وقت كان التطبيق فيه مفتوح للمستخدمين: أي أوردر بيتسجل بعده بيظهر في شاشة الراحة لحد ما التطبيق يفتح تاني */
 function markOpenSeen(){var n=trustedNow();if(n!==null){try{localStorage.setItem('khat-open-seen',String(n));}catch(e){}}}
