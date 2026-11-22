@@ -2210,7 +2210,7 @@ function greetHTML(){
   var h=new Date().getHours();
   var g=h<12?'صباح الخير':h<17?'نهارك سعيد':'مساء النور';
   var c=sessionCode();var u=c?userByCode(c):null;
-  return '<div class="greet">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>';
+  return '<div class="greet" style="width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>';
 }
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
@@ -2218,7 +2218,7 @@ function titleHTML(){
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    return '<header class="top'+(U.view==='home'?' tophome':'')+'">'+(U.view==='home'?greetHTML():titleHTML())+'</header>';
+    return '<header class="top'+(U.view==='home'?' tophome':'')+'"'+(U.view==='home'?' style="justify-content:center;text-align:center"':'')+'>'+(U.view==='home'?greetHTML():titleHTML())+'</header>';
 }
 /* الشريط السفلي (تصميم 4): المعلومات يمين، والأدوات شمال بخط فاصل. زرار الرئيسية بيظهر في الصفحات الفرعية */
 function footHTML(){
