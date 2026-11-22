@@ -2219,7 +2219,7 @@ function shortIdsNow(){
 function ordersNoteFor(kind,label){
   var now=Date.now();
   var open=ordersOf(kind).filter(function(o){return !o.deliveredAt;});
-  if(!open.length)return {pr:0,v:'',t:'مفيش أوردرات مفتوحة في '+label};
+  if(!open.length)return {pr:0,v:'',t:'مفيش أوردرات مفتوحة في '+label+' · ابدأ بأوردر جديد من فوق'};
   var late=open.filter(function(o){return o.due&&new Date(o.due).getTime()<now&&!ordComplete(o);});
   if(late.length)return {pr:0,v:'',t:'⚠️ '+late.length+' أوردر في '+label+' اتجاوز معاده'};
   var soon=open.filter(function(o){if(!o.due)return false;var t=new Date(o.due).getTime()-now;return t>=0&&t<=2*3600000;}).sort(function(x,y){return new Date(x.due)-new Date(y.due);});
@@ -2238,7 +2238,7 @@ function tabNoteInfo(v){
   if(v==='fgstock'){var n1=shortIdsNow();return n1?{pr:0,v:'',t:'📦 '+n1+' صنف ناقص في مخزن الإنتاج لأوردراتك'}:{pr:0,v:'',t:'✅ مخزن الإنتاج مغطي لكل الأوردرات المفتوحة'};}
   if(v==='filling'){var n2=shortIdsNow();return n2?{pr:0,v:'',t:'🧁 '+n2+' صنف محتاج تحضير حشو'}:{pr:0,v:'',t:'🧁 مفيش تحضير حشو مطلوب دلوقتي'};}
   if(v==='prepreq'){var n3=shortIdsNow();return n3?{pr:0,v:'',t:'📋 '+n3+' تحضير مطلوب للأوردرات المفتوحة'}:{pr:0,v:'',t:'📋 مفيش تحضيرات مطلوبة دلوقتي'};}
-  if(v==='recipes'){var n4=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).length;return {pr:0,v:'',t:'📖 '+n4+' صنف في الوصفات'};}
+  if(v==='recipes'){var n4=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).length;return {pr:0,v:'',t:n4?'📖 '+n4+' صنف في الوصفات · اختار واحد أو ضيف وصفة جديدة':'📖 مفيش وصفات لسه · ابدأ بوصفة جديدة'};}
   if(v==='settings'){var n5=usersList().length;return {pr:0,v:'',t:'⚙️ '+n5+' حساب · التغييرات بتتحفظ تلقائي'};}
   return null;
 }
@@ -2246,7 +2246,10 @@ function tabNoteInfo(v){
 function smartNoteInfo(){
   var now=Date.now();
   var tabNote=(U.view&&U.view!=='home')?tabNoteInfo(U.view):null;
-  if(tabNote&&hoursOpenRaw()!==false)return tabNote;
+  if(tabNote){
+    if(hoursOpenRaw()!==false)return tabNote;
+    return {pr:0,v:'',t:'🌙 بره المواعيد · '+tabNote.t};
+  }
   var open=(S.orders||[]).filter(function(o){return !o.deliveredAt;});
   var out=[];
   var canOrd=routeAllowed('orders'),canShop=routeAllowed('shopOrders');
@@ -2280,7 +2283,7 @@ function smartNoteInfo(){
   }
   if(hoursOpenRaw()===false){
     var nx=nextOpenLabel();
-    out.push({pr:1.5,v:canOrd?'orders':'',t:'🌙 بره مواعيد الشغل، حسابك مسموح له يكمل'+(nx?' · الشغل بيفتح '+nx:'')});
+    out.push({pr:1.5,v:'',t:'🌙 بره مواعيد الشغل، حسابك مسموح له يكمل'+(nx?' · الشغل بيفتح '+nx:'')});
   }
   out.sort(function(x,y){return x.pr-y.pr;});
   if(out.length)return out[0];
@@ -2292,7 +2295,7 @@ function smartNoteHTML(){return smartNoteInfo().t;}
 function stripLineHTML(){
   var f=smartNoteInfo();
   return '<style>.top .strip-line{display:block!important;width:100%!important;text-align:center!important;direction:rtl!important;margin:4px 0 0!important;padding:0!important;float:none!important}.top .strip-wrap{width:100%!important;text-align:center!important}</style>'+
-    '<div class="strip-wrap"><div class="strip-line greet-sub" data-act="stripGo" data-v="'+esc(f.v||'')+'" role="button" style="font-size:12px;color:var(--muted,#6b7090);font-weight:600;line-height:1.6;cursor:pointer">'+esc(f.t)+'</div></div>';
+    '<div class="strip-wrap" style="width:100%;text-align:center!important;direction:rtl"><div class="strip-line greet-sub" style="display:block;width:100%;text-align:center!important;text-align-last:center;direction:rtl;font-size:12px;color:var(--muted,#6b7090);font-weight:600;line-height:1.6;margin:4px 0 0;padding:0">'+esc(f.t)+'</div></div>';
 }
 function greetHTML(){
   var h=new Date().getHours();
