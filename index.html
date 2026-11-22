@@ -3253,8 +3253,8 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
   var opts=[];
-  if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
-  if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b><span>المالك لازم يفعّل لك تبويب من جدول التبويبات والصلاحيات.</span></div>';
+  return head('تحضير حشو','الإضافة والتعديل من مخزن الإنتاج، وهنا السجل بس','')+prodLogHTML('fill');
+  if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b></div>';
   var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
   var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
       var on=ft===x[0];
@@ -3360,13 +3360,28 @@ function wasteView(){
 /* محرر الصنف المحشو: الاسم + الناتج في الدفعة + الخامات وكمية كل خامة لكل دفعة */
 function feSync(){
   var E=U.fedit;if(!E)return;
-  var nm=document.getElementById('feName'),yl=document.getElementById('feYield');
+  var nm=document.getElementById('feName'),yl=document.getElementById('feYield'),gr=document.getElementById('feGrp');
   if(nm)E.name=nm.value;
   if(yl)E.yield=yl.value;
+  if(gr)E.grp=gr.value;
   (E.rows||[]).forEach(function(r){var el=document.getElementById('feq'+r.p);if(el)r.q=el.value;});
 }
+function feDupCheck(){
+  var E=U.fedit;if(!E)return;
+  var el=document.getElementById('feName');
+  var n=String((el&&el.value)||'').trim();
+  var dup=!!n&&PRODUCTS.some(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===n&&String(x.id)!==String(E.id);});
+  var w=document.getElementById('feWarn'),b=document.getElementById('feSaveBtn');
+  if(w)w.style.display=dup?'block':'none';
+  if(b)b.disabled=dup;
+}
+document.addEventListener('input',function(e){if(e.target&&e.target.id==='feName')feDupCheck();},true);
 function feHTML(){
   var E=U.fedit,isNew=E.id==='new',rows=E.rows||[];
+  var grpNow=(E.grp||'');
+  var nameNow=String(E.name||'').trim();
+  var dupNow=!!nameNow&&PRODUCTS.some(function(x){return isFill(x)&&!x.archived&&String(x.name||'').trim()===nameNow&&String(x.id)!==String(E.id);});
+  var grpOpts=groupNames().map(function(g){return '<option value="'+esc(g)+'">';}).join('');
   var css='<style id="feCss">'+
     '.fe{display:flex;flex-direction:column;gap:16px;padding-bottom:86px}'+
     '.fe-head{display:flex;flex-direction:column;gap:2px}'+
@@ -3393,6 +3408,8 @@ function feHTML(){
     '.fe-empty{padding:14px;text-align:center;color:var(--muted,#6b7090);font-size:14px}'+
     '.fe-add{display:flex;gap:8px;align-items:center;margin-bottom:4px}'+
     '.fe-add select{flex:1;min-width:0;border:1px solid var(--line,#e4e6f2);border-radius:10px;padding:10px 12px;font:inherit;background:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b)}'+
+    '.fe-full{grid-column:1/-1}'+
+    '.fe-warn{display:'+(dupNow?'block':'none')+';background:#fde3ec;color:#a31450;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700}'+
     '.fe-foot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:12px 0;background:var(--bg,#f4f5fb);border-top:1px solid var(--line,#e4e6f2)}'+
     '.fe-foot .btn{min-width:120px}'+
     '@media (max-width:520px){.fe-grid{grid-template-columns:1fr}.fe-row{grid-template-columns:1fr 92px 46px 36px}}'+
@@ -3429,14 +3446,16 @@ function feHTML(){
       '<div class="fe-grid">'+
         '<label class="fe-f"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه"></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="0"></label>'+
-      '</div></section>'+
+        '<label class="fe-f fe-full"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب اسم المجموعة أو اختارها"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
+      '</div>'+
+      '<div id="feWarn" class="fe-warn">الصنف ده موجود قبل كده، مينفعش يتكرر</div></section>'+
 
     '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">٢</span><h4>الخامات اللي بتتسحب من المخزن الأساسي</h4></div>'+
       addBox+
       '<div class="fe-table"><div class="fe-row h"><span>الخامة</span><span>كمية الدفعة</span><span>الوحدة</span><span></span></div>'+table+'</div>'+
     '</section>'+
 
-    '<div class="fe-foot"><button class="btn quiet" data-act="feCancel">إلغاء</button><button class="btn main" data-act="feSave">حفظ الصنف</button></div>'+
+    '<div class="fe-foot"><button class="btn quiet" data-act="feCancel">إلغاء</button><button id="feSaveBtn" class="btn main" data-act="feSave"'+(dupNow?' disabled':'')+'>حفظ الصنف</button></div>'+
   '</div>';
 }
 function fgStockView(){
@@ -3812,7 +3831,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.2.3';
+var APP_VERSION='1.2.4';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -7070,7 +7089,7 @@ var ACT={
     var lr=p.runFrom?null:fillLastRun(p);
     var src=p.runFrom||(lr?lr.from:[]);
     var yv=p.runOut!=null?p.runOut:(lr?lr.out:'');
-    U.fedit={id:p.id,kind:p.fill,name:p.name,yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
+    U.fedit={id:p.id,kind:p.fill,name:p.name,grp:p.grp||'',yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
   },
   feAdd:function(){
     var E=U.fedit;if(!E)return false;
@@ -7103,14 +7122,15 @@ var ACT={
     if(!(Y>0)){toast('اكتب الناتج في الدفعة');return false;}
     var rows=(E.rows||[]).map(function(r){return {p:r.p,q:num(r.q)};}).filter(function(r){return r.q>0;});
     if(!rows.length){toast('اختار خامة واكتب كميتها');return false;}
+    var grp=String(E.grp||'').trim();
     var ex=E.id==='new'?null:PRODUCTS.filter(function(x){return String(x.id)===String(E.id);})[0];
     if(ex){
-      ex.name=name;ex.runFrom=rows;ex.runOut=Y;
+      ex.name=name;ex.grp=grp;ex.runFrom=rows;ex.runOut=Y;
       toast('اتحفظ '+name);
     }else{
       var codes=[];
       rows.forEach(function(r){var sp=P(r.p);if(sp&&sp.code!=null&&codes.indexOf(String(sp.code))<0)codes.push(String(sp.code));});
-      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:'',unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y};
+      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:grp,unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y};
       S.products.push(np);S.ready[np.id]=0;allocReady(np.id);
       toast('اتضاف '+name);
     }
