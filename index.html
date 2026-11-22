@@ -1243,6 +1243,14 @@ function usersList(){
 function userByCode(c){return usersList().filter(function(u){return u.code===c;})[0]||null;}
 /* كود المستخدم: من ٣ لـ ١٢ حرف أو رقم (عربي أو إنجليزي)، ومينفعش يتكرر مع مستخدم تاني أو كود المالك أو كود اتشال (من غير فرق بين الكبير والصغير) */
 function validUserCode(c){return /^[A-Za-z0-9\u0621-\u064A]{3,12}$/.test(String(c||'').trim());}
+/* كود عشوائي من ٦ حروف وأرقام، من غير حروف متشابهة زي O/0 وI/1 */
+function randUserCode(){
+  var chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',out='';
+  var a=new Uint32Array(6);
+  (window.crypto||window.msCrypto).getRandomValues(a);
+  for(var i=0;i<6;i++)out+=chars.charAt(a[i]%chars.length);
+  return out;
+}
 function userCodeTaken(c,exceptId){
   var k=String(c||'').trim().toLowerCase();
   if(k==='chef myf'||REMOVED_USER_CODES.some(function(x){return String(x).toLowerCase()===k;}))return true;
@@ -1344,7 +1352,7 @@ function updateConn(){
   var ob=document.getElementById('offBanner');if(ob)ob.innerHTML=offNote();
 }
 window.addEventListener('online',function(){updateConn();netRetry();});
-window.addEventListener('offline',function(){updateConn();netShow();});
+window.addEventListener('offline',function(){updateConn();netShowSoon();});
 /* شاشة "مفيش إنترنت": بتتقفل لوحدها أول ما الاتصال يرجع، بعد رسالة نجاح */
 var NET={shown:false,busy:false};
 function netShow(){
@@ -1360,6 +1368,8 @@ function netShow(){
   document.body.appendChild(d);
   document.getElementById('netBtn').onclick=netRetry;
 }
+/* ما نفتحش شاشة النت غير لو الاتصال فعلاً واقع من غير مجرد فشل مزامنة عابر */
+function netShowSoon(){setTimeout(function(){if(!navigator.onLine)netShow();},4000);}
 function netPing(){
   if(!navigator.onLine)return Promise.resolve(false);
   return withTimeout(fetch('./',{method:'HEAD',cache:'no-store'}),6000).then(function(){return true;},function(){return false;});
@@ -1852,7 +1862,7 @@ function gdUpload(){
 }
 function gdFail(e){
   var c=e&&e.code;GD.ok=false;if(!GD.seeded)setTimeout(render,0);
-  if(!navigator.onLine||/fetch|Load failed|NetworkError/i.test(String(e&&e.message)))netShow();
+  if(!navigator.onLine)netShowSoon();
   if(c==='tap'||c===401){GD.needTap=true;GD.err='محتاج تأكيد من جوجل، اضغط أي مكان في الشاشة';gdArm();}
   else if(c===404){GD.id=null;GD.ver=null;gdSaveCfg();GD.err='الملف اتمسح من درايف، هيتعمل من جديد';}
   else if(c===403){
@@ -5846,7 +5856,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6098,7 +6108,7 @@ function usersCardHTML(){
       '<div class="uedit-h"><span class="uava">'+esc((eu.name||'?').charAt(0))+'</span><div><b>'+esc(eu.name)+'</b><small>الكود <span class="ltr">'+esc(eu.code)+'</span>'+(onNow?' · <span class="upill">في إجازة الآن</span>':'')+'</small></div><button class="btn ghost sm" data-act="userEditCancel">إغلاق</button></div>'+
       '<div class="ugrp"><span class="sec-l">البيانات</span>'+
         '<div class="urow"><div class="fld"><label for="uEditName">الاسم</label><input id="uEditName" autocomplete="off" value="'+esc(eu.name)+'"></div>'+
-        '<div class="fld"><label for="uEditCode">الكود</label><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'"></div></div>'+
+        '<div class="fld"><label for="uEditCode">الكود</label><div style="display:flex;gap:8px;align-items:center"><input id="uEditCode" autocomplete="off" maxlength="12" value="'+esc(eu.code)+'" style="flex:1;min-width:0"><button type="button" data-act="uGenCode" data-target="uEditCode" aria-label="كود عشوائي" title="كود عشوائي" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line,#e4e6f2);background:#fff;cursor:pointer;font-size:20px;color:var(--navy,#2d3591)">↻</button></div></div></div>'+
         '<small class="uhint">الكود من ٣ لـ ١٢ حرف أو رقم، عربي أو إنجليزي، ومينفعش يتكرر.</small>'+
         '<div class="fld"><label for="uEditWa">رقم الواتساب</label><input id="uEditWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx" value="'+esc(eu.wa||'')+'"></div>'+
         '<small class="uhint">رقم الواتساب ده بيتستخدم في استعادة الـ PIN (آخر ٤ أرقام منه).</small></div>'+
@@ -6126,7 +6136,7 @@ function usersCardHTML(){
   var form='<div class="stack" style="margin-top:10px">'+
     '<div class="fld"><label for="uName">اسم المستخدم</label><input id="uName" autocomplete="off" placeholder="مثال: أحمد"></div>'+
     '<div class="fld"><label for="uPw">الباسورد</label><input id="uPw" type="password" autocomplete="new-password" placeholder="4 حروف أو أرقام على الأقل"></div>'+
-    '<div class="fld"><label for="uCode">الكود (اختياري)</label><input id="uCode" autocomplete="off" maxlength="12" placeholder="يتولد تلقائي لو فاضي"></div>'+
+    '<div class="fld"><label for="uCode">الكود (اختياري)</label><div style="display:flex;gap:8px;align-items:center"><input id="uCode" autocomplete="off" maxlength="12" placeholder="يتولد تلقائي لو فاضي" style="flex:1;min-width:0"><button type="button" data-act="uGenCode" data-target="uCode" aria-label="كود عشوائي" title="كود عشوائي" style="flex:none;width:44px;height:44px;border-radius:50%;border:1px solid var(--line,#e4e6f2);background:#fff;cursor:pointer;font-size:20px;color:var(--navy,#2d3591)">↻</button></div></div>'+
     '<div class="fld"><label for="uWa">رقم الواتساب (اختياري)</label><input id="uWa" inputmode="tel" autocomplete="off" placeholder="01xxxxxxxxx"></div>'+
     '<div class="fld"><label for="uJob">الوظيفة (اختياري)</label><input id="uJob" autocomplete="off" placeholder="مثال: عامل إنتاج"></div>'+
      '<div class="fld"><label for="uJoin">تاريخ الانضمام (اختياري)</label><input id="uJoin" type="date"></div>'+
@@ -6747,6 +6757,13 @@ var ACT={
   },
   cardsExport:function(){exportCards();return false;},
   cardsImport:function(){importCards();return false;},
+  uGenCode:function(d){
+    var el=document.getElementById(d.target||'uCode');if(!el)return false;
+    var c,tries=0;
+    do{c=randUserCode();tries++;}while(userCodeTaken(c,null)&&tries<50);
+    el.value=c;
+    return false;
+  },
   userAdd:function(){
     var n=((document.getElementById('uName')||{}).value||'').trim();
     var pw=(document.getElementById('uPw')||{}).value||'';
