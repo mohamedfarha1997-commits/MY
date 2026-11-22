@@ -2210,7 +2210,7 @@ function greetHTML(){
   var h=new Date().getHours();
   var g=h<12?'صباح الخير':h<17?'نهارك سعيد':'مساء النور';
   var c=sessionCode();var u=c?userByCode(c):null;
-  return '<div class="greet" style="width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>';
+  return '<style>.tophome{display:block!important;text-align:center!important}.tophome .greet{display:block!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;float:none!important;text-align:center!important}</style>'+'<div class="greet">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>';
 }
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
