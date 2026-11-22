@@ -5387,10 +5387,11 @@ function smParse(text,kind,season){
     });
 }
 function smHTML(){
-  var sm=U.smart;
+  var sm=U.smart,os=U.osheet||{};
   var h='<div class="fld"><span class="sec-l">اكتب الطلب بسرعة</span>'+
     '<textarea id="smartTxt" rows="3" placeholder="مثال: سرفيز براونيز ٣٠ قطعة&#10;علبة ٣٠ قطعة" style="width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:8px;font:inherit">'+esc(sm?sm.text:'')+'</textarea>'+
-    '<div class="btns"><button class="btn ghost sm" data-act="oSmart">فهم الطلب</button></div>';
+    '<div class="btns"><button class="btn ghost sm" data-act="oSmart">فهم الطلب</button></div>'+
+    ((os.cust||os.due)?'<div class="meta" style="margin-top:6px">الأوردر الحالي: '+(os.cust?'العميل '+esc(os.cust):'')+(os.cust&&os.due?' · ':'')+(os.due?'المعاد '+esc(String(os.due).replace('T',' ')):'')+'</div>':'');
   if(sm&&sm.lines.length){
     var sums={};
     sm.lines.forEach(function(ln){if(ln.kind==='prod'&&ln.grp)sums[ln.grp]=r3((sums[ln.grp]||0)+ln.qty);});
@@ -6554,7 +6555,8 @@ var ACT={
   oSmartPick:function(d){
     var sm=U.smart;if(!sm||!sm.lines[Number(d.i)])return false;
     var ln=sm.lines[Number(d.i)];
-    ln.pid=d.p;ln.cands=[];
+    var real=PRODUCTS.filter(function(x){return String(x.id)===String(d.p);})[0];
+    ln.pid=real?real.id:d.p;ln.cands=[];
     ln.kind=ln.qty==null?'noqty':'prod';
   },
   oSmartDrop:function(d){
@@ -6585,6 +6587,7 @@ var ACT={
     if(cust)os.cust=cust;
     if(due)os.due=due;
     U.smart=null;
+    U.oTab='__all';
     toast('اتضاف: '+nP+' صنف'+(nT?' · '+nT+' قالب':'')+(cust?' · العميل: '+cust:'')+(due?' · المعاد اتحدد':''));
   },
   oPick:function(d){
