@@ -5257,9 +5257,10 @@ function smParseLine(raw,prods,tpls){
   res.cands=pool.slice(0,4).map(function(x){return x.pid;});
   return res;
 }
-function smParse(text,kind){
+function smParse(text,kind,season){
   var k=kind||'cust';
-  var prods=prodsOf(k);
+  /* نفس الأصناف اللي بتظهر في شاشة اختيار الأصناف (منتجات الحشو للموسم الحالي) */
+  var prods=ordProdsOf(k).filter(function(p){return seasonOf(p)===(season||'normal');});
   var tpls=(S.boxTpl||[]).filter(function(t){return (t.kind||'cust')===k;});
   var grp=0,curPack='';
   return String(text||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean)
@@ -6435,7 +6436,7 @@ var ACT={
     var os=U.osheet;if(!os)return false;
     var el=document.getElementById('smartTxt');
     var txt=el?el.value:(U.smart?U.smart.text:'');
-    U.smart={text:txt,lines:smParse(txt,os.kind)};
+    U.smart={text:txt,lines:smParse(txt,os.kind,os.season)};
     if(!U.smart.lines.length)U.smart=null;
   },
   oSmartPick:function(d){
