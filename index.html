@@ -3008,7 +3008,7 @@ function groupFillCards(fl){
     return '<button class="btn ghost sm" data-act="fgGrpOpen" data-g="'+esc(g)+'" aria-expanded="'+(isOpen?'true':'false')+'" style="width:100%;justify-content:space-between;margin-top:8px">'+
       '<span>'+(isOpen?'▾ ':'▸ ')+esc(lbl)+' ('+list.length+')</span></button>'+
       (isOpen?'<div class="fgcards">'+list.map(function(p){
-        return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));
+        return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id)).replace(/<\/div>$/,'<button class="btn ghost sm" data-act="fillEdit" data-id="'+p.id+'" style="margin-top:8px;width:100%">تعديل</button></div>');
       }).join('')+'</div>':'');
   }).join('');
 }
@@ -3254,7 +3254,6 @@ function fillingView(){
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
   var opts=[];
   if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
-  if(!tabHidden('filladd'))opts.push(['add','إضافة أصناف جديدة','اعمل صنف محشو جديد بكود جديد']);
   if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b><span>المالك لازم يفعّل لك تبويب من جدول التبويبات والصلاحيات.</span></div>';
   var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
   var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
@@ -3456,7 +3455,7 @@ function fgStockView(){
   if(F==='short') body=fgShortHTML(rows,raw);
   else if(F==='fillcust'||F==='fillshop'){
     var fl=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&p.fill===F.slice(4)&&fgSeasonOK(p);});
-    var tb='<div class="btns" style="flex-wrap:wrap;margin-bottom:8px"><button class="btn main sm" data-act="fillEdit" data-id="new">+ صنف جديد</button>'+fl.map(function(p){return '<button class="btn ghost sm" data-act="fillEdit" data-id="'+p.id+'">تعديل '+esc(p.name)+'</button>';}).join(' ')+'</div>';
+    var tb='<div class="btns" style="margin-bottom:8px"><button class="btn main sm" data-act="fillEdit" data-id="new">+ صنف جديد</button></div>';
     body=U.fedit?feHTML():tb+(fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اضغط "صنف جديد" عشان تضيف.</span></div>');
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
