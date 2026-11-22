@@ -7835,7 +7835,7 @@ function onField(e){
   if(d.stk!==undefined){var sb=batch(d.stk),v=num(t.value);sb.stk=(isFinite(v)&&v>=0)?r3(v):0;return;}
   if(d.rej!==undefined){var rb=batch(d.rej),rv=num(t.value);rb.rej=(isFinite(rv)&&rv>=0)?Math.min(pc(rb),r3(rv)):0;if(rb.stk==null){var se=document.querySelector('[data-stk="'+rb.id+'"]');if(se)se.value=pc(rb)-rb.rej;}return;}
   if(d.rsq!==undefined){U.rsearch=t.value;rSearchUpdate();return;}
-  if(d.rs!==undefined){U.rsel=t.value;U.rqty=1;render();return;}
+  if(d.rs!==undefined){U.rsel=t.value;U.rqty=1;if(e&&e.type==='change')render();return;}
   if(U.osheet&&d.oc!==undefined){U.osheet.cust=t.value;return;}
   if(U.osheet&&d.od!==undefined){var dv=t.value;if(dv&&/T\d\d:\d\d/.test(dv)&&!/T\d\d:00/.test(dv)){dv=dv.replace(/T(\d\d):\d\d/,'T$1:00');t.value=dv;}U.osheet.due=dv;return;}
   if(d.af!==undefined&&U.form&&U.form.alts){var al=U.form.alts[Number(d.af)];if(al){if(d.afk==='u')al.u=t.value;else al.f=t.value;}return;}
