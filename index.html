@@ -3831,7 +3831,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.2.4';
+var APP_VERSION='1.2.5';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3939,13 +3939,16 @@ function updatesCardHTML(){
 function updAutoRecord(){
   var have=updDoneList(),add=[];
   /* التحقق بعد التحديث: لو المحاولة الأخيرة لسه الإصدار الشغال أقل منها، يبقى التحديث ما اتثبتش */
-  var tryId='';try{tryId=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
+  var tryId='',tryU=null;
+  try{tryId=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
   if(tryId){
-    var tu=updFind(tryId);
-    if(tu&&verCmp(tu.ver,APP_VERSION)>0)toast('التحديث ما اتثبتش، اضغط تحديث تاني');
+    tryU=updFind(tryId);
+    if(tryU&&verCmp(tryU.ver,APP_VERSION)>0)toast('التحديث ما اتثبتش، اضغط تحديث تاني');
     try{sessionStorage.removeItem('khat-upd-try');}catch(e){}
   }
-  updList().forEach(function(u){if(verCmp(u.ver,APP_VERSION)<=0&&have.indexOf(u.id)<0)add.push(u.id);});
+  /* الإصدارات الأقدم من اللي شغال بتتسجل تلقائي. الإصدار نفسه بيتسجل بس لما المستخدم يثبّته فعلاً */
+  updList().forEach(function(u){if(verCmp(u.ver,APP_VERSION)<0&&have.indexOf(u.id)<0)add.push(u.id);});
+  if(tryU&&verCmp(tryU.ver,APP_VERSION)<=0&&have.indexOf(tryU.id)<0&&add.indexOf(tryU.id)<0)add.push(tryU.id);
   var justDone=updList().filter(function(u){return add.indexOf(u.id)>-1&&verCmp(u.ver,APP_VERSION)===0;});
   if(add.length)setPref(updKey(),have.concat(add));
   if(justDone.length)updSuccessShow(justDone[0]);
@@ -3962,7 +3965,13 @@ function updSuccessShow(up){
     '<button class="updov-btn" data-act="updSeen">تمام</button>';
   document.body.appendChild(ov);
 }
-function updPendingList(){return updList().filter(function(u){return verCmp(u.ver,APP_VERSION)>0;});}
+function updPendingList(){
+  var done=updDoneList();
+  return updList().filter(function(u){
+    var c=verCmp(u.ver,APP_VERSION);
+    return c>0||(c===0&&done.indexOf(u.id)<0);
+  });
+}
 var UPD={pct:0};
 function updCss(){
   if(document.getElementById('updCss'))return;
@@ -4029,19 +4038,24 @@ function updTopCss(){
     '.updtop-btn{flex:none;border:0;border-radius:999px;padding:7px 14px;background:#fff;color:#1d2c86;font:inherit;font-weight:800;cursor:pointer}';
   document.head.appendChild(st);
 }
-function updTopBar(up,endAt){
+function updSeenKey(){return 'updSeen:'+(sessionCode()||'owner');}
+function updSeenList(){var l=pref(updSeenKey(),[]);return Array.isArray(l)?l:[];}
+function updMarkSeen(id){var l=updSeenList().slice();if(l.indexOf(id)<0){l.push(id);setPref(updSeenKey(),l);}}
+/* الشريط اللي فوق: مش إجباري، بيتعرض مرة واحدة لكل تحديث، ويتقفل بـ × */
+function updTopBar(up){
   if(document.getElementById('updOv'))return;
   updTopCss();
-  var left=Math.max(0,Math.ceil((endAt-Date.now())/1000));
-  var txt='فيه تحديث جديد (الإصدار '+esc(up.ver)+')، هيتفرض بعد '+String(Math.floor(left/60))+':'+String(left%60).padStart(2,'0');
   var bar=document.getElementById('updTop');
   if(!bar){
     bar=document.createElement('div');bar.id='updTop';bar.className='updtop';bar.setAttribute('role','status');
-    bar.innerHTML='<span class="updtop-t"></span><button class="updtop-btn" data-act="updGo">تحديث الآن</button>';
+    bar.innerHTML='<span class="updtop-t"></span><span style="display:flex;gap:8px;align-items:center;flex:none">'+
+      '<button class="updtop-btn" data-act="updGo">تحديث الآن</button>'+
+      '<button class="updtop-btn" data-act="updSeenTop" aria-label="إغلاق" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5)">×</button></span>';
     document.body.appendChild(bar);
   }
-  bar.querySelector('.updtop-t').textContent=txt;
-  bar.querySelector('.updtop-btn').setAttribute('data-id',up.id);
+  bar.querySelector('.updtop-t').textContent='فيه تحديث جديد (الإصدار '+esc(up.ver)+')';
+  bar.querySelector('[data-act="updGo"]').setAttribute('data-id',up.id);
+  bar.querySelector('[data-act="updSeenTop"]').setAttribute('data-id',up.id);
 }
 /* الإشعار اللي بيظهر أول ما يفتح التطبيق */
 function updPrompt(){
@@ -4064,6 +4078,12 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
   var vin=document.getElementById('updVer');
   if(vin&&!vin.dataset.auto){vin.dataset.auto='1';updLiveVer().then(function(v){var el=document.getElementById('updVer');if(v&&el)el.value=v;});}
   if(!authed()||document.getElementById('updOv'))return;
+  if(window.UPD_COLD===undefined){
+    /* أول فتحة للتطبيق في الجلسة دي = فتحة باردة (كان مقفول). أي ريلود بعد كده مش باردة */
+    var warmBefore=false;try{warmBefore=sessionStorage.getItem('khat-warm')==='1';}catch(e){}
+    window.UPD_COLD=!warmBefore;
+    try{sessionStorage.setItem('khat-warm','1');}catch(e){}
+  }
   if(!window.UPD_AUTH_T)window.UPD_AUTH_T=Date.now();/* وقت أول ما الدخول بيتحسب في الصفحة دي */
   var pendNow=updPendingList();
   if(!pendNow.length){var tb=document.getElementById('updTop');if(tb)tb.remove();return;}
@@ -4073,13 +4093,16 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
     updLiveVer().then(function(v){
       window.UPD_BUSY=false;
       if(!v||verCmp(v,updLatestVer())<0)return;
-      var up=pendNow[0],endAt=updGraceEnd(up.id);
-      if(Date.now()>=endAt){
-        var tb2=document.getElementById('updTop');if(tb2)tb2.remove();
+      var up=pendNow[0];
+      if(window.UPD_COLD){
+        /* فتحة باردة: شاشة إجبارية على طول، ومفيش زرار إغلاق */
+        var t1=document.getElementById('updTop');if(t1)t1.remove();
         if(!document.getElementById('updPrompt'))updPrompt();
-      }else{
-        updTopBar(up,endAt);
+        return;
       }
+      /* فتحة عادية: يتعرض مرة واحدة بس */
+      if(updSeenList().indexOf(up.id)>-1)return;
+      updTopBar(up);
     });
   }
 },2000);}
@@ -5819,7 +5842,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6307,6 +6330,7 @@ var ACT={
   },
   updClose:function(){return false;},
   updSeen:function(){var o=document.getElementById('updDone');if(o)o.remove();return false;},
+  updSeenTop:function(d){if(d.id!=null&&d.id!=='')updMarkSeen(d.id);var t=document.getElementById('updTop');if(t)t.remove();return false;},
   updGo:function(d){var p=document.getElementById('updPrompt');if(p)p.remove();updStart(d.id);return false;},
   updStart:function(d){updStart(d.id);return false;},
   updFinish:function(d){updFinish(d.id);return false;},
