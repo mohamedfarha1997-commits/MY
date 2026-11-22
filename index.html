@@ -5169,7 +5169,7 @@ function smNorm(x){
     .replace(/[\u064B-\u0652\u0640]/g,'')
     .replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
     .replace(/ؤ/g,'و').replace(/ئ/g,'ي')
-    .replace(/[^\u0621-\u064Aa-zA-Z0-9.]+/g,' ').trim().toLowerCase();
+    .replace(/[^\u0621-\u064Aa-zA-Z0-9.:]+/g,' ').trim().toLowerCase();
 }
 function smTok(x){return smNorm(x).split(' ').filter(Boolean);}
 function smLev(a,b){
@@ -5188,9 +5188,83 @@ function smEq(a,b){
   return smLev(a,b)<=(n>=6?2:1);
 }
 function smIsNum(x){return /^\d+(\.\d+)?$/.test(x);}
-function smParseLine(raw,prods,tpls){
-  var toks=smTok(raw);
-  var res={raw:raw,kind:'none',qty:null,pack:'',pid:null,tid:null,count:1,cands:[]};
+
+/* ===== التاريخ والساعة واسم العميل داخل الطلب الذكي ===== */
+var SM_AM_W=['الصبح','صباحا','ص'];
+var SM_PM_W=['العصر','المغرب','بالليل','الليل','مساء','م','الضهر','الظهر'];
+var SM_TODAY_W=['النهارده','اليوم'];
+var SM_TOM_W=['بكره','بكرا','غدا','غدوه'];
+var SM_WD=[['الاحد',0],['الاتنين',1],['الاثنين',1],['التلات',2],['الثلاثاء',2],['الاربع',3],['الاربعاء',3],['الخميس',4],['الجمعه',5],['الجمعة',5],['السبت',6]];
+function smExtractTime(toks,used){
+  var amN=SM_AM_W.map(smNorm),pmN=SM_PM_W.map(smNorm),hourW=smNorm('الساعه');
+  for(var i=0;i<toks.length;i++){
+    if(used[i])continue;
+    var mm=/^(\d{1,2})(?:[:.](\d{2}))?$/.exec(toks[i]);
+    if(!mm)continue;
+    var prev=(i>0&&!used[i-1])?toks[i-1]:'';
+    var next=(i+1<toks.length&&!used[i+1])?toks[i+1]:'';
+    var per=amN.indexOf(next)>-1?'am':(pmN.indexOf(next)>-1?'pm':null);
+    var hasHourW=prev===hourW,hasMin=!!mm[2];
+    if(!per&&!hasHourW&&!hasMin)continue;
+    var h=parseInt(mm[1],10),m=mm[2]?parseInt(mm[2],10):0;
+    if(h>23||m>59)continue;
+    used[i]=1;
+    if(hasHourW)used[i-1]=1;
+    if(per)used[i+1]=1;
+    if(per==='pm'&&h<12)h+=12;
+    if(per==='am'&&h===12)h=0;
+    if(!per&&h>=1&&h<=6)h+=12;
+    return {h:h,m:m};
+  }
+  return null;
+}
+function smExtractDate(toks,used){
+  var todayN=SM_TODAY_W.map(smNorm),tomN=SM_TOM_W.map(smNorm),tomW=smNorm('بكره'),afterW=smNorm('بعد');
+  for(var i=0;i<toks.length;i++){
+    if(used[i])continue;
+    var t=toks[i];
+    if(t===afterW&&i+1<toks.length&&!used[i+1]&&toks[i+1]===tomW){used[i]=1;used[i+1]=1;return 2;}
+    if(todayN.indexOf(t)>-1){used[i]=1;return 0;}
+    if(tomN.indexOf(t)>-1){used[i]=1;return 1;}
+    for(var k=0;k<SM_WD.length;k++){
+      if(smNorm(SM_WD[k][0])===t){
+        used[i]=1;
+        var off=(SM_WD[k][1]-new Date().getDay()+7)%7;
+        return off===0?7:off;
+      }
+    }
+  }
+  return null;
+}
+function smDay(off){
+  var d=new Date();d.setDate(d.getDate()+off);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function smDayLabel(off,date){return off===0?'النهارده':off===1?'بكره':off===2?'بعد بكره':date;}
+function smTimeLabel(time){var p=time.split(':'),h=parseInt(p[0],10);return ((h%12)||12)+':'+p[1]+' '+(h<12?'ص':'م');}
+function smName(raw){
+  var c=String(raw||'').replace(/^\s*(العميل|عميل|الاسم|اسم)\s*[:：\-]?\s*/,'').trim();
+  if(!c)return '';
+  if(/[0-9٠-٩۰-۹]/.test(c))return '';
+  if(!/[\u0621-\u064Aa-zA-Z]/.test(c))return '';
+  var words=c.split(/\s+/);
+  if(words.length>4)return '';
+  return c;
+}
+function smParseLine(raw,prods,tpls,ctx){
+  var all=smTok(raw);
+  var used={};
+  var tm=smExtractTime(all,used);
+  var off=smExtractDate(all,used);
+  var toks=all.filter(function(_,k){return !used[k];});
+  var res={raw:raw,kind:'none',qty:null,pack:'',pid:null,tid:null,count:1,cands:[],due:null,dueLabel:''};
+  if(tm||off!==null){
+    var date=off!==null?smDay(off):(ctx&&ctx.lastDue?ctx.lastDue.date:smDay(0));
+    var time=tm?String(tm.h).padStart(2,'0')+':'+String(tm.m).padStart(2,'0'):(ctx&&ctx.lastDue?ctx.lastDue.time:'12:00');
+    res.due=date+'T'+time;
+    res.dueLabel=smDayLabel(off,date)+' '+smTimeLabel(time);
+    if(ctx)ctx.lastDue={date:date,time:time};
+  }
   /* 1) قالب علبة زي "علبة ٣٠ قطعة" */
   var bestT=null,bestLen=0;
   tpls.forEach(function(t){
@@ -5263,9 +5337,15 @@ function smParse(text,kind,season){
   var prods=ordProdsOf(k).filter(function(p){return seasonOf(p)===(season||'normal');});
   var tpls=(S.boxTpl||[]).filter(function(t){return (t.kind||'cust')===k;});
   var grp=0,curPack='';
+  var ctx={lastDue:null};
   return String(text||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean)
     .map(function(raw){
-      var r=smParseLine(raw,prods,tpls);
+      var r=smParseLine(raw,prods,tpls,ctx);
+      if(r.kind==='none'){
+        var nm=smName(raw);
+        if(r.due)r.kind='due';
+        else if(nm){r.kind='name';r.name=nm;}
+      }
       if(r.kind==='tpl'){curPack='';return r;}
       if(r.kind==='hdr'){grp++;curPack=r.pack;r.grp=grp;return r;}
       if(r.pack){
@@ -5294,10 +5374,14 @@ function smHTML(){
           ' <span class="meta">'+(sum?'· الأصناف '+f(sum)+(ln.hq==null||sum===ln.hq?' ✓':' (الهيدر '+f(ln.hq)+')'):'· ضيف تحته الأصناف')+'</span>';
       }else if(ln.kind==='prod'){
         var p=P(ln.pid)||{};
-        txt='<b>'+esc(p.name||'')+'</b> · '+f(ln.qty)+' '+esc(p.unit||'')+(ln.pack?' · '+esc(ln.pack):'');
+        txt='<b>'+esc(p.name||'')+'</b> · '+f(ln.qty)+' '+esc(p.unit||'')+(ln.pack?' · '+esc(ln.pack):'')+(ln.dueLabel?' · المعاد: '+esc(ln.dueLabel):'');
       }else if(ln.kind==='tpl'){
         var t=(S.boxTpl||[]).filter(function(x){return x.id===ln.tid;})[0];
         txt='<b>'+esc(t?t.name:'قالب')+'</b> · '+f(ln.count)+' علبة';
+      }else if(ln.kind==='name'){
+        txt='<b>العميل:</b> '+esc(ln.name);
+      }else if(ln.kind==='due'){
+        txt='<b>المعاد:</b> '+esc(ln.dueLabel);
       }else if(ln.kind==='noqty'){
         var p2=P(ln.pid)||{};
         txt='<b>'+esc(p2.name||'')+'</b> · مش لاقي الكمية، اكتب الرقم في السطر';
@@ -5310,7 +5394,7 @@ function smHTML(){
       }
       h+='<div class="hist" style="align-items:center"><span>'+txt+'</span><button class="btn ghost sm" data-act="oSmartDrop" data-i="'+i+'">×</button></div>';
     });
-    var ready=sm.lines.some(function(ln){return ln.kind==='prod'||ln.kind==='tpl';});
+    var ready=sm.lines.some(function(ln){return ln.kind==='prod'||ln.kind==='tpl'||ln.kind==='name'||ln.kind==='due'||!!ln.due;});
     h+='<div class="btns"><button class="btn main" data-act="oSmartAdd"'+(ready?'':' disabled')+'>أضف اللي فهمته</button></div>';
   }
   return h+'</div>';
@@ -6468,8 +6552,12 @@ var ACT={
       }
       else if(ln.kind==='tpl'){var t=(S.boxTpl||[]).filter(function(x){return x.id===ln.tid;})[0];if(t&&t.items.length){smAddTpl(os,t,ln.count);nT++;}}
     });
+    var cust=null,due=null;
+    sm.lines.forEach(function(ln){if(ln.kind==='name')cust=ln.name;if(ln.due)due=ln.due;});
+    if(cust)os.cust=cust;
+    if(due)os.due=due;
     U.smart=null;
-    toast('اتضاف: '+nP+' صنف'+(nT?' · '+nT+' قالب':''));
+    toast('اتضاف: '+nP+' صنف'+(nT?' · '+nT+' قالب':'')+(cust?' · العميل: '+cust:'')+(due?' · المعاد اتحدد':''));
   },
   oPick:function(d){
     var os=U.osheet;if(!os)return false;
