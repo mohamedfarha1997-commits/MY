@@ -3368,24 +3368,75 @@ function feSync(){
 }
 function feHTML(){
   var E=U.fedit,isNew=E.id==='new',rows=E.rows||[];
-  var picks=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).map(function(p){
-    var on=rows.some(function(r){return String(r.p)===String(p.id);});
-    return '<button class="btn '+(on?'main':'ghost')+' sm" data-act="feToggle" data-p="'+p.id+'">'+(on?'✓ ':'')+esc(p.name)+'</button>';
-  }).join(' ');
-  var rh=rows.map(function(r){
+  var css='<style id="feCss">'+
+    '.fe{display:flex;flex-direction:column;gap:16px;padding-bottom:86px}'+
+    '.fe-head{display:flex;flex-direction:column;gap:2px}'+
+    '.fe-head b{font-size:18px}'+
+    '.fe-sec{border:1px solid var(--line,#e4e6f2);border-radius:16px;padding:16px;background:var(--card,#fff)}'+
+    '.fe-sh{display:flex;align-items:center;gap:10px;margin-bottom:12px}'+
+    '.fe-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--navy,#2d3591);color:#fff;font-weight:800;font-size:13px;flex:none}'+
+    '.fe-sh h4{margin:0;font-size:15px}'+
+    '.fe-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}'+
+    '.fe-f{display:flex;flex-direction:column;gap:6px}'+
+    '.fe-f span{font-size:13px;color:var(--muted,#6b7090);font-weight:700}'+
+    '.fe-f input,.fe-q{border:1px solid var(--line,#e4e6f2);border-radius:10px;padding:10px 12px;font:inherit;background:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b);min-width:0}'+
+    '.fe-f input:focus,.fe-q:focus{outline:2px solid var(--navy,#2d3591);outline-offset:1px}'+
+    '.fe-grp{font-size:12px;color:var(--muted,#6b7090);font-weight:700;margin:12px 0 6px}'+
+    '.fe-chips{display:flex;flex-wrap:wrap;gap:8px}'+
+    '.fe-chip{border:1px solid var(--line,#e4e6f2);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink,#1b1f3b)}'+
+    '.fe-chip.on{background:var(--navy,#2d3591);border-color:var(--navy,#2d3591);color:#fff}'+
+    '.fe-table{margin-top:14px;border:1px solid var(--line,#e4e6f2);border-radius:12px;overflow:hidden}'+
+    '.fe-row{display:grid;grid-template-columns:1fr 110px 56px 40px;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line,#e4e6f2)}'+
+    '.fe-row.h{border-top:0;background:var(--surface-2,#f7f8fc);font-size:12px;color:var(--muted,#6b7090);font-weight:700}'+
+    '.fe-name{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+    '.fe-u{font-size:13px;color:var(--muted,#6b7090)}'+
+    '.fe-x{width:34px;height:34px;border-radius:50%;border:1px solid var(--line,#e4e6f2);background:#fff;cursor:pointer;font-size:16px;color:#a31450}'+
+    '.fe-empty{padding:14px;text-align:center;color:var(--muted,#6b7090);font-size:14px}'+
+    '.fe-foot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:12px 0;background:var(--bg,#f4f5fb);border-top:1px solid var(--line,#e4e6f2)}'+
+    '.fe-foot .btn{min-width:120px}'+
+    '@media (max-width:520px){.fe-grid{grid-template-columns:1fr}.fe-row{grid-template-columns:1fr 92px 46px 36px}}'+
+    '</style>';
+
+  var groups={},order=[];
+  PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).forEach(function(p){
+    var g=p.grp||'بدون مجموعة';
+    if(!groups[g]){groups[g]=[];order.push(g);}
+    groups[g].push(p);
+  });
+  order.sort(function(a,b){return String(a).localeCompare(String(b),'ar');});
+  var picks=order.length?order.map(function(g){
+    return '<div class="fe-grp">'+esc(g)+'</div><div class="fe-chips">'+
+      groups[g].sort(function(a,b){return String(a.name).localeCompare(String(b.name),'ar');}).map(function(p){
+        var on=rows.some(function(r){return String(r.p)===String(p.id);});
+        return '<button class="fe-chip'+(on?' on':'')+'" data-act="feToggle" data-p="'+p.id+'">'+(on?'✓ ':'')+esc(p.name)+'</button>';
+      }).join('')+'</div>';
+  }).join(''):'<div class="fe-empty">مفيش خامات من مخزن الإنتاج الأساسي</div>';
+
+  var table=rows.length?rows.map(function(r){
     var sp=P(r.p)||{};
-    return '<div class="hist" style="align-items:center"><span><b>'+esc(sp.name||'')+'</b></span>'+
-      '<span style="display:flex;gap:6px;align-items:center"><input id="feq'+r.p+'" inputmode="decimal" value="'+esc(r.q==null?'':String(r.q))+'" placeholder="الكمية لكل دفعة" style="width:110px;padding:6px;border:1px solid var(--line);border-radius:8px"><span class="meta">'+esc(sp.unit||'')+'</span>'+
-      '<button class="btn ghost sm" data-act="feRemove" data-p="'+r.p+'">×</button></span></div>';
-  }).join('');
-  return '<div class="grp">'+(isNew?'صنف محشو جديد':'تعديل: '+esc(E.name||''))+'</div>'+
-    '<div class="fld"><span class="sec-l">اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'"></div>'+
-    '<div class="fld"><span class="sec-l">بيطلع كام قطعة في الدفعة (الناتج)</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'"></div>'+
-    '<div class="meta" style="margin-top:8px">اختار الخامات اللي بتتسحب من مخزن الإنتاج الأساسي:</div>'+
-    '<div class="btns" style="flex-wrap:wrap">'+picks+'</div>'+
-    '<div class="meta" style="margin-top:10px">كمية كل خامة لكل دفعة:</div>'+
-    '<div class="list">'+(rh||'<div class="meta">مفيش خامات لسه</div>')+'</div>'+
-    '<div class="btns" style="margin-top:12px"><button class="btn quiet" data-act="feCancel">إلغاء</button><button class="btn main" data-act="feSave">حفظ الصنف</button></div>';
+    return '<div class="fe-row"><span class="fe-name" title="'+esc(sp.name||'')+'">'+esc(sp.name||'')+'</span>'+
+      '<input class="fe-q" id="feq'+r.p+'" inputmode="decimal" value="'+esc(r.q==null?'':String(r.q))+'" placeholder="0">'+
+      '<span class="fe-u">'+esc(sp.unit||'')+'</span>'+
+      '<button class="fe-x" data-act="feRemove" data-p="'+r.p+'" aria-label="شيل">×</button></div>';
+  }).join(''):'<div class="fe-empty">اختار خامة من فوق عشان تظهر هنا</div>';
+
+  return css+'<div class="fe">'+
+    '<div class="fe-head"><b>'+(isNew?'صنف محشو جديد':'تعديل: '+esc(E.name||''))+'</b>'+
+      '<small class="meta">'+(isNew?'اكتب البيانات واختار الخامات، وبعدين احفظ':'عدّل البيانات أو الخامات، وبعدين احفظ')+'</small></div>'+
+
+    '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">١</span><h4>بيانات الصنف</h4></div>'+
+      '<div class="fe-grid">'+
+        '<label class="fe-f"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه"></label>'+
+        '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="0"></label>'+
+      '</div></section>'+
+
+    '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">٢</span><h4>الخامات اللي بتتسحب من المخزن الأساسي</h4></div>'+
+      '<div class="meta" style="margin-bottom:4px">اختار الخامات:</div>'+picks+
+      '<div class="fe-table"><div class="fe-row h"><span>الخامة</span><span>كمية الدفعة</span><span>الوحدة</span><span></span></div>'+table+'</div>'+
+    '</section>'+
+
+    '<div class="fe-foot"><button class="btn quiet" data-act="feCancel">إلغاء</button><button class="btn main" data-act="feSave">حفظ الصنف</button></div>'+
+  '</div>';
 }
 function fgStockView(){
   var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
