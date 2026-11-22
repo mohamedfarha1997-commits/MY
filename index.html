@@ -5160,6 +5160,182 @@ function boxesEditorHTML(s){
   return '<div class="fld"><span class="sec-l">التعبئات</span><div class="stack">'+cards+'</div>'+
     '<div class="btns"><button class="btn ghost sm" data-act="boxAdd">'+svg('plus')+'تعبئة جديدة</button></div></div>';
 }
+/* ===== الطلب الذكي: اكتب الطلب بالكلام وهو يفهم الصنف والتعبئة والعدد ===== */
+var SM_UNITS=['قطعه','قطع','حبه','حبات','pcs'];
+function smNorm(x){
+  return String(x||'')
+    .replace(/[٠-٩]/g,function(d){return String(d.charCodeAt(0)-1632);})
+    .replace(/[۰-۹]/g,function(d){return String(d.charCodeAt(0)-1776);})
+    .replace(/[\u064B-\u0652\u0640]/g,'')
+    .replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
+    .replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .replace(/[^\u0621-\u064Aa-zA-Z0-9.]+/g,' ').trim().toLowerCase();
+}
+function smTok(x){return smNorm(x).split(' ').filter(Boolean);}
+function smLev(a,b){
+  var m=a.length,n=b.length,d=[],i,j;
+  for(i=0;i<=m;i++)d[i]=[i];
+  for(j=0;j<=n;j++)d[0][j]=j;
+  for(i=1;i<=m;i++)for(j=1;j<=n;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[m][n];
+}
+/* كلمتين بيعتبروا نفس الكلمة لو متطابقين أو فرق حرف/حرفين (للكلمات الطويلة بس) */
+function smEq(a,b){
+  if(a===b)return true;
+  var n=Math.max(a.length,b.length);
+  if(n<4)return false;
+  return smLev(a,b)<=(n>=6?2:1);
+}
+function smIsNum(x){return /^\d+(\.\d+)?$/.test(x);}
+function smParseLine(raw,prods,tpls){
+  var toks=smTok(raw);
+  var res={raw:raw,kind:'none',qty:null,pack:'',pid:null,tid:null,count:1,cands:[]};
+  /* 1) قالب علبة زي "علبة ٣٠ قطعة" */
+  var bestT=null,bestLen=0;
+  tpls.forEach(function(t){
+    var nt=smTok(t.name);
+    if(!nt.length)return;
+    var used={},matched=0;
+    nt.forEach(function(x){
+      for(var k=0;k<toks.length;k++){
+        if(!used[k]&&smEq(toks[k],x)){used[k]=1;matched++;break;}
+      }
+    });
+    if(matched<nt.length)return;
+    var rest=toks.filter(function(_,k){return !used[k];});
+    var words=rest.filter(function(x){return !smIsNum(x)&&!SM_UNITS.some(function(u){return smEq(x,u);});});
+    if(words.length)return;
+    if(nt.length>bestLen){bestLen=nt.length;bestT=t;res.count=rest.filter(smIsNum).length?parseFloat(rest.filter(smIsNum)[0]):1;}
+  });
+  if(bestT){res.kind='tpl';res.tid=bestT.id;return res;}
+  /* 2) صنف + تعبئة + كمية */
+  var work=toks.slice();
+  PACKS.forEach(function(pk){
+    if(res.pack)return;
+    var pt=smTok(pk),idx=-1;
+    for(var i=0;i+pt.length<=work.length;i++){
+      var ok=true;
+      for(var j=0;j<pt.length;j++){if(!smEq(work[i+j],pt[j])){ok=false;break;}}
+      if(ok){idx=i;break;}
+    }
+    if(idx>-1){res.pack=pk;work.splice(idx,pt.length);}
+  });
+  var qi=-1;
+  for(var q=0;q<work.length;q++){if(smIsNum(work[q])){qi=q;break;}}
+  if(qi>-1){res.qty=parseFloat(work[qi]);work.splice(qi,1);}
+  work=work.filter(function(x){return !SM_UNITS.some(function(u){return smEq(x,u);});});
+  if(!work.length){
+    if(res.pack){res.kind='hdr';res.hq=res.qty;}
+    return res;
+  }
+  var scored=[];
+  prods.forEach(function(p){
+    var pt=smTok(p.name);
+    if(!pt.length)return;
+    var used={},qm=0;
+    work.forEach(function(w){
+      for(var k=0;k<pt.length;k++){
+        if(!used[k]&&smEq(w,pt[k])){used[k]=1;qm++;break;}
+      }
+    });
+    if(!qm)return;
+    var pm=Object.keys(used).length;
+    scored.push({pid:p.id,qm:qm,score:(qm/work.length)*0.8+(pm/pt.length)*0.2,full:qm===work.length});
+  });
+  var full=scored.filter(function(x){return x.full;}).sort(function(a,b){return b.score-a.score;});
+  var pool=full.length?full:scored.filter(function(x){return x.qm/work.length>=0.5;}).sort(function(a,b){return b.score-a.score;});
+  if(!pool.length)return res;
+  var top=pool[0];
+  var close=pool.filter(function(x){return x.score>=top.score-0.05;});
+  if(close.length===1&&full.length){
+    res.pid=top.pid;
+    res.kind=res.qty==null?'noqty':'prod';
+    return res;
+  }
+  res.kind='amb';
+  res.cands=pool.slice(0,4).map(function(x){return x.pid;});
+  return res;
+}
+function smParse(text,kind){
+  var k=kind||'cust';
+  var prods=prodsOf(k);
+  var tpls=(S.boxTpl||[]).filter(function(t){return (t.kind||'cust')===k;});
+  var grp=0,curPack='';
+  return String(text||'').split(/\n+/).map(function(x){return x.trim();}).filter(Boolean)
+    .map(function(raw){
+      var r=smParseLine(raw,prods,tpls);
+      if(r.kind==='tpl'){curPack='';return r;}
+      if(r.kind==='hdr'){grp++;curPack=r.pack;r.grp=grp;return r;}
+      if(r.pack){
+        /* سطر فيه تعبئة صريحة بيبدأ مجموعة جديدة */
+        grp++;curPack=r.pack;r.grp=grp;return r;
+      }
+      /* الصنف من غير تعبئة بيتحط في آخر تعبئة اتكتبت فوقه */
+      if(curPack){r.pack=curPack;}
+      r.grp=grp;
+      return r;
+    });
+}
+function smHTML(){
+  var sm=U.smart;
+  var h='<div class="fld"><span class="sec-l">اكتب الطلب بسرعة</span>'+
+    '<textarea id="smartTxt" rows="3" placeholder="مثال: سرفيز براونيز ٣٠ قطعة&#10;علبة ٣٠ قطعة" style="width:100%;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:8px;font:inherit">'+esc(sm?sm.text:'')+'</textarea>'+
+    '<div class="btns"><button class="btn ghost sm" data-act="oSmart">فهم الطلب</button></div>';
+  if(sm&&sm.lines.length){
+    var sums={};
+    sm.lines.forEach(function(ln){if(ln.kind==='prod'&&ln.grp)sums[ln.grp]=r3((sums[ln.grp]||0)+ln.qty);});
+    sm.lines.forEach(function(ln,i){
+      var txt;
+      if(ln.kind==='hdr'){
+        var sum=sums[ln.grp]||0;
+        txt='<b>'+esc(ln.pack)+'</b>'+(ln.hq!=null?' · '+f(ln.hq)+' قطعة':'')+
+          ' <span class="meta">'+(sum?'· الأصناف '+f(sum)+(ln.hq==null||sum===ln.hq?' ✓':' (الهيدر '+f(ln.hq)+')'):'· ضيف تحته الأصناف')+'</span>';
+      }else if(ln.kind==='prod'){
+        var p=P(ln.pid)||{};
+        txt='<b>'+esc(p.name||'')+'</b> · '+f(ln.qty)+' '+esc(p.unit||'')+(ln.pack?' · '+esc(ln.pack):'');
+      }else if(ln.kind==='tpl'){
+        var t=(S.boxTpl||[]).filter(function(x){return x.id===ln.tid;})[0];
+        txt='<b>'+esc(t?t.name:'قالب')+'</b> · '+f(ln.count)+' علبة';
+      }else if(ln.kind==='noqty'){
+        var p2=P(ln.pid)||{};
+        txt='<b>'+esc(p2.name||'')+'</b> · مش لاقي الكمية، اكتب الرقم في السطر';
+      }else if(ln.kind==='amb'){
+        txt='<b>'+esc(ln.raw)+'</b><br>اختار الصنف: '+ln.cands.map(function(pid){
+          return '<button class="btn ghost sm" data-act="oSmartPick" data-i="'+i+'" data-p="'+pid+'">'+esc((P(pid)||{}).name||'')+'</button>';
+        }).join(' ');
+      }else{
+        txt='<b>'+esc(ln.raw)+'</b> · مش لاقي صنف بالاسم ده';
+      }
+      h+='<div class="hist" style="align-items:center"><span>'+txt+'</span><button class="btn ghost sm" data-act="oSmartDrop" data-i="'+i+'">×</button></div>';
+    });
+    var ready=sm.lines.some(function(ln){return ln.kind==='prod'||ln.kind==='tpl';});
+    h+='<div class="btns"><button class="btn main" data-act="oSmartAdd"'+(ready?'':' disabled')+'>أضف اللي فهمته</button></div>';
+  }
+  return h+'</div>';
+}
+function smAddProd(os,pid,qty,bn){
+  os.items=os.items||{};os.added=os.added||[];os.box=os.box||{};
+  os.boxes=os.boxes||[{n:1,type:''}];
+  if(os.split&&os.split[pid])delete os.split[pid];
+  os.items[pid]=qty;
+  os.box[pid]=bn;
+  if(os.added.indexOf(pid)<0)os.added.push(pid);
+}
+function smAddTpl(os,t,count){
+  os.items=os.items||{};os.added=os.added||[];os.split=os.split||{};
+  os.boxes=os.boxes||[{n:1,type:''}];
+  for(var k=0;k<count;k++){
+    var mx=Math.max.apply(null,os.boxes.map(function(x){return x.n;}))+1;
+    os.boxes.push({n:mx,type:t.name});
+    t.items.forEach(function(i){
+      os.items[i.p]=r3((os.items[i.p]||0)+i.q);
+      if(os.added.indexOf(i.p)<0)os.added.push(i.p);
+      os.split[i.p]=os.split[i.p]||{};
+      os.split[i.p][mx]=r3((os.split[i.p][mx]||0)+i.q);
+    });
+  }
+}
 function ordSheetHTML(){
   if(!U.osheet)return '';
   var s=U.osheet;
@@ -5194,6 +5370,7 @@ function ordSheetHTML(){
         '<div class="pkgrid">'+list.map(cardOf).join('')+'</div>';
     }).join('');
     return open+'<h3>اختار الأصناف</h3><div class="meta">اختار الأصناف اللي في الطلبية، وبعد كده اضغط "تم"</div>'+
+      smHTML()+
       '<div class="fld"><span class="sec-l">الأصناف'+(addedIds.length?' <span class="pill c">'+addedIds.length+' صنف</span>':'')+'</span>'+
       (seasonP.length?grid:'<div class="meta">مفيش أصناف متاحة في الموسم ده.</div>')+'</div>'+
       '<div class="sfoot"><button class="btn main" data-act="oDone"'+(addedIds.length?'':' disabled')+'>تم</button><button class="btn ghost" data-act="oClose">إلغاء</button></div></div></section>';
@@ -5421,7 +5598,7 @@ var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
   newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
   oDelete:['orders','حذف الطلبية','w'],oDeliver:['orders','تسليم الأوردر','w'],oCreate:['orders','حفظ الأوردر','w'],
-  oDone:['orders','تم (إنهاء التعديل)','w'],oBack:['orders','تعديل أصناف الأوردر','w'],oPick:['orders','إضافة صنف للأوردر','w'],
+  oDone:['orders','تم (إنهاء التعديل)','w'],oBack:['orders','تعديل أصناف الأوردر','w'],oPick:['orders','إضافة صنف للأوردر','w'],oSmart:['orders','الطلب الذكي','w'],oSmartPick:['orders','الطلب الذكي','w'],oSmartDrop:['orders','الطلب الذكي','w'],oSmartAdd:['orders','الطلب الذكي','w'],
   resTick:['orders','تأكيد تحت التشغيل','w'],printOrder:['orders','طباعة الطلبية','r'],printAllOrders:['orders','تصدير الأوردرات PDF','r'],
   oToggle:['orders','فتح تفاصيل الطلبية','r'],oTab:['orders','تبويب داخل الأوردر','r'],oClose:['orders','إغلاق نافذة الأوردر','r'],
   newBatch:['prep','دفعة تحضير جديدة','w'],prepBatches:['prep','إنشاء دفعات التحضير','w'],withdraw:['prep','سحب خامات','w'],
@@ -6232,7 +6409,7 @@ var ACT={
     U.sheet=null;U.form=null;U.osheet={cust:'',items:{},added:[],boxes:[{n:1,type:''}],box:{},due:'',season:ordSeason()==='boxes'?'normal':ordSeason(),kind:U.view==='shopOrders'?'shop':'cust',step:'pick'};
   },
 
-  oClose:function(){U.osheet=null;},
+  oClose:function(){U.osheet=null;U.smart=null;},
   oDone:function(){
     var os=U.osheet;if(!os)return false;
     if(!(os.added||[]).length){toast('اختار صنف واحد على الأقل');return false;}
@@ -6253,6 +6430,45 @@ var ACT={
     if(used){toast('انقل الأصناف اللي في التعبئة دي الأول');return false;}
     if((os.boxes||[]).length<=1){toast('لازم تفضل تعبئة واحدة على الأقل');return false;}
     os.boxes=os.boxes.filter(function(b){return b.n!==n;});
+  },
+  oSmart:function(){
+    var os=U.osheet;if(!os)return false;
+    var el=document.getElementById('smartTxt');
+    var txt=el?el.value:(U.smart?U.smart.text:'');
+    U.smart={text:txt,lines:smParse(txt,os.kind)};
+    if(!U.smart.lines.length)U.smart=null;
+  },
+  oSmartPick:function(d){
+    var sm=U.smart;if(!sm||!sm.lines[Number(d.i)])return false;
+    var ln=sm.lines[Number(d.i)];
+    ln.pid=d.p;ln.cands=[];
+    ln.kind=ln.qty==null?'noqty':'prod';
+  },
+  oSmartDrop:function(d){
+    var sm=U.smart;if(!sm)return false;
+    sm.lines.splice(Number(d.i),1);
+    if(!sm.lines.length)U.smart=null;
+  },
+  oSmartAdd:function(){
+    var os=U.osheet,sm=U.smart;if(!os||!sm)return false;
+    var nP=0,nT=0,grpBox={};
+    sm.lines.forEach(function(ln){
+      if(ln.kind==='prod'&&ln.pid&&ln.qty>0){
+        var bn=os.boxes[0].n;
+        if(ln.pack){
+          var g='g'+ln.grp;
+          if(!grpBox[g]){
+            var mx=Math.max.apply(null,os.boxes.map(function(x){return x.n;}))+1;
+            os.boxes.push({n:mx,type:ln.pack});grpBox[g]=mx;
+          }
+          bn=grpBox[g];
+        }
+        smAddProd(os,ln.pid,ln.qty,bn);nP++;
+      }
+      else if(ln.kind==='tpl'){var t=(S.boxTpl||[]).filter(function(x){return x.id===ln.tid;})[0];if(t&&t.items.length){smAddTpl(os,t,ln.count);nT++;}}
+    });
+    U.smart=null;
+    toast('اتضاف: '+nP+' صنف'+(nT?' · '+nT+' قالب':''));
   },
   oPick:function(d){
     var os=U.osheet;if(!os)return false;
