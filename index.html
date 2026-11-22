@@ -3831,7 +3831,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.2.5';
+var APP_VERSION='1.2.6';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -3969,7 +3969,7 @@ function updPendingList(){
   var done=updDoneList();
   return updList().filter(function(u){
     var c=verCmp(u.ver,APP_VERSION);
-    return c>0||(c===0&&done.indexOf(u.id)<0);
+    return c>0||(c===0&&done.indexOf(u.id)<0&&!updLocalHas('done',u.id));
   });
 }
 var UPD={pct:0};
@@ -4038,9 +4038,12 @@ function updTopCss(){
     '.updtop-btn{flex:none;border:0;border-radius:999px;padding:7px 14px;background:#fff;color:#1d2c86;font:inherit;font-weight:800;cursor:pointer}';
   document.head.appendChild(st);
 }
+function updLocalKey(kind,id){return 'khat-upd-'+kind+':'+(sessionCode()||'owner')+':'+id;}
+function updLocalSet(kind,id){try{localStorage.setItem(updLocalKey(kind,id),'1');}catch(e){}}
+function updLocalHas(kind,id){try{return localStorage.getItem(updLocalKey(kind,id))==='1';}catch(e){return false;}}
 function updSeenKey(){return 'updSeen:'+(sessionCode()||'owner');}
 function updSeenList(){var l=pref(updSeenKey(),[]);return Array.isArray(l)?l:[];}
-function updMarkSeen(id){var l=updSeenList().slice();if(l.indexOf(id)<0){l.push(id);setPref(updSeenKey(),l);}}
+function updMarkSeen(id){updLocalSet('seen',id);var l=updSeenList().slice();if(l.indexOf(id)<0){l.push(id);setPref(updSeenKey(),l);}}
 /* الشريط اللي فوق: مش إجباري، بيتعرض مرة واحدة لكل تحديث، ويتقفل بـ × */
 function updTopBar(up){
   if(document.getElementById('updOv'))return;
@@ -4101,7 +4104,7 @@ if(!window.UPD_WATCH){window.UPD_WATCH=setInterval(function(){
         return;
       }
       /* فتحة عادية: يتعرض مرة واحدة بس */
-      if(updSeenList().indexOf(up.id)>-1)return;
+      if(updSeenList().indexOf(up.id)>-1||updLocalHas('seen',up.id))return;
       updTopBar(up);
     });
   }
@@ -4216,6 +4219,7 @@ function updStart(id){
    التسجيل على الحساب بيحصل تلقائي بعد ما الكود الجديد يشتغل فعلاً */
 function updFinish(id){
   try{sessionStorage.setItem('khat-upd-try',id);}catch(e){}
+  updLocalSet('done',id);
   var a=document.getElementById('updAct');
   if(a)a.innerHTML='<p class="updov-msg">جاري إعادة تشغيل التطبيق...</p>';
   setTimeout(deepRefresh,600);
