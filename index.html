@@ -2206,9 +2206,47 @@ function dateStr(){
   try{return new Date().toLocaleDateString('ar-EG-u-nu-latn',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '';}
 }
 /* هيدر الصفحة الرئيسية: تحية حسب الوقت واسم المستخدم لو داخل بحسابه */
+/* الأصناف اللي ناقصة من مخزن الإنتاج لأوردرات مفتوحة */
+function shortIdsNow(){
+  var short={};
+  (S.orders||[]).filter(function(o){return !o.deliveredAt;}).forEach(function(o){(o.items||[]).forEach(function(it){
+    var need=(it.qty||0)-(it.got||0);
+    if(need>0&&(S.ready[it.p]||0)<need)short[it.p]=1;
+  });});
+  return Object.keys(short).length;
+}
+/* رسالة أوردرات قسم معين (الأوردرات أو أوردرات المحل) */
+function ordersNoteFor(kind,label){
+  var now=Date.now();
+  var open=ordersOf(kind).filter(function(o){return !o.deliveredAt;});
+  if(!open.length)return {pr:0,v:'',t:'مفيش أوردرات مفتوحة في '+label};
+  var late=open.filter(function(o){return o.due&&new Date(o.due).getTime()<now&&!ordComplete(o);});
+  if(late.length)return {pr:0,v:'',t:'⚠️ '+late.length+' أوردر في '+label+' اتجاوز معاده'};
+  var soon=open.filter(function(o){if(!o.due)return false;var t=new Date(o.due).getTime()-now;return t>=0&&t<=2*3600000;}).sort(function(x,y){return new Date(x.due)-new Date(y.due);});
+  if(soon.length){
+    var o1=soon[0],mins=Math.max(1,Math.round((new Date(o1.due).getTime()-now)/60000));
+    return {pr:0,v:'',t:'⏰ '+custName(o1)+' في '+label+' معاده بعد '+(mins<60?mins+' دقيقة':Math.round(mins/60)+' ساعة')};
+  }
+  var ready=open.filter(function(x){return ordComplete(x);}).length;
+  if(ready)return {pr:0,v:'',t:'✅ '+ready+' أوردر في '+label+' جاهز للتسليم'};
+  return {pr:0,v:'',t:'📋 '+open.length+' أوردر مفتوح في '+label};
+}
+/* رسالة مخصصة لكل تبويب: بتقول حاجة تخص التبويب اللي إنت فيه بس */
+function tabNoteInfo(v){
+  if(v==='orders')return ordersNoteFor('cust','الأوردرات');
+  if(v==='shopOrders')return ordersNoteFor('shop','أوردرات المحل');
+  if(v==='fgstock'){var n1=shortIdsNow();return n1?{pr:0,v:'',t:'📦 '+n1+' صنف ناقص في مخزن الإنتاج لأوردراتك'}:{pr:0,v:'',t:'✅ مخزن الإنتاج مغطي لكل الأوردرات المفتوحة'};}
+  if(v==='filling'){var n2=shortIdsNow();return n2?{pr:0,v:'',t:'🧁 '+n2+' صنف محتاج تحضير حشو'}:{pr:0,v:'',t:'🧁 مفيش تحضير حشو مطلوب دلوقتي'};}
+  if(v==='prepreq'){var n3=shortIdsNow();return n3?{pr:0,v:'',t:'📋 '+n3+' تحضير مطلوب للأوردرات المفتوحة'}:{pr:0,v:'',t:'📋 مفيش تحضيرات مطلوبة دلوقتي'};}
+  if(v==='recipes'){var n4=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived;}).length;return {pr:0,v:'',t:'📖 '+n4+' صنف في الوصفات'};}
+  if(v==='settings'){var n5=usersList().length;return {pr:0,v:'',t:'⚙️ '+n5+' حساب · التغييرات بتتحفظ تلقائي'};}
+  return null;
+}
 /* الرسالة اللي تحت الترحيب بتتختار حسب صلاحيات الحساب: أي حد يشوف بس اللي يخص شغله، والرسالة بتفتح القسم المناسب */
 function smartNoteInfo(){
   var now=Date.now();
+  var tabNote=(U.view&&U.view!=='home')?tabNoteInfo(U.view):null;
+  if(tabNote&&hoursOpenRaw()!==false)return tabNote;
   var open=(S.orders||[]).filter(function(o){return !o.deliveredAt;});
   var out=[];
   var canOrd=routeAllowed('orders'),canShop=routeAllowed('shopOrders');
@@ -2250,6 +2288,11 @@ function smartNoteInfo(){
   return {pr:9,v:'',t:'يوم هادي، ابدأ شغلك'};
 }
 function smartNoteHTML(){return smartNoteInfo().t;}
+/* سطر الشريط الذكي على أي تبويب: بيتغير حسب الصلاحيات والمواعيد، واللمس بيفتح القسم المرتبط */
+function stripLineHTML(){
+  var f=smartNoteInfo();
+  return '<div class="greet-sub"'+(f.v?' data-act="stripGo" data-v="'+f.v+'" role="button"':'')+' style="font-size:12px;color:var(--muted,#6b7090);font-weight:600;margin-top:4px;line-height:1.5'+(f.v?';cursor:pointer':'')+'">'+esc(f.t)+'</div>';
+}
 function greetHTML(){
   var h=new Date().getHours();
   var g=h<12?'صباح الخير':h<17?'نهارك سعيد':'مساء النور';
@@ -2264,7 +2307,8 @@ function titleHTML(){
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    return '<header class="top'+(U.view==='home'?' tophome':'')+'"'+(U.view==='home'?' style="justify-content:center;text-align:center"':'')+'>'+(U.view==='home'?greetHTML():titleHTML())+'</header>';
+    if(U.view!=='home')return '<header class="top" style="justify-content:center;text-align:center"><div style="display:flex;flex-direction:column;align-items:center;width:100%;text-align:center">'+titleHTML()+stripLineHTML()+'</div></header>';
+    return '<header class="top tophome" style="justify-content:center;text-align:center">'+greetHTML()+'</header>';
 }
 /* الشريط السفلي (تصميم 4): المعلومات يمين، والأدوات شمال بخط فاصل. زرار الرئيسية بيظهر في الصفحات الفرعية */
 function footHTML(){
