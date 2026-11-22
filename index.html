@@ -5169,6 +5169,7 @@ function smNorm(x){
     .replace(/[\u064B-\u0652\u0640]/g,'')
     .replace(/[إأآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
     .replace(/ؤ/g,'و').replace(/ئ/g,'ي')
+    .replace(/(\d)([ظضصم])/g,'$1 $2')
     .replace(/[^\u0621-\u064Aa-zA-Z0-9.:]+/g,' ').trim().toLowerCase();
 }
 function smTok(x){return smNorm(x).split(' ').filter(Boolean);}
@@ -5191,7 +5192,7 @@ function smIsNum(x){return /^\d+(\.\d+)?$/.test(x);}
 
 /* ===== التاريخ والساعة واسم العميل داخل الطلب الذكي ===== */
 var SM_AM_W=['الصبح','صباحا','ص'];
-var SM_PM_W=['العصر','المغرب','بالليل','الليل','مساء','م','الضهر','الظهر'];
+var SM_PM_W=['العصر','المغرب','بالليل','الليل','مساء','م','ظ','ض','الضهر','الظهر'];
 var SM_TODAY_W=['النهارده','اليوم'];
 var SM_TOM_W=['بكره','بكرا','غدا','غدوه'];
 var SM_WD=[['الاحد',0],['الاتنين',1],['الاثنين',1],['التلات',2],['الثلاثاء',2],['الاربع',3],['الاربعاء',3],['الخميس',4],['الجمعه',5],['الجمعة',5],['السبت',6]];
@@ -5218,18 +5219,45 @@ function smExtractTime(toks,used){
   }
   return null;
 }
+var SM_MONTHS=[['يناير',1],['فبراير',2],['مارس',3],['ابريل',4],['مايو',5],['يونيو',6],['يوليو',7],['اغسطس',8],['سبتمبر',9],['اكتوبر',10],['نوفمبر',11],['ديسمبر',12]];
+/* يرجّع عدد الأيام من النهارده للتاريخ (أو null لو مفيش تاريخ) */
 function smExtractDate(toks,used){
-  var todayN=SM_TODAY_W.map(smNorm),tomN=SM_TOM_W.map(smNorm),tomW=smNorm('بكره'),afterW=smNorm('بعد');
-  for(var i=0;i<toks.length;i++){
+  var now=new Date(),ty=now.getFullYear(),tm=now.getMonth()+1,td=now.getDate();
+  var todayUTC=Date.UTC(ty,tm-1,td);
+  /* 1) تاريخ كامل: "٢٢ نوفمبر" أو "الاحد ٢٢ نوفمبر ٢٠٢٦" */
+  var mi=-1,mon=0;
+  for(var i=0;i<toks.length&&mi<0;i++){
     if(used[i])continue;
-    var t=toks[i];
-    if(t===afterW&&i+1<toks.length&&!used[i+1]&&toks[i+1]===tomW){used[i]=1;used[i+1]=1;return 2;}
-    if(todayN.indexOf(t)>-1){used[i]=1;return 0;}
-    if(tomN.indexOf(t)>-1){used[i]=1;return 1;}
-    for(var k=0;k<SM_WD.length;k++){
-      if(smNorm(SM_WD[k][0])===t){
-        used[i]=1;
-        var off=(SM_WD[k][1]-new Date().getDay()+7)%7;
+    for(var k=0;k<SM_MONTHS.length;k++){
+      if(smNorm(SM_MONTHS[k][0])===toks[i]){mi=i;mon=SM_MONTHS[k][1];break;}
+    }
+  }
+  if(mi>-1){
+    var day=null,year=null,picked=[];
+    [mi-1,mi+1,mi+2].forEach(function(j){
+      if(j<0||j>=toks.length||used[j])return;
+      var t=toks[j];
+      if(day===null&&/^\d{1,2}$/.test(t)){day=parseInt(t,10);picked.push(j);}
+      else if(year===null&&/^\d{4}$/.test(t)){year=parseInt(t,10);picked.push(j);}
+    });
+    if(day!==null&&day>=1&&day<=31){
+      used[mi]=1;picked.forEach(function(j){used[j]=1;});
+      var target=Date.UTC(year||ty,mon-1,day);
+      return Math.round((target-todayUTC)/86400000);
+    }
+  }
+  /* 2) كلمات زي النهارده وبكره واسم اليوم */
+  var todayN=SM_TODAY_W.map(smNorm),tomN=SM_TOM_W.map(smNorm),tomW=smNorm('بكره'),afterW=smNorm('بعد');
+  for(var i2=0;i2<toks.length;i2++){
+    if(used[i2])continue;
+    var t2=toks[i2];
+    if(t2===afterW&&i2+1<toks.length&&!used[i2+1]&&toks[i2+1]===tomW){used[i2]=1;used[i2+1]=1;return 2;}
+    if(todayN.indexOf(t2)>-1){used[i2]=1;return 0;}
+    if(tomN.indexOf(t2)>-1){used[i2]=1;return 1;}
+    for(var k2=0;k2<SM_WD.length;k2++){
+      if(smNorm(SM_WD[k2][0])===t2){
+        used[i2]=1;
+        var off=(SM_WD[k2][1]-new Date().getDay()+7)%7;
         return off===0?7:off;
       }
     }
