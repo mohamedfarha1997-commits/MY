@@ -2291,7 +2291,8 @@ function smartNoteHTML(){return smartNoteInfo().t;}
 /* سطر الشريط الذكي على أي تبويب: بيتغير حسب الصلاحيات والمواعيد، واللمس بيفتح القسم المرتبط */
 function stripLineHTML(){
   var f=smartNoteInfo();
-  return '<div class="greet-sub"'+(f.v?' data-act="stripGo" data-v="'+f.v+'" role="button"':'')+' style="font-size:12px;color:var(--muted,#6b7090);font-weight:600;margin-top:4px;line-height:1.5'+(f.v?';cursor:pointer':'')+'">'+esc(f.t)+'</div>';
+  return '<style>.top .strip-line{display:block!important;width:100%!important;text-align:center!important;direction:rtl!important;margin:4px 0 0!important;padding:0!important;float:none!important}.top .strip-wrap{width:100%!important;text-align:center!important}</style>'+
+    '<div class="strip-wrap"><div class="strip-line greet-sub" data-act="stripGo" data-v="'+esc(f.v||'')+'" role="button" style="font-size:12px;color:var(--muted,#6b7090);font-weight:600;line-height:1.6;cursor:pointer">'+esc(f.t)+'</div></div>';
 }
 function greetHTML(){
   var h=new Date().getHours();
@@ -2307,7 +2308,7 @@ function titleHTML(){
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    if(U.view!=='home')return '<header class="top" style="justify-content:center;text-align:center"><div style="display:flex;flex-direction:column;align-items:center;width:100%;text-align:center">'+titleHTML()+stripLineHTML()+'</div></header>';
+    if(U.view!=='home')return '<header class="top" style="justify-content:center;text-align:center"><div class="strip-wrap" style="display:flex;flex-direction:column;align-items:center;width:100%;text-align:center">'+titleHTML()+stripLineHTML()+'</div></header>';
     return '<header class="top tophome" style="justify-content:center;text-align:center">'+greetHTML()+'</header>';
 }
 /* الشريط السفلي (تصميم 4): المعلومات يمين، والأدوات شمال بخط فاصل. زرار الرئيسية بيظهر في الصفحات الفرعية */
@@ -6967,7 +6968,10 @@ var ACT={
   },
   cardsExport:function(){exportCards();return false;},
   cardsImport:function(){importCards();return false;},
-  stripGo:function(d){if(d.v&&routeAllowed(d.v))U.view=d.v;},
+  stripGo:function(d){
+    if(d.v&&d.v!==U.view&&routeAllowed(d.v)){U.view=d.v;return;}
+    toast(smartNoteInfo().t);
+  },
   uGenCode:function(d){
     var el=document.getElementById(d.target||'uCode');if(!el)return false;
     var c,tries=0;
