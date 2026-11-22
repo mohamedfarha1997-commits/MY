@@ -4383,6 +4383,25 @@ document.addEventListener('click',function(e){
   if(box&&!(e.target.classList&&e.target.classList.contains('rslot'))){var f=firstEmptySlot();if(f)f.focus();}
 });
 window.addEventListener('resize',function(){syncSlots();});
+/* أول ما الكود وآخر ٤ أرقام يتطابقوا، خانتهم بتختفي والـ PIN الجديد وزرار التغيير بيظهروا مكانهم */
+function rCheckId(){
+  var idSec=document.getElementById('rIdSec'),pinSec=document.getElementById('rPinSec');
+  if(!idSec||!pinSec||U.rVerified)return;
+  var code=((document.getElementById('rCode')||{}).value||'').trim();
+  var u=code?findUserByCode(code):null;
+  var last=lastDigits();
+  var waD=u?waDigits(u.wa):'';
+  if(!u||u.cardActive===false||!waD||last.length<4){paintBox('');return;}
+  if(waD.slice(-4)!==last){paintBox('bad');return;}
+  paintBox('ok');
+  U.rVerified={code:u.code,last:last};
+  idSec.style.display='none';pinSec.style.display='block';
+  var pw=document.getElementById('rPw');if(pw)pw.focus();
+}
+document.addEventListener('input',function(e){
+  var t=e.target;
+  if(t&&(t.id==='rCode'||(t.classList&&t.classList.contains('rslot'))))rCheckId();
+});
 function rField(id,label,attrs,st,val,withMask,mask){
   var c=st==='ok'?'#22c55e':st==='bad'?'#ef4444':'';
   var ic=c?'<span id="'+id+'Ic" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-weight:700;color:'+c+'">'+(st==='ok'?'✓':'✕')+'</span>':'';
@@ -4398,6 +4417,7 @@ function resetHTML(){
       '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
   }
   var m=U.rMark||{},v=U.rv||{};
+  var vd=!!U.rVerified;
   var err='<div id="rErr" class="note" style="display:none;margin-bottom:10px"></div>';
   setTimeout(syncSlots,0);
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
@@ -4417,12 +4437,15 @@ function resetHTML(){
     '<h2>إعادة تعيين الـ PIN</h2>'+
     '<p class="meta">اكتب الكود بتاعك، وآخر ٤ أرقام من رقم الواتساب المسجل عندنا، والـ PIN الجديد.</p>'+
     err+
+    '<div id="rIdSec" style="display:'+(vd?'none':'block')+'">'+
     rField('rCode','الكود بتاعك','autocomplete="off"',m.code,v.code,false,'')+
     slotsField(m.last,v.last,findUserByCode(v.code))+
+    '</div>'+
+    '<div id="rPinSec" style="display:'+(vd?'block':'none')+'">'+
     rField('rPw','الـ PIN الجديد (4 لـ 6 أرقام)',pinAttrs,m.pw,v.pw,false,'')+
     rField('rPw2','اكتب الـ PIN تاني',pinAttrs,m.pw2,v.pw2,false,'')+
-    '<button class="btn block" data-act="resetSend">تغيير الـ PIN</button>'+
-    '<button class="btn ghost sm block" data-act="resetBack">رجوع لتسجيل الدخول</button></div></main>';
+    '<button class="btn block" data-act="resetSend">تغيير الـ PIN</button></div>'+
+    '<button class="btn ghost sm block" data-act="resetBack" style="margin-top:10px">رجوع لتسجيل الدخول</button></div></main>';
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
 var FX=(function(){
@@ -7338,13 +7361,14 @@ function pinLiveCheck(){
   },400);
 }
 document.addEventListener('input',function(e){if(e.target&&(e.target.id==='rPw'||e.target.id==='rPw2'))pinLiveCheck();});
-ACT.resetOpen=function(){U.reset=true;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
-ACT.resetBack=function(){U.reset=false;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
+ACT.resetOpen=function(){U.reset=true;U.rVerified=null;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
+ACT.resetBack=function(){U.reset=false;U.rVerified=null;U.resetErr=null;U.resetDone=null;U.rMark=null;U.rv=null;};
 /* الأخطاء بتظهر من غير ما الفورم يتعاد رسمه، عشان الكود والـ PIN اللي كتبتهم يفضلوا مكانهم */
 function resetShowErr(msg){var el=document.getElementById('rErr');if(el){el.textContent=msg;el.style.display='block';}toast(msg);}
 function resetMarks(m){m=m||{};paintField('rCode',m.code||'');paintField('rLast',m.last||'');paintField('rPw',m.pw||'');paintField('rPw2',m.pw2||'');}
 ACT.resetSend=function(){
   var g=function(id){return ((document.getElementById(id)||{}).value||'').trim();};
+  if(!U.rVerified)return fail('اكتب الكود وآخر ٤ أرقام من الواتساب الأول');
   var code=g('rCode'),last=lastDigits();
   var pw=(document.getElementById('rPw')||{}).value||'',pw2=(document.getElementById('rPw2')||{}).value||'';
   var u=findUserByCode(code);
