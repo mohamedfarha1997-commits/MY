@@ -4395,8 +4395,62 @@ function rCheckId(){
   if(waD.slice(-4)!==last){paintBox('bad');return;}
   paintBox('ok');
   U.rVerified={code:u.code,last:last};
-  idSec.style.display='none';pinSec.style.display='block';
-  var pw=document.getElementById('rPw');if(pw)pw.focus();
+  rvRun(u);
+}
+/* نافذة التحقق: خطوات بتتعمل واحدة ورا التانية، وبعدها الانتقال لخانات الـ PIN الجديد */
+function rvCss(){
+  if(document.getElementById('rvCss'))return;
+  var st=document.createElement('style');st.id='rvCss';
+  st.textContent=
+    '@keyframes rvFade{from{opacity:0}to{opacity:1}}'+
+    '@keyframes rvPop{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}'+
+    '@keyframes rvSpin{to{transform:rotate(360deg)}}'+
+    '@keyframes rvTick{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}'+
+    '@keyframes rvOut{to{opacity:0;transform:translateY(-10px)}}'+
+    '#rvModal{position:fixed;inset:0;z-index:300;background:rgba(5,7,26,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;animation:rvFade .25s ease both}'+
+    '#rvModal .rv-card{background:#fff;color:#111;border-radius:20px;padding:24px;max-width:340px;width:100%;direction:rtl;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);animation:rvPop .35s cubic-bezier(.2,.8,.2,1) both;font-family:inherit}'+
+    '.rv-step{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f6;opacity:.35;transition:opacity .3s}'+
+    '.rv-step.spin,.rv-step.done{opacity:1}'+
+    '.rv-ico{width:28px;height:28px;border-radius:50%;border:2px solid #cfd3e6;display:grid;place-items:center;flex:none;font-size:14px;font-weight:800;color:#fff}'+
+    '.rv-step.spin .rv-ico{border-color:#2B3595;border-top-color:transparent;animation:rvSpin .8s linear infinite}'+
+    '.rv-step.done .rv-ico{background:#22c55e;border-color:#22c55e;animation:rvTick .35s ease both}'+
+    '.rv-step.done .rv-ico::before{content:"✓"}'+
+    '.rv-t{min-width:0}.rv-t b{display:block;font-size:15px}.rv-t small{color:#6b7090;font-size:12px}'+
+    '.rv-bar{height:4px;background:#eef0f6;border-radius:99px;overflow:hidden;margin-top:16px}'+
+    '.rv-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2B3595,#c0185c);transition:width .5s ease}'+
+    '#rPinSec.rv-in{animation:rvPop .5s cubic-bezier(.2,.8,.2,1) both}'+
+    '#rIdSec.rv-out{animation:rvOut .3s ease both}';
+  document.head.appendChild(st);
+}
+function rvRun(u){
+  rvCss();
+  var m=document.createElement('div');m.id='rvModal';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+  m.innerHTML='<div class="rv-card">'+
+    '<div style="font-size:34px;text-align:center;line-height:1">🔐</div>'+
+    '<h3 style="text-align:center;margin:10px 0 4px;font-size:18px">التحقق من الحساب</h3>'+
+    '<p style="text-align:center;margin:0 0 6px;color:#6b7090;font-size:13px">بنتأكد من بياناتك عشان نأمّن الحساب</p>'+
+    '<div class="rv-step spin" id="rvS1"><span class="rv-ico"></span><div class="rv-t"><b>الكود</b><small>جاري التحقق...</small></div></div>'+
+    '<div class="rv-step" id="rvS2"><span class="rv-ico"></span><div class="rv-t"><b>رقم الواتساب</b><small>في الانتظار</small></div></div>'+
+    '<div class="rv-step" id="rvS3"><span class="rv-ico"></span><div class="rv-t"><b>تأمين الحساب</b><small>في الانتظار</small></div></div>'+
+    '<div class="rv-bar"><i id="rvBar"></i></div></div>';
+  document.body.appendChild(m);
+  var set=function(id,state,sub){var el=document.getElementById(id);if(!el)return;el.className='rv-step '+state;if(sub)el.querySelector('small').textContent=sub;};
+  var bar=function(pc){var b=document.getElementById('rvBar');if(b)b.style.width=pc+'%';};
+  bar(10);
+  setTimeout(function(){set('rvS1','done','الكود صح: '+(u.name||''));set('rvS2','spin');bar(40);},600);
+  setTimeout(function(){set('rvS2','done','آخر ٤ أرقام مطابقة');set('rvS3','spin');bar(75);},1250);
+  setTimeout(function(){set('rvS3','done','الحساب اتأكد');bar(100);},1900);
+  setTimeout(function(){var mm=document.getElementById('rvModal');if(mm){mm.style.transition='opacity .3s';mm.style.opacity='0';}},2500);
+  setTimeout(function(){
+    var mm=document.getElementById('rvModal');if(mm)mm.remove();
+    var idSec=document.getElementById('rIdSec'),pinSec=document.getElementById('rPinSec');
+    if(idSec)idSec.classList.add('rv-out');
+    setTimeout(function(){
+      if(idSec){idSec.style.display='none';idSec.classList.remove('rv-out');}
+      if(pinSec){pinSec.style.display='block';pinSec.classList.add('rv-in');}
+      var pw=document.getElementById('rPw');if(pw)pw.focus();
+    },300);
+  },2850);
 }
 document.addEventListener('input',function(e){
   var t=e.target;
