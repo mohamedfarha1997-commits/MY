@@ -2206,35 +2206,53 @@ function dateStr(){
   try{return new Date().toLocaleDateString('ar-EG-u-nu-latn',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '';}
 }
 /* هيدر الصفحة الرئيسية: تحية حسب الوقت واسم المستخدم لو داخل بحسابه */
-/* ملاحظة ذكية تحت الترحيب: بتتغير حسب الأوردرات اللي معادها قرب أو اتأخر أو جاهز */
-function smartNoteHTML(){
+/* الرسالة اللي تحت الترحيب بتتختار حسب صلاحيات الحساب: أي حد يشوف بس اللي يخص شغله، والرسالة بتفتح القسم المناسب */
+function smartNoteInfo(){
   var now=Date.now();
   var open=(S.orders||[]).filter(function(o){return !o.deliveredAt;});
-  if(!open.length)return 'مفيش أوردرات مفتوحة، يوم هادي للتحضير';
-  var late=open.filter(function(o){return o.due&&new Date(o.due).getTime()<now&&!ordComplete(o);});
-  if(late.length)return '⚠️ '+late.length+' أوردر اتجاوز معاده، ابدأ بيهم';
-  var soon=open.filter(function(o){
-    if(!o.due)return false;
-    var t=new Date(o.due).getTime()-now;
-    return t>=0&&t<=2*3600000;
-  }).sort(function(a,b){return new Date(a.due)-new Date(b.due);});
-  if(soon.length){
-    var o=soon[0],mins=Math.max(1,Math.round((new Date(o.due).getTime()-now)/60000));
-    return '⏰ '+custName(o)+' معاده بعد '+(mins<60?mins+' دقيقة':Math.round(mins/60)+' ساعة');
+  var out=[];
+  var canOrd=routeAllowed('orders'),canShop=routeAllowed('shopOrders');
+  if((canOrd||canShop)&&open.length){
+    var ov=canOrd?'orders':'shopOrders';
+    var late=open.filter(function(o){return o.due&&new Date(o.due).getTime()<now&&!ordComplete(o);});
+    if(late.length)out.push({pr:1,v:ov,t:'⚠️ '+late.length+' أوردر اتجاوز معاده، ابدأ بيهم'});
+    var soon=open.filter(function(o){if(!o.due)return false;var t=new Date(o.due).getTime()-now;return t>=0&&t<=2*3600000;}).sort(function(x,y){return new Date(x.due)-new Date(y.due);});
+    if(soon.length){
+      var o1=soon[0],mins=Math.max(1,Math.round((new Date(o1.due).getTime()-now)/60000));
+      out.push({pr:2,v:ov,t:'⏰ '+custName(o1)+' معاده بعد '+(mins<60?mins+' دقيقة':Math.round(mins/60)+' ساعة')});
+    }
+    var ready=open.filter(function(x){return ordComplete(x);}).length;
+    if(ready)out.push({pr:3,v:ov,t:'✅ '+ready+' أوردر جاهز للتسليم'});
+    var td=open.filter(function(x){return x.due&&String(x.due).slice(0,10)===smDay(0);}).length;
+    if(td)out.push({pr:5,v:ov,t:'📦 عندك '+td+' أوردر النهارده'});
+    out.push({pr:6,v:ov,t:'📋 '+open.length+' أوردر مفتوح'});
   }
-  var ready=open.filter(function(x){return ordComplete(x);}).length;
-  if(ready)return '✅ '+ready+' أوردر جاهز للتسليم';
-  var today=smDay(0);
-  var td=open.filter(function(x){return x.due&&String(x.due).slice(0,10)===today;}).length;
-  return td?'📦 عندك '+td+' أوردر النهارده':'📋 '+open.length+' أوردر مفتوح';
+  /* الأصناف الناقصة في مخزن الإنتاج لأوردرات مفتوحة */
+  if((routeAllowed('fgstock')||routeAllowed('filling'))&&open.length){
+    var short={};
+    open.forEach(function(o){(o.items||[]).forEach(function(it){
+      var need=(it.qty||0)-(it.got||0);
+      if(need>0&&(S.ready[it.p]||0)<need)short[it.p]=1;
+    });});
+    var n=Object.keys(short).length;
+    if(n){
+      if(routeAllowed('fgstock'))out.push({pr:4,v:'fgstock',t:'📦 '+n+' صنف ناقص في مخزن الإنتاج لأوردراتك'});
+      else out.push({pr:4,v:'filling',t:'🧁 محتاج تحضر '+n+' صنف حشو للأوردرات'});
+    }
+  }
+  out.sort(function(x,y){return x.pr-y.pr;});
+  if(out.length)return out[0];
+  if(canOrd||canShop)return {pr:9,v:'',t:'مفيش أوردرات مفتوحة، يوم هادي'};
+  return {pr:9,v:'',t:'يوم هادي، ابدأ شغلك'};
 }
+function smartNoteHTML(){return smartNoteInfo().t;}
 function greetHTML(){
   var h=new Date().getHours();
   var g=h<12?'صباح الخير':h<17?'نهارك سعيد':'مساء النور';
   var c=sessionCode();var u=c?userByCode(c):null;
   return '<style>.tophome{display:block!important;text-align:center!important}.tophome .greet{display:block!important;width:100%!important;max-width:none!important;margin:0!important;padding:0!important;float:none!important;text-align:center!important}</style>'+
     '<div class="greet">'+g+(u&&u.name?'، '+esc(u.name):'')+'</div>'+
-    '<div class="greet-sub" style="font-size:13px;color:var(--muted,#6b7090);margin-top:6px;font-weight:600">'+esc(smartNoteHTML())+'</div>';
+    (function(){var f=smartNoteInfo();return '<div class="greet-sub"'+(f.v?' data-act="stripGo" data-v="'+f.v+'" role="button"':'')+' style="font-size:13px;color:var(--muted,#6b7090);margin-top:6px;font-weight:600'+(f.v?';cursor:pointer':'')+'">'+esc(f.t)+'</div>';})();
 }
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
@@ -5975,7 +5993,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1};
+var ACT_SYS={login:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6876,6 +6894,7 @@ var ACT={
   },
   cardsExport:function(){exportCards();return false;},
   cardsImport:function(){importCards();return false;},
+  stripGo:function(d){if(d.v&&routeAllowed(d.v))U.view=d.v;},
   uGenCode:function(d){
     var el=document.getElementById(d.target||'uCode');if(!el)return false;
     var c,tries=0;
