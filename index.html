@@ -4797,10 +4797,10 @@ window.addEventListener('online',function(){netBanner(false);});
 if(navigator.onLine===false)netBanner(true);
 /* ما نعيدش رسم الشاشة وإنت بتكتب في خانة، عشان البيانات اللي كتبتها ماتختفيش. الرسم بيتأجل لحد ما تخلص */
 window.LAST_INPUT=0;window.RENDER_PENDING=false;
-document.addEventListener('input',function(){window.LAST_INPUT=Date.now();},true);
+document.addEventListener('input',function(e){if(!e.target||e.target.tagName!=='SELECT')window.LAST_INPUT=Date.now();},true);
 function typingBusy(){
   var a=document.activeElement;
-  var editing=!!a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&!!a.closest&&!!a.closest('#app');
+  var editing=!!a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)&&!!a.closest&&!!a.closest('#app');
   return editing||(Date.now()-window.LAST_INPUT<1200);
 }
 function flushPendingRender(){
