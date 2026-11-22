@@ -2311,7 +2311,7 @@ function titleHTML(){
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
-    if(U.view!=='home')return '<header class="top" style="justify-content:center;text-align:center"><div class="strip-wrap" style="display:flex;flex-direction:column;align-items:center;width:100%;text-align:center">'+titleHTML()+stripLineHTML()+'</div></header>';
+    if(U.view!=='home')return '<header class="top" style="display:block!important;justify-content:center;text-align:center!important;direction:rtl"><div class="strip-wrap" style="display:block;width:100%;justify-self:stretch;text-align:center!important;direction:rtl">'+titleHTML().replace('<b class="ttlname"','<b class="ttlname" style="display:block;width:100%;text-align:center!important"')+stripLineHTML()+'</div></header>';
     return '<header class="top tophome" style="justify-content:center;text-align:center">'+greetHTML()+'</header>';
 }
 /* الشريط السفلي (تصميم 4): المعلومات يمين، والأدوات شمال بخط فاصل. زرار الرئيسية بيظهر في الصفحات الفرعية */
