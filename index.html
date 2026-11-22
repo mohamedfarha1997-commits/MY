@@ -3253,14 +3253,14 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
   var opts=[];
-  return head('تحضير حشو','الإضافة والتعديل من مخزن الإنتاج، وهنا السجل بس','')+prodLogHTML('fill');
+  if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
   if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b></div>';
   var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
   var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
       var on=ft===x[0];
       return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
     }).join('')+'</div>';
-  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+tiles+runFillHTML()+prodLogHTML('fill');
+  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+runFillHTML()+prodLogHTML('fill');
   return head('تحضير حشو','إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles+form;
 }
 function wasteCardHTML(p){
