@@ -5096,7 +5096,7 @@ function ordersView(kind){
   var sub=kind==='shop'?'أوردرات المحل الشغالة، ولما تسلّمها تتأرشف':'الأوردرات الشغالة، ولما تسلّم الأوردر يتأرشف';
   return head(kind==='shop'?'أوردرات المحل':'الأوردرات',sub,btn)+ordSegHTML()+body+archiveHTML(arch,kind);
 }
-var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة','سفنديش كبير','سفنديش صغير','فخارة','كاس','بولة'];
+var PACKS=['سرفيز','علبة صغيرة','علبة وسط','علبة كبيرة','علبة جزمة','سفنديش كبير','سفنديش صغير','فخارة','كاس','بولة','فورمة كبيرة'];
 /* التعبئات داخل الطلبية: كل صنف بيتحط في تعبئة (رقم)، ولكل تعبئة نوع. الطلبيات القديمة من غير رقم تعبئة بتتعامل كتعبئة 1 */
 function boxOf(os,pid){var bs=os.boxes||[{n:1,type:''}],n=(os.box||{})[pid];return bs.some(function(b){return b.n===n;})?n:bs[0].n;}
 function boxTypeOf(os,n){var b=(os.boxes||[]).filter(function(x){return x.n===n;})[0];return b?(b.type||''):'';}
@@ -5331,6 +5331,16 @@ function smParseLine(raw,prods,tpls,ctx){
     if(res.pack){res.kind='hdr';res.hq=res.qty;}
     return res;
   }
+  var key=work.join(' ');
+  var learned=(S.smartLearn&&S.smartLearn.alias)||{};
+  if(learned[key]!=null){
+    var hit=prods.filter(function(p){return p.id===learned[key];})[0];
+    if(hit){
+      res.pid=hit.id;res.learned=true;
+      res.kind=res.qty==null?'noqty':'prod';
+      return res;
+    }
+  }
   var scored=[];
   prods.forEach(function(p){
     var pt=smTok(p.name);
@@ -5356,6 +5366,7 @@ function smParseLine(raw,prods,tpls,ctx){
     return res;
   }
   res.kind='amb';
+  res.key=key;
   res.cands=pool.slice(0,4).map(function(x){return x.pid;});
   return res;
 }
@@ -6557,6 +6568,12 @@ var ACT={
     var ln=sm.lines[Number(d.i)];
     var real=PRODUCTS.filter(function(x){return String(x.id)===String(d.p);})[0];
     ln.pid=real?real.id:d.p;ln.cands=[];
+    if(ln.key&&ln.pid!=null){
+      S.smartLearn=S.smartLearn||{};
+      S.smartLearn.alias=S.smartLearn.alias||{};
+      if(Object.keys(S.smartLearn.alias).length<2000)S.smartLearn.alias[ln.key]=ln.pid;
+      S.smartLearn.count=(S.smartLearn.count||0)+1;
+    }
     ln.kind=ln.qty==null?'noqty':'prod';
   },
   oSmartDrop:function(d){
