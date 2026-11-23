@@ -1159,24 +1159,10 @@ function pruneTombs(s,now){
   });
   return removed;
 }
-function loadNumBase(){try{return JSON.parse(localStorage.getItem('khat-numbase')||'null');}catch(e){return null;}}
-function saveNumBase(nb){try{localStorage.setItem('khat-numbase',JSON.stringify(nb||null));}catch(e){}}
-/* سجل التعارضات: بيتجمع من الجهازين، والمسح بيتسجل بوقت عشان ما يرجعش */
-function mergeConflicts(a,b,added){
-  var clr=Math.max((a&&a.conflictsClr)||0,(b&&b.conflictsClr)||0);
-  var seen={},out=[];
-  ((a&&a.conflicts)||[]).concat((b&&b.conflicts)||[],added||[]).forEach(function(c){
-    if(!c||(c.at||0)<=clr)return;
-    var k=c.at+'|'+c.c+'|'+c.id;if(seen[k])return;seen[k]=1;out.push(c);
-  });
-  out.sort(function(x,y){return (x.at||0)-(y.at||0);});
-  return {list:out.slice(-100),clr:clr};
-}
 function mergeStates(a,b,base){
   /* الإعدادات والمستخدمين (غير المسجلين لكل سجل) بياخدهم الأحدث، عشان الحالة الفاضية عند فتح الصفحة متمسحش اللي في درايف */
   var newer=(a.savedAt||0)>=(b.savedAt||0)?a:b,older=newer===a?b:a;
   var M=Object.assign({},older,newer);
-  var newC=[],NB=(base&&base.__num)||loadNumBase();
   M.tomb={};
   STAMPED.forEach(function(c){
     var tomb={};
@@ -1188,7 +1174,6 @@ function mergeStates(a,b,base){
     Object.keys(ids).forEach(function(id){
       var ra=ma[id],rb=mb[id],bse=base&&base[c]&&base[c][id];
       by[id]=(ra&&rb)?mergeRec(bse,ra,rb):(ra||rb);
-      if(ra&&rb&&bse){var s0=canon(bse),sa=canon(ra),sb=canon(rb);if(sa!==s0&&sb!==s0&&sa!==sb)newC.push({at:Date.now(),c:c,id:String(id),name:String(ra.name||ra.cust||ra.client||id),note:'تعديل على الجهازين، اتطبقت النسخة الأحدث'});}
     });
     M[c]=Object.keys(by).filter(function(id){return tomb[id]===undefined||(by[id]._u||0)>tomb[id];}).sort().map(function(id){return by[id];});
     M.tomb[c]=tomb;
@@ -1206,23 +1191,7 @@ function mergeStates(a,b,base){
   ['stock','ready'].forEach(function(m){
     var v={},t={},tb={};
     [a,b].forEach(function(s){var x=(s.tomb&&s.tomb[m])||{};Object.keys(x).forEach(function(k){tb[k]=Math.max(tb[k]||0,x[k]||0);});});
-    var nb=(NB&&NB[m])||null;
-    var ids={};[a,b].forEach(function(s){Object.keys(s[m]||{}).forEach(function(id){ids[id]=1;});});
-    Object.keys(ids).forEach(function(id){
-      var inA=!!(a[m]&&(id in a[m])),inB=!!(b[m]&&(id in b[m]));
-      var sa=(a[m+'T']||{})[id]||0,sb=(b[m+'T']||{})[id]||0;
-      if(inA&&inB&&nb&&(id in nb)){
-        /* الفرق عن الأساس في كل جهاز بيتجمع، فالبيع من جهاز والبيع من التاني ما يضيعوش */
-        var bv=Number(nb[id])||0,va=Number(a[m][id])||0,vb=Number(b[m][id])||0;
-        v[id]=r3(bv+(va-bv)+(vb-bv));
-        t[id]=Math.max(sa,sb);
-        if(va!==bv&&vb!==bv&&va!==vb)newC.push({at:Date.now(),c:m,id:String(id),name:String(id),note:'الكمية اتعدّلت من جهازين واتجمعت الفروقات (الأساس '+r3(bv)+'، جهاز: '+r3(va)+'، الجهاز التاني: '+r3(vb)+')'});
-      }else{
-        /* مفيش أساس لنفس الصنف: الأحدث بياخد الغلبة زي زمان */
-        if(inA&&(!inB||sa>=sb)){v[id]=a[m][id];t[id]=sa;}
-        else{v[id]=b[m][id];t[id]=sb;}
-      }
-    });
+    [a,b].forEach(function(s){var st=s[m]||{},tt=s[m+'T']||{};Object.keys(st).forEach(function(id){var ti=tt[id]||0;if(!(id in t)||ti>t[id]){t[id]=ti;v[id]=st[id];}});});
     Object.keys(v).forEach(function(id){if(tb[id]!==undefined&&t[id]<=tb[id]){delete v[id];delete t[id];}});
     M[m]=v;M[m+'T']=t;M.tomb[m]=tb;
   });
@@ -1232,7 +1201,6 @@ function mergeStates(a,b,base){
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
   M.fseq=Math.max(a.fseq||0,b.fseq||0);
   M.savedAt=Math.max(a.savedAt||0,b.savedAt||0);
-  var mc=mergeConflicts(a,b,newC);M.conflicts=mc.list;M.conflictsClr=mc.clr;
   /* كل إعداد ليه وقته: الجهاز اللي غيّر إعداد معين هو اللي بيحسم فيه، مش الجهاز اللي حفظ آخر مرة */
   var pa=a.prefs||{},pb=b.prefs||{},ka=a.prefsK||{},kb=b.prefsK||{};
   var keys={};Object.keys(pa).concat(Object.keys(pb)).forEach(function(k){keys[k]=1;});
@@ -1672,7 +1640,7 @@ function markEdits(){
 /* نسخة الحالة اللي اتزامنت آخر مرة: أساس الدمج حقل بحقل. بتتحفظ في IndexedDB عشان تفضل بعد تحديث الصفحة */
 var SYNCBASE=null;
 function snapshotBase(){
-  var o={};o.__num={stock:JSON.parse(JSON.stringify(S.stock||{})),ready:JSON.parse(JSON.stringify(S.ready||{}))};
+  var o={};
   STAMPED.forEach(function(c){o[c]={};(S[c]||[]).forEach(function(r){if(r&&r.id!=null)o[c][r.id]=JSON.parse(JSON.stringify(r));});});
   return o;
 }
@@ -1836,16 +1804,18 @@ function gdCreate(){
 /* every ~minute re-check which file is the oldest, so devices that connected at the same moment end up on one file */
 function gdEnsureFile(){
   GD.n++;
-  GD.id='shards';
-  return Promise.resolve();
-}
-function gdLegacyMain(){
+  if(GD.id&&GD.n%30!==0)return Promise.resolve();
   return gdFindOldest().then(function(id){
-    if(!id)return null;
-    return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media').then(function(r){return r.text();})
-      .then(function(t){return t&&t.trim()?parseTolerant(t).data:null;});
+    if(id){if(id!==GD.id){GD.id=id;GD.ver=null;gdSaveCfg();}return;}
+    if(GD.id)return;
+    return gdCreate();
   });
 }
+function gdDownloadMain(){
+  return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?alt=media').then(function(r){return r.text();})
+    .then(function(t){var d=t&&t.trim()?parseTolerant(t).data:null;return d?fix(d):null;});
+}
+/* المرحلة 2: نقرأ ملفات الأقسام كلها. لو أي ملف ناقص أو قديم عن الملف الأساسي، بنرجع للأساسي */
 function gdFetchShardParts(){
   var n=0;gdStage('جاري تنزيل البيانات…',25);
   return Promise.all(SHARD_FILES.map(function(sf){
@@ -1853,12 +1823,23 @@ function gdFetchShardParts(){
       if(!id)return null;
       return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media').then(function(r){return r.text();})
         .then(function(t){return t&&t.trim()?parseTolerant(t):null;});
-    }).catch(function(e){if(e&&e.code===401)throw e;delete GD_SHARD_IDS[sf.f];gdSaveCfg();return null;}).then(function(v){
+    }).catch(function(){delete GD_SHARD_IDS[sf.f];gdSaveCfg();return null;}).then(function(v){
       n++;gdStage('جاري تنزيل البيانات ('+n+'/'+SHARD_FILES.length+')',25+Math.round(65*n/SHARD_FILES.length));return v;
     });
   }));
 }
-/* ---------- ملفات الأقسام: هي مصدر الحقيقة الوحيد ---------- */
+
+function gdDownload(){
+  return Promise.all([gdDownloadMain(),gdFetchShardParts()]).then(function(r){
+    var main=r[0],mainAt=main?(main.savedAt||0):0;
+    var sh=combineShards(r[1],mainAt);
+    gdStage('جاري تجهيز الشاشة…',95);
+    if(!sh)return main;
+    /* الملفات الفرعية ما فيهاش كل الأقسام (زي قوالب العلب)، فبناخد الباقي من الملف الأساسي عشان ما يتمسحش */
+  return fix(Object.assign({},main||{},sh.data,{savedAt:sh.savedAt}));
+  });
+}
+/* ---------- ملفات الأقسام (المرحلة 1: بتتكتب جنب الملف الأساسي، والتطبيق لسه بيقرأ من الأساسي) ---------- */
 var SHARD_FILES=[
   {f:'orders.json',keys:['orders']},
   {f:'batches.json',keys:['batches']},
@@ -1866,124 +1847,40 @@ var SHARD_FILES=[
   {f:'products.json',keys:['products','materials','stock']},
   {f:'waste.json',keys:['waste']},
   {f:'owner.json',keys:['users','prefs','auth']},
-  {f:'history.json',keys:['archive','locks','tomb','plog','plogTomb','ready','readyT','stockT','hours','seq','oseq','fseq','prefsK','prefsT','demo']},
-  {f:'misc.json',keys:null}
+  {f:'history.json',keys:['archive','locks','tomb','plog','plogTomb','ready','readyT','stockT','hours','seq','oseq','fseq','prefsK','prefsT','demo']}
 ];
-var SHARD_COVERED={};SHARD_FILES.forEach(function(sf){(sf.keys||[]).forEach(function(k){SHARD_COVERED[k]=1;});});
-/* أي مفتاح في الحالة مش موزع على ملف تاني بيروح في misc.json، فمفيش بيانات بتضيع */
-function gdMiscKeys(){return Object.keys(S).filter(function(k){return !SHARD_COVERED[k]&&k!=='savedAt';}).sort();}
 var GD_SHARD_IDS={};
-function gdShardBody(sf,rev){
-  var keys=sf.keys||gdMiscKeys();
+function gdShardBody(name,keys){
   var d={};keys.forEach(function(k){if(S[k]!==undefined)d[k]=S[k];});
-  return JSON.stringify({app:'khat-entaj',v:2,shard:sf.f,rev:rev,savedAt:Date.now(),data:d},null,2);
+  return JSON.stringify({app:'khat-entaj',v:1,shard:name,savedAt:Date.now(),data:d},null,2);
 }
 function gdShardLookup(name){
   if(GD_SHARD_IDS[name])return Promise.resolve(GD_SHARD_IDS[name]);
   var q=encodeURIComponent("name='"+name+"' and trashed=false");
-  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime&pageSize=5&fields=files(id)&spaces=drive')
+  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&pageSize=1&fields=files(id)&spaces=drive')
     .then(function(r){return r.json();}).then(function(j){var id=j.files&&j.files[0]?j.files[0].id:null;if(id){GD_SHARD_IDS[name]=id;gdSaveCfg();}return id;});
 }
 function gdShardWrite(name,body){
   return gdShardLookup(name).then(function(id){
-    if(id)return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:body}).then(function(r){return r.json();});
+    if(id)return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:body});
     var b='khat'+Date.now().toString(36);
     var mp='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:name,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+body+'\r\n--'+b+'--';
-    return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,version',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:mp})
-      .then(function(r){return r.json();}).then(function(j){if(j.id){GD_SHARD_IDS[name]=j.id;gdSaveCfg();}return j;});
+    return gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:mp})
+      .then(function(r){return r.json();}).then(function(j){if(j.id)GD_SHARD_IDS[name]=j.id;});
   });
 }
-/* كل الملفات بتتكتب بنفس الـ rev. لو حصلت كتابة ناقصة، القراءة بتشوف rev مختلف وبترفض تطبّق لحد ما الكتابة تخلص */
-function gdWriteAllShards(){
-  var rev=Date.now().toString(36)+'-'+devId();
-  return Promise.all(SHARD_FILES.map(function(sf){
-    return gdShardWrite(sf.f,gdShardBody(sf,rev)).then(function(j){return sf.f+':'+String(j&&j.version);});
-  })).then(function(v){return v.join('|');},function(e){
-    if(e&&e.code)throw e;
-    throw {code:'bad',message:'فشل حفظ جزء من البيانات على درايف، هيحاول تاني'};
+/* بعد كل رفع ناجح للملف الأساسي، بنكتب نسخ الأقسام. أي فشل هنا مابيأثرش على الملف الأساسي */
+function gdWriteShards(){
+  SHARD_FILES.forEach(function(sf){
+    gdShardWrite(sf.f,gdShardBody(sf.f,sf.keys)).catch(function(){});
   });
-}
-/* بصمة الإصدار على درايف: لو اتغيرت أي ملف، بنعرف إن فيه تحديث جديد */
-function gdRemoteSig(){
-  var names=SHARD_FILES.map(function(sf){return "name='"+sf.f+"'";}).join(' or ');
-  var q=encodeURIComponent('trashed=false and ('+names+')');
-  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime&pageSize=100&fields=files(id,name,version)&spaces=drive')
-    .then(function(r){return r.json();}).then(function(j){
-      var byId={},byName={};
-      (j.files||[]).forEach(function(f){byId[f.id]=f;if(!byName[f.name])byName[f.name]=f;});
-      return SHARD_FILES.map(function(sf){
-        var id=GD_SHARD_IDS[sf.f];var f=(id&&byId[id])||byName[sf.f];
-        if(!f)return sf.f+':none';
-        if(!GD_SHARD_IDS[sf.f]){GD_SHARD_IDS[sf.f]=f.id;gdSaveCfg();}
-        return sf.f+':'+f.version;
-      }).join('|');
-    });
-}
-function gdDownloadRaw(){
-  return gdFetchShardParts().then(function(parts){
-    var have=parts.filter(Boolean);
-    if(have.length===parts.length){
-      var revs={};have.forEach(function(p){revs[String(p.rev||'')]=1;});
-      if(Object.keys(revs).length>1)throw {code:'bad',message:'البيانات بتتحدث دلوقتي على جهاز تاني، هيحاول تاني'};
-      var data={},at=0;have.forEach(function(p){Object.assign(data,p.data||{});at=Math.max(at,p.savedAt||0);});
-      return fix(Object.assign(data,{savedAt:at}));
-    }
-    /* ترحيل مرة واحدة: لو فيه ملفات ناقصة، بناخد الباقي من الملف القديم، والمزامنة بتكتب كل الأقسام بعدها */
-    GD.missingShards=true;
-    return gdLegacyMain().then(function(main){
-      if(!main&&!have.length)return null;
-      var data=Object.assign({},main||{});
-      have.forEach(function(p){Object.assign(data,p.data||{});});
-      return fix(data);
-    });
-  });
-}
-/* ---------- المرحلة 1 (لسه شغالة): حارس الانكماش والتحقق ونسخة يومية ---------- */
-var GUARD_COLS=['orders','batches','done','products','materials','stock','waste'];
-var GUARD_ARR=['orders','batches','done','products','materials','waste'];
-var GUARD_MIN=5;
-var GUARD_LABEL={orders:'الأوردرات',batches:'الدفعات',done:'المنتج الجاهز',products:'الأصناف',materials:'الخامات',stock:'المخزون',waste:'الهالك'};
-function colCount(s,k){var v=s&&s[k];if(Array.isArray(v))return v.length;if(v&&typeof v==='object')return Object.keys(v).length;return 0;}
-function countsOf(s){var o={};GUARD_COLS.forEach(function(k){o[k]=colCount(s,k);});return o;}
-function saveBaseCounts(s){try{localStorage.setItem('khat-gd-cnt',JSON.stringify(countsOf(s)));}catch(e){}}
-function loadBaseCounts(){try{return JSON.parse(localStorage.getItem('khat-gd-cnt')||'null');}catch(e){return null;}}
-function shrinkCheck(now,base){
-  if(!base)return null;
-  for(var i=0;i<GUARD_COLS.length;i++){var k=GUARD_COLS[i],p=base[k]||0,c=now[k]||0;
-    if(p>=GUARD_MIN&&c<p*0.5)return {col:k,prev:p,now:c};}
-  return null;
-}
-function remoteCheck(d){
-  if(!d||typeof d!=='object'||Array.isArray(d))throw {code:'bad',message:'بيانات درايف مش مفهومة، ما اتطبقتش'};
-  GUARD_ARR.forEach(function(k){if(d[k]!==undefined&&!Array.isArray(d[k]))throw {code:'bad',message:'شكل '+GUARD_LABEL[k]+' على درايف غلط، ما اتطبقش'};});
-}
-function gdDownload(){return gdDownloadRaw().then(function(o){if(o)remoteCheck(o);return o;});}
-function gdBackupDaily(){
-  var day=new Date().toISOString().slice(0,10);
-  try{if(localStorage.getItem('khat-gd-bk')===day)return;}catch(e){}
-  var name='khat-entaj-backup-'+day+'.json';
-  var b='khat'+Date.now().toString(36);
-  var mp='--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:name,mimeType:'application/json'})+'\r\n--'+b+'\r\nContent-Type: application/json\r\n\r\n'+gdBody()+'\r\n--'+b+'--';
-  gdApi('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+b},body:mp})
-    .then(function(){try{localStorage.setItem('khat-gd-bk',day);}catch(e){}return gdPruneBackups();})
-    .catch(function(){});
-}
-function gdPruneBackups(){
-  var q=encodeURIComponent("name contains 'khat-entaj-backup-' and trashed=false");
-  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime%20desc&pageSize=100&fields=files(id,name)&spaces=drive')
-    .then(function(r){return r.json();}).then(function(j){
-      var fs=(j.files||[]).filter(function(f){return String(f.name).indexOf('khat-entaj-backup-')===0;});
-      return Promise.all(fs.slice(30).map(function(f){return gdApi('https://www.googleapis.com/drive/v3/files/'+f.id,{method:'DELETE'});}));
-    });
 }
 function gdUpload(){
   var at=S.savedAt||0;
-  var sh=shrinkCheck(countsOf(S),loadBaseCounts());
-  if(sh)return Promise.reject({code:'bad',message:'وقفت الرفع عشان '+GUARD_LABEL[sh.col]+' قلّت من '+sh.prev+' لـ '+sh.now+'. راجع البيانات قبل ما تكمّل'});
-  return gdWriteAllShards().then(function(sig){GD.ver=sig;GD.upAt=at;});
+  return gdApi('https://www.googleapis.com/upload/drive/v3/files/'+GD.id+'?uploadType=media&fields=version',{method:'PATCH',headers:{'Content-Type':'application/json'},body:gdBody()})
+    .then(function(r){return r.json();}).then(function(j){GD.ver=String(j.version);GD.upAt=at;gdWriteShards();});
 }
 function gdFail(e){
-  if(e&&e.code==='bad'){GD.ok=false;GD.err=e.message;gdPaint();return;}
   var c=e&&e.code;GD.ok=false;if(!GD.seeded)setTimeout(render,0);
   if(!navigator.onLine)netShowSoon();
   if(c==='tap'||c===401){GD.needTap=true;GD.err='محتاج تأكيد من جوجل، اضغط أي مكان في الشاشة';gdArm();}
@@ -2003,37 +1900,37 @@ function gdFail(e){
 function devId(){try{var v=localStorage.getItem('khat-dev');if(!v){v=randHex().slice(0,16);localStorage.setItem('khat-dev',v);}return v;}catch(e){return 'nolocal';}}
 function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
-  if(GD.busy&&Date.now()-GD.busyAt<30000){if(GD.seeded)GD.again=true;return Promise.resolve();}
+  if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
   GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
   if(!GD.seeded)GD.pct=0;gdStage('جاري الاتصال بجوجل درايف…',5);
   var g0=guardState(S,GD.snap);if(g0!==S){S=g0;bind(S);}
-  GD.missingShards=false;
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
-    return gdRemoteSig().then(function(sig){
-      var pull=!GD.ver||sig!==GD.ver;
+    return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
+      if(m.trashed){GD.id=null;GD.ver=null;gdSaveCfg();return;}
+      var pull=!GD.ver||String(m.version)!==String(GD.ver);
       return (pull?(gdStage('جاري فحص البيانات…',20),gdDownload()):(gdStage('البيانات محدّثة',95),Promise.resolve(undefined))).then(function(remote){
         markEdits();
         var need=false;
         if(remote!==undefined){
           var local=S,Mg=remote?mergeStates(local,remote,SYNCBASE):local;
-          need=!remote||GD.missingShards||canon(Mg)!==canon(remote);
+          need=!remote||canon(Mg)!==canon(remote);
           var fresh=GD.seeded?newRemote(local,Mg):[];
           if(canon(Mg)!==canon(local)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
           if(fresh.length)notifyRemote(fresh);
-          GD.ver=sig;
+          GD.ver=String(m.version);
           if(!need)GD.upAt=S.savedAt||0;
         }else need=(S.savedAt||0)!==GD.upAt;
+        /* fix() inside gdDownload points MATERIALS/PRODUCTS at the downloaded copy; re-point them at the live state, or edits go to a copy that never gets saved */
         bind(S);
         S.devs=S.devs||{};S.devs[devId()]=nowStamp();
         pruneTombs(S,Date.now());
-        SYNCBASE=snapshotBase();saveNumBase(SYNCBASE.__num);
+        SYNCBASE=snapshotBase();
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){obDel('main')
-  }).then(function(){obDel('main').catch(function(){});gdCardsSync();saveBaseCounts(S);gdBackupDaily();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
+  }).then(function(){obDel('main').catch(function(){});gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 /* ملف الكروت: ملف منفصل على درايف بيتقري من صفحة الكروت (وأي حد معاه الرابط يقدر يقراه) */
@@ -2089,7 +1986,7 @@ function driveHTML(){
     '<svg class="dico" viewBox="0 0 24 24" aria-hidden="true">'+ico+'</svg><span>'+lbl+'</span></span>';
 }
 function gdBadge(){
-  if(GD.ok)return '<span class="pill ok" data-act="gdNow">متصل بدرايف'+(GD.at?' · آخر مزامنة '+new Date(GD.at).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'}):'')+'</span>';
+  if(GD.ok)return '<span class="pill ok" data-act="gdNow">متصل بدرايف</span>';
   if(GD.err&&!GD.needTap)return '<span class="pill bad" data-act="tab" data-v="settings">درايف: خطأ، اضغط للتفاصيل</span>';
   return '<span class="pill low" data-act="gdNow">درايف: '+(GD.needTap?'محتاج تأكيد':'جاري الاتصال')+'</span>';
 }
@@ -3538,11 +3435,6 @@ function boxSeasonHTML(){
   var barHTML=tplList.length?'<div class="tplbar" id="tplBar"><div class="tplbar-i"><b data-bar-t>'+selBoxes+' علبة</b><small data-bar-s>'+(selTpl.length?selTpl.length+' نوع محدد':'اختار العلب اللي محتاجها')+'</small></div><button class="btn main" data-act="boxOrderSel"'+(selTpl.length?'':' disabled')+'>اطلب كأوردر</button></div>':'';
   return '<div class="grp">علب محفوظة ('+tplList.length+')</div>'+(tplList.length?'<div class="tplgrid">'+tplHTML+'</div>':tplHTML)+barHTML;
 }
-function conflictsCardHTML(){
-  var L=(S.conflicts||[]).slice().reverse();
-  var rows=L.length?L.slice(0,30).map(function(c){return '<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>'+esc(String(c.name||c.id))+'</b><small style="display:block">'+esc(c.note||'')+'</small><small>'+new Date(c.at).toLocaleString('ar-EG')+'</small></div>';}).join(''):'<div class="meta">مفيش تعارضات مسجّلة</div>';
-  return '<div class="card" style="--c:var(--orders)"><h3 class="bn">سجل التعارضات</h3><span class="meta">تغييرات اتعملت من أكتر من جهاز في نفس الوقت</span><div style="margin-top:8px">'+rows+'</div>'+(L.length?'<div class="btns" style="margin-top:10px"><button class="btn ghost" data-act="conflictsClear">مسح السجل</button></div>':'')+'</div>';
-}
 function boxTplFormHTML(){
   var T=U.tpl||(U.tpl={name:'',items:[]});
   var K=U.tplKind||'cust';
@@ -4103,7 +3995,6 @@ function hoursCardHTML(){
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
-  conflicts:'<path d="M12 9v4"/><path d="M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 17h.01"/>',
   boxtpl:'<path d="M4 9h16v11H4z"/><path d="M3 5h18v4H3zM12 5v15"/>',
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 15c2.4.2 4.3 1.8 5 4.5"/>',
@@ -4518,7 +4409,7 @@ function updFinish(id){
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
-    [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],[boxTplFormHTML(),'boxtpl'],[conflictsCardHTML(),'conflicts'],
+    [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],[boxTplFormHTML(),'boxtpl'],
     [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],
     [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[updatesCardHTML(),'updates'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
@@ -6372,7 +6263,7 @@ var ACT_CAT={
   fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
   runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
   boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
-  tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplSel:['boxes','اختيار علبة','w'],conflictsClear:['boxes','مسح سجل التعارضات','w'],boxOrderSel:['boxes','طلب علب كأوردر','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
+  tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplSel:['boxes','اختيار علبة','w'],boxOrderSel:['boxes','طلب علب كأوردر','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
   approve:['approve','اعتماد الدفعة','w'],
   userAdd:['settings','إضافة مستخدم','w'],userDel:['settings','حذف مستخدم','w'],userEditOpen:['settings','تعديل مستخدم','w'],
   userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],weekMoveClear:['settings','مسح تأجيل الإجازة','w'],
@@ -7107,7 +6998,6 @@ var ACT={
     if(it)it.q=r3(it.q+q);else U.tpl.items.push({p:p.id,name:p.name,unit:p.unit,q:r3(q)});
     if(U.tplQ)delete U.tplQ[d.p];
   },
-  conflictsClear:function(){S.conflicts=[];S.conflictsClr=nowStamp();toast('اتمسح سجل التعارضات');},
   tplSel:function(d){U.tplSel=U.tplSel||{};U.tplSel[d.id]=!U.tplSel[d.id];},
   boxOrderSel:function(){
     var ids=Object.keys(U.tplSel||{}).filter(function(k){return U.tplSel[k];});
