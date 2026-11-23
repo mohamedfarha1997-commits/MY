@@ -3400,7 +3400,7 @@ function boxSeasonHTML(){
   var T=U.tpl||(U.tpl={name:'',items:[]});
   var K=screenKind();
   var fillP=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&(p.fill||'cust')===K;});
-  var pick=fillP.length?fillP.map(function(p){return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b></span><span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" step="any" inputmode="decimal" data-tq="'+p.id+'" placeholder="الكمية" style="width:84px;height:38px;border:1.5px solid var(--field);border-radius:10px;padding:0 8px;font:inherit;background:var(--surface)"><button class="btn sm" data-act="tplAdd" data-p="'+p.id+'">أضف</button></span></div>';}).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
+  var pick=fillP.length?fillP.map(function(p){return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b></span><span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" step="any" inputmode="decimal" data-tq="'+p.id+'" value="'+esc(String((U.tplQ||{})[p.id]||''))+'" placeholder="الكمية" style="width:84px;height:38px;border:1.5px solid var(--field);border-radius:10px;padding:0 8px;font:inherit;background:var(--surface)"><button class="btn sm" data-act="tplAdd" data-p="'+p.id+'">أضف</button></span></div>';}).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
   var tplAll=S.boxTpl||[];
   var SK=screenKind();
@@ -3414,7 +3414,7 @@ function boxSeasonHTML(){
   return '<div class="grp">علب محفوظة ('+tplList.length+')</div>'+tplHTML+'<div style="margin-top:14px">'+newForm+'</div>';
 }
 document.addEventListener('change',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.permsec!==undefined){U.permSec=t.value;render();}});
-document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tname!==undefined&&U.tpl)U.tpl.name=t.value;if(t&&t.dataset&&t.dataset.onote!==undefined&&U.osheet)U.osheet.note=t.value;});
+document.addEventListener('input',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tq!==undefined){U.tplQ=U.tplQ||{};U.tplQ[t.dataset.tq]=t.value;}if(t&&t.dataset&&t.dataset.tname!==undefined&&U.tpl)U.tpl.name=t.value;if(t&&t.dataset&&t.dataset.onote!==undefined&&U.osheet)U.osheet.note=t.value;});
 function wasteView(){
   var F=U.wf||'all',nowKey=ymKey(Date.now()),openG=U.wGrpOpen||{};
   var logAll=S.waste||[];
@@ -6879,12 +6879,12 @@ var ACT={
   fgClear:function(){if(limited())return false;U.fgSel=[];U.confirm=null;},
   tplAdd:function(d){
     var p=P(d.p);if(!p)return false;
-    var inp=document.querySelector('[data-tq="'+d.p+'"]');var q=parseFloat(inp&&inp.value);
+    var q=parseFloat((U.tplQ||{})[d.p]);
     if(!(q>0)){toast('اكتب كمية أكبر من صفر');return false;}
     U.tpl=U.tpl||{name:'',items:[]};
     var it=U.tpl.items.filter(function(i){return i.p===p.id;})[0];
     if(it)it.q=r3(it.q+q);else U.tpl.items.push({p:p.id,name:p.name,unit:p.unit,q:r3(q)});
-    if(inp)inp.value='';
+    if(U.tplQ)delete U.tplQ[d.p];
   },
   tplRemove:function(d){if(U.tpl)U.tpl.items=U.tpl.items.filter(function(i){return i.p!==d.p;});},
   tplSave:function(){
