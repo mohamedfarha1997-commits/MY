@@ -4427,6 +4427,21 @@ function loginBtnsHTML(){
 }
 /* لوحة أرقام مخصصة لشاشة الدخول بس: بتكتب في خانة الرقم السري، والزرار اللي تحتها بيبدّل بينها وبين كيبورد الجهاز */
 /* نقط بتوضح عدد الأرقام اللي اتكتبت: 4 على الأقل، ولو الباسورد أطول بتزيد */
+/* تحق أمان بعد الرقم السري الصح: 3 خطوات بنفس شكل تحقق الاسترجاع، وبعدها يفتح التطبيق */
+function lvRun(fn){
+  var ov=document.createElement('div');ov.id='lvOv';
+  ov.innerHTML='<style>#lvOv{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(4,6,20,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:lvIn .25s ease both}.lv-card{width:100%;max-width:340px;border-radius:24px;padding:24px 22px;background:linear-gradient(160deg,#1c2370,#0f1440);border:1px solid rgb(255 255 255 / .12);box-shadow:0 20px 50px rgb(0 0 0 / .45);color:#fff;text-align:center;direction:rtl}.lv-h{font:800 20px/1.2 var(--f-disp),system-ui,sans-serif}.lv-sub{margin:6px 0 16px;font-size:13px;opacity:.7}.lv-step{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid rgb(255 255 255 / .1);opacity:.35;transition:opacity .3s;text-align:right}.lv-step.spin,.lv-step.done{opacity:1}.lv-step b{display:block;font-size:15px}.lv-step small{font-size:12px;opacity:.7}.lv-ico{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid rgb(255 255 255 / .35);position:relative}.lv-step.spin .lv-ico{border-color:#8b9bff;border-top-color:transparent;animation:lvSpin .8s linear infinite}.lv-step.done .lv-ico{background:#22c55e;border-color:#22c55e;animation:lvTick .35s ease both}.lv-step.done .lv-ico::before{content:"\u2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}@keyframes lvSpin{to{transform:rotate(360deg)}}@keyframes lvTick{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}@keyframes lvIn{from{opacity:0}to{opacity:1}}</style>'+
+    '<div class="lv-card"><div class="lv-h">تحقق أمان</div><div class="lv-sub">بنتأكد إن الدخول ده منك</div>'+
+    '<div class="lv-step spin" id="lvS1"><span class="lv-ico"></span><div><b>الرقم السري</b><small>جاري التحقق...</small></div></div>'+
+    '<div class="lv-step" id="lvS2"><span class="lv-ico"></span><div><b>الجهاز</b><small>في الانتظار</small></div></div>'+
+    '<div class="lv-step" id="lvS3"><span class="lv-ico"></span><div><b>الجلسة</b><small>في الانتظار</small></div></div></div>';
+  document.body.appendChild(ov);
+  var set=function(id,st,sub){var el=document.getElementById(id);if(!el)return;el.className='lv-step '+st;if(sub)el.querySelector('small').textContent=sub;};
+  setTimeout(function(){set('lvS1','done','تم');set('lvS2','spin','جاري التحقق...');},500);
+  setTimeout(function(){set('lvS2','done','تم');set('lvS3','spin','جاري التأمين...');},1100);
+  setTimeout(function(){set('lvS3','done','تم');},1700);
+  setTimeout(function(){ov.remove();fn();},2200);
+}
 function pinDotsInner(n){var c=Math.min(8,Math.max(4,n)),h='';for(var i=0;i<c;i++)h+='<span class="pd'+(i<n?' on':'')+'"></span>';return h;}
 function padHTML(){
   var css='<style>.lpad{width:100%;max-width:360px;margin:14px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lpad button{height:58px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(255 255 255 / .08);color:#fff;font:700 24px/1 var(--f-disp),system-ui,sans-serif;cursor:pointer;transition:transform .12s ease,background .2s ease;-webkit-tap-highlight-color:transparent}.lpad button:active{transform:scale(.94);background:rgb(255 255 255 / .2)}.lpad .lp-sm{font-size:15px}.pdots{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:18px;pointer-events:none}.pd{width:14px;height:14px;border-radius:50%;border:2px solid rgb(255 255 255 / .45);transition:background .15s,transform .15s,box-shadow .15s}.pd.on{background:#fff;border-color:#fff;transform:scale(1.1);box-shadow:0 0 10px rgb(255 255 255 / .7)}</style>';
@@ -6518,10 +6533,10 @@ var ACT={
     U.lbusy=true;U.loginErr=null;render();
     var done=function(){U.lbusy=false;};
     checkPin(p).then(function(ok){
-      if(ok){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();return null;}
+      if(ok){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return null;}
       return findUserByPw(p).then(function(u){
         if(u&&u.cardActive===false){done();U.cardOffPop=true;}
-        else if(u){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);}
+        else if(u){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return;}
         else{done();U.loginErr='الباسورد غلط';}
         render();
       });
