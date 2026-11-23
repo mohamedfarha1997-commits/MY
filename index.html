@@ -6702,7 +6702,21 @@ var ACT={
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
-  bioGo:function(){bioUnlock().then(function(){U.bioOk=true;bioSessionSet();render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
+  bioGo:function(){
+    if(U.lbusy)return false;
+    U.lbusy=true;render();
+    bioUnlock().then(function(){
+      var who='';try{who=localStorage.getItem('khat-bio-auth')||'';}catch(e){}
+      if(!who){U.lbusy=false;render();toast('فعّل البصمة من جديد من شاشة الدخول');return;}
+      lvRun(function(){
+        U.lbusy=false;U.bioOk=true;bioSessionSet();
+        try{localStorage.setItem(AUTH_KEY,who);}catch(e){}
+        if(who.indexOf('u:')===0)U.view='home';
+        render();
+      });
+    }).catch(function(){U.lbusy=false;render();toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});
+    return false;
+  },
   bioSkipAct:function(){U.bioSkip=true;bioSessionSet();render();},
   bioLater:function(){U.bioPrompt=false;},
   settingsBio:function(){
@@ -6712,7 +6726,7 @@ var ACT={
     return false;
   },
   loaderRetry:function(){GD.err=null;gdStage('جاري المحاولة…',Math.min(GD.pct||0,5));gdSync();},
-  bioEnableAct:function(){bioEnable().then(function(){U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
+  bioEnableAct:function(){bioEnable().then(function(){try{localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){if(limited())return false;
