@@ -1159,10 +1159,24 @@ function pruneTombs(s,now){
   });
   return removed;
 }
+function loadNumBase(){try{return JSON.parse(localStorage.getItem('khat-numbase')||'null');}catch(e){return null;}}
+function saveNumBase(nb){try{localStorage.setItem('khat-numbase',JSON.stringify(nb||null));}catch(e){}}
+/* سجل التعارضات: بيتجمع من الجهازين، والمسح بيتسجل بوقت عشان ما يرجعش */
+function mergeConflicts(a,b,added){
+  var clr=Math.max((a&&a.conflictsClr)||0,(b&&b.conflictsClr)||0);
+  var seen={},out=[];
+  ((a&&a.conflicts)||[]).concat((b&&b.conflicts)||[],added||[]).forEach(function(c){
+    if(!c||(c.at||0)<=clr)return;
+    var k=c.at+'|'+c.c+'|'+c.id;if(seen[k])return;seen[k]=1;out.push(c);
+  });
+  out.sort(function(x,y){return (x.at||0)-(y.at||0);});
+  return {list:out.slice(-100),clr:clr};
+}
 function mergeStates(a,b,base){
   /* الإعدادات والمستخدمين (غير المسجلين لكل سجل) بياخدهم الأحدث، عشان الحالة الفاضية عند فتح الصفحة متمسحش اللي في درايف */
   var newer=(a.savedAt||0)>=(b.savedAt||0)?a:b,older=newer===a?b:a;
   var M=Object.assign({},older,newer);
+  var newC=[],NB=(base&&base.__num)||loadNumBase();
   M.tomb={};
   STAMPED.forEach(function(c){
     var tomb={};
@@ -1174,6 +1188,7 @@ function mergeStates(a,b,base){
     Object.keys(ids).forEach(function(id){
       var ra=ma[id],rb=mb[id],bse=base&&base[c]&&base[c][id];
       by[id]=(ra&&rb)?mergeRec(bse,ra,rb):(ra||rb);
+      if(ra&&rb&&bse){var s0=canon(bse),sa=canon(ra),sb=canon(rb);if(sa!==s0&&sb!==s0&&sa!==sb)newC.push({at:Date.now(),c:c,id:String(id),name:String(ra.name||ra.cust||ra.client||id),note:'تعديل على الجهازين، اتطبقت النسخة الأحدث'});}
     });
     M[c]=Object.keys(by).filter(function(id){return tomb[id]===undefined||(by[id]._u||0)>tomb[id];}).sort().map(function(id){return by[id];});
     M.tomb[c]=tomb;
@@ -1191,7 +1206,23 @@ function mergeStates(a,b,base){
   ['stock','ready'].forEach(function(m){
     var v={},t={},tb={};
     [a,b].forEach(function(s){var x=(s.tomb&&s.tomb[m])||{};Object.keys(x).forEach(function(k){tb[k]=Math.max(tb[k]||0,x[k]||0);});});
-    [a,b].forEach(function(s){var st=s[m]||{},tt=s[m+'T']||{};Object.keys(st).forEach(function(id){var ti=tt[id]||0;if(!(id in t)||ti>t[id]){t[id]=ti;v[id]=st[id];}});});
+    var nb=(NB&&NB[m])||null;
+    var ids={};[a,b].forEach(function(s){Object.keys(s[m]||{}).forEach(function(id){ids[id]=1;});});
+    Object.keys(ids).forEach(function(id){
+      var inA=!!(a[m]&&(id in a[m])),inB=!!(b[m]&&(id in b[m]));
+      var sa=(a[m+'T']||{})[id]||0,sb=(b[m+'T']||{})[id]||0;
+      if(inA&&inB&&nb&&(id in nb)){
+        /* الفرق عن الأساس في كل جهاز بيتجمع، فالبيع من جهاز والبيع من التاني ما يضيعوش */
+        var bv=Number(nb[id])||0,va=Number(a[m][id])||0,vb=Number(b[m][id])||0;
+        v[id]=r3(bv+(va-bv)+(vb-bv));
+        t[id]=Math.max(sa,sb);
+        if(va!==bv&&vb!==bv&&va!==vb)newC.push({at:Date.now(),c:m,id:String(id),name:String(id),note:'الكمية اتعدّلت من جهازين واتجمعت الفروقات (الأساس '+r3(bv)+'، جهاز: '+r3(va)+'، الجهاز التاني: '+r3(vb)+')'});
+      }else{
+        /* مفيش أساس لنفس الصنف: الأحدث بياخد الغلبة زي زمان */
+        if(inA&&(!inB||sa>=sb)){v[id]=a[m][id];t[id]=sa;}
+        else{v[id]=b[m][id];t[id]=sb;}
+      }
+    });
     Object.keys(v).forEach(function(id){if(tb[id]!==undefined&&t[id]<=tb[id]){delete v[id];delete t[id];}});
     M[m]=v;M[m+'T']=t;M.tomb[m]=tb;
   });
@@ -1201,6 +1232,7 @@ function mergeStates(a,b,base){
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
   M.fseq=Math.max(a.fseq||0,b.fseq||0);
   M.savedAt=Math.max(a.savedAt||0,b.savedAt||0);
+  var mc=mergeConflicts(a,b,newC);M.conflicts=mc.list;M.conflictsClr=mc.clr;
   /* كل إعداد ليه وقته: الجهاز اللي غيّر إعداد معين هو اللي بيحسم فيه، مش الجهاز اللي حفظ آخر مرة */
   var pa=a.prefs||{},pb=b.prefs||{},ka=a.prefsK||{},kb=b.prefsK||{};
   var keys={};Object.keys(pa).concat(Object.keys(pb)).forEach(function(k){keys[k]=1;});
@@ -1640,7 +1672,7 @@ function markEdits(){
 /* نسخة الحالة اللي اتزامنت آخر مرة: أساس الدمج حقل بحقل. بتتحفظ في IndexedDB عشان تفضل بعد تحديث الصفحة */
 var SYNCBASE=null;
 function snapshotBase(){
-  var o={};
+  var o={};o.__num={stock:JSON.parse(JSON.stringify(S.stock||{})),ready:JSON.parse(JSON.stringify(S.ready||{}))};
   STAMPED.forEach(function(c){o[c]={};(S[c]||[]).forEach(function(r){if(r&&r.id!=null)o[c][r.id]=JSON.parse(JSON.stringify(r));});});
   return o;
 }
@@ -1990,7 +2022,7 @@ function gdSync(){
         bind(S);
         S.devs=S.devs||{};S.devs[devId()]=nowStamp();
         pruneTombs(S,Date.now());
-        SYNCBASE=snapshotBase();
+        SYNCBASE=snapshotBase();saveNumBase(SYNCBASE.__num);
         return need?gdUpload():undefined;
       });
     });
@@ -3500,6 +3532,11 @@ function boxSeasonHTML(){
   var barHTML=tplList.length?'<div class="tplbar" id="tplBar"><div class="tplbar-i"><b data-bar-t>'+selBoxes+' علبة</b><small data-bar-s>'+(selTpl.length?selTpl.length+' نوع محدد':'اختار العلب اللي محتاجها')+'</small></div><button class="btn main" data-act="boxOrderSel"'+(selTpl.length?'':' disabled')+'>اطلب كأوردر</button></div>':'';
   return '<div class="grp">علب محفوظة ('+tplList.length+')</div>'+(tplList.length?'<div class="tplgrid">'+tplHTML+'</div>':tplHTML)+barHTML;
 }
+function conflictsCardHTML(){
+  var L=(S.conflicts||[]).slice().reverse();
+  var rows=L.length?L.slice(0,30).map(function(c){return '<div style="padding:8px 0;border-bottom:1px solid var(--line)"><b>'+esc(String(c.name||c.id))+'</b><small style="display:block">'+esc(c.note||'')+'</small><small>'+new Date(c.at).toLocaleString('ar-EG')+'</small></div>';}).join(''):'<div class="meta">مفيش تعارضات مسجّلة</div>';
+  return '<div class="card" style="--c:var(--orders)"><h3 class="bn">سجل التعارضات</h3><span class="meta">تغييرات اتعملت من أكتر من جهاز في نفس الوقت</span><div style="margin-top:8px">'+rows+'</div>'+(L.length?'<div class="btns" style="margin-top:10px"><button class="btn ghost" data-act="conflictsClear">مسح السجل</button></div>':'')+'</div>';
+}
 function boxTplFormHTML(){
   var T=U.tpl||(U.tpl={name:'',items:[]});
   var K=U.tplKind||'cust';
@@ -4060,6 +4097,7 @@ function hoursCardHTML(){
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
+  conflicts:'<path d="M12 9v4"/><path d="M10.3 3.9 2.6 17.1A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.9L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 17h.01"/>',
   boxtpl:'<path d="M4 9h16v11H4z"/><path d="M3 5h18v4H3zM12 5v15"/>',
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 15c2.4.2 4.3 1.8 5 4.5"/>',
@@ -4474,7 +4512,7 @@ function updFinish(id){
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
-    [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],[boxTplFormHTML(),'boxtpl'],
+    [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],[boxTplFormHTML(),'boxtpl'],[conflictsCardHTML(),'conflicts'],
     [securityCardHTML(),'security'],[prodLogCardHTML(),'prodlog'],[monthsHTML(),'months'],
     [backupCardHTML(),'backup'],[gdCardHTML(),'gd'],[updatesCardHTML(),'updates'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
@@ -6328,7 +6366,7 @@ var ACT_CAT={
   fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
   runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
   boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
-  tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplSel:['boxes','اختيار علبة','w'],boxOrderSel:['boxes','طلب علب كأوردر','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
+  tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplSel:['boxes','اختيار علبة','w'],conflictsClear:['boxes','مسح سجل التعارضات','w'],boxOrderSel:['boxes','طلب علب كأوردر','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
   approve:['approve','اعتماد الدفعة','w'],
   userAdd:['settings','إضافة مستخدم','w'],userDel:['settings','حذف مستخدم','w'],userEditOpen:['settings','تعديل مستخدم','w'],
   userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],weekMoveClear:['settings','مسح تأجيل الإجازة','w'],
@@ -7063,6 +7101,7 @@ var ACT={
     if(it)it.q=r3(it.q+q);else U.tpl.items.push({p:p.id,name:p.name,unit:p.unit,q:r3(q)});
     if(U.tplQ)delete U.tplQ[d.p];
   },
+  conflictsClear:function(){S.conflicts=[];S.conflictsClr=nowStamp();toast('اتمسح سجل التعارضات');},
   tplSel:function(d){U.tplSel=U.tplSel||{};U.tplSel[d.id]=!U.tplSel[d.id];},
   boxOrderSel:function(){
     var ids=Object.keys(U.tplSel||{}).filter(function(k){return U.tplSel[k];});
