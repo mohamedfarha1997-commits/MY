@@ -4429,15 +4429,17 @@ function loginBtnsHTML(){
 /* نقط بتوضح عدد الأرقام اللي اتكتبت: 4 على الأقل، ولو الباسورد أطول بتزيد */
 /* تحق أمان بعد الرقم السري الصح: 3 خطوات بنفس شكل تحقق الاسترجاع، وبعدها يفتح التطبيق */
 function lvRun(fn){
+  var bio=!!window.LV_BIO;window.LV_BIO=false;
+  var l1=bio?'البصمة':'الرقم السري',d1=bio?'تم التحقق':'تم';
   var ov=document.createElement('div');ov.id='lvOv';
   ov.innerHTML='<style>#lvOv{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(4,6,20,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:lvIn .25s ease both}.lv-card{width:100%;max-width:340px;border-radius:24px;padding:24px 22px;background:linear-gradient(160deg,#1c2370,#0f1440);border:1px solid rgb(255 255 255 / .12);box-shadow:0 20px 50px rgb(0 0 0 / .45);color:#fff;text-align:center;direction:rtl}.lv-h{font:800 20px/1.2 var(--f-disp),system-ui,sans-serif}.lv-sub{margin:6px 0 16px;font-size:13px;opacity:.7}.lv-step{display:flex;align-items:center;gap:12px;padding:12px 4px;border-top:1px solid rgb(255 255 255 / .1);opacity:.35;transition:opacity .3s;text-align:right}.lv-step.spin,.lv-step.done{opacity:1}.lv-step b{display:block;font-size:15px}.lv-step small{font-size:12px;opacity:.7}.lv-ico{flex:0 0 22px;height:22px;border-radius:50%;border:2px solid rgb(255 255 255 / .35);position:relative}.lv-step.spin .lv-ico{border-color:#8b9bff;border-top-color:transparent;animation:lvSpin .8s linear infinite}.lv-step.done .lv-ico{background:#22c55e;border-color:#22c55e;animation:lvTick .35s ease both}.lv-step.done .lv-ico::before{content:"\u2713";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}@keyframes lvSpin{to{transform:rotate(360deg)}}@keyframes lvTick{0%{transform:scale(.6)}70%{transform:scale(1.15)}100%{transform:scale(1)}}@keyframes lvIn{from{opacity:0}to{opacity:1}}</style>'+
     '<div class="lv-card"><div class="lv-h">تحقق أمان</div><div class="lv-sub">بنتأكد إن الدخول ده منك</div>'+
-    '<div class="lv-step spin" id="lvS1"><span class="lv-ico"></span><div><b>الرقم السري</b><small>جاري التحقق...</small></div></div>'+
+    '<div class="lv-step spin" id="lvS1"><span class="lv-ico"></span><div><b>'+l1+'</b><small>جاري التحقق...</small></div></div>'+
     '<div class="lv-step" id="lvS2"><span class="lv-ico"></span><div><b>الجهاز</b><small>في الانتظار</small></div></div>'+
     '<div class="lv-step" id="lvS3"><span class="lv-ico"></span><div><b>الجلسة</b><small>في الانتظار</small></div></div></div>';
   document.body.appendChild(ov);
   var set=function(id,st,sub){var el=document.getElementById(id);if(!el)return;el.className='lv-step '+st;if(sub)el.querySelector('small').textContent=sub;};
-  setTimeout(function(){set('lvS1','done','تم');set('lvS2','spin','جاري التحقق...');},500);
+  setTimeout(function(){set('lvS1','done',d1);set('lvS2','spin','جاري التحقق...');},500);
   setTimeout(function(){set('lvS2','done','تم');set('lvS3','spin','جاري التأمين...');},1100);
   setTimeout(function(){set('lvS3','done','تم');},1700);
   setTimeout(function(){ov.remove();fn();},2200);
@@ -6708,7 +6710,7 @@ var ACT={
     bioUnlock().then(function(){
       var who='';try{who=localStorage.getItem('khat-bio-auth')||'';}catch(e){}
       if(!who){U.lbusy=false;render();toast('سجّل دخول بالرقم السري مرة، والبصمة هتشتغل بعدها');return;}
-      lvRun(function(){
+      window.LV_BIO=true;lvRun(function(){
         U.lbusy=false;U.bioOk=true;bioSessionSet();
         try{localStorage.setItem(AUTH_KEY,who);}catch(e){}
         if(who.indexOf('u:')===0)U.view='home';
