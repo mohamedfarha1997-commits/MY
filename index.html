@@ -1905,13 +1905,19 @@ function gdWriteAllShards(){
 }
 /* بصمة الإصدار على درايف: لو اتغيرت أي ملف، بنعرف إن فيه تحديث جديد */
 function gdRemoteSig(){
-  return Promise.all(SHARD_FILES.map(function(sf){
-    return gdShardLookup(sf.f).then(function(id){
-      if(!id)return sf.f+':none';
-      return gdApi('https://www.googleapis.com/drive/v3/files/'+id+'?fields=version,trashed').then(function(r){return r.json();})
-        .then(function(m){return sf.f+':'+(m.trashed?'x':m.version);});
+  var names=SHARD_FILES.map(function(sf){return "name='"+sf.f+"'";}).join(' or ');
+  var q=encodeURIComponent('trashed=false and ('+names+')');
+  return gdApi('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=createdTime&pageSize=100&fields=files(id,name,version)&spaces=drive')
+    .then(function(r){return r.json();}).then(function(j){
+      var byId={},byName={};
+      (j.files||[]).forEach(function(f){byId[f.id]=f;if(!byName[f.name])byName[f.name]=f;});
+      return SHARD_FILES.map(function(sf){
+        var id=GD_SHARD_IDS[sf.f];var f=(id&&byId[id])||byName[sf.f];
+        if(!f)return sf.f+':none';
+        if(!GD_SHARD_IDS[sf.f]){GD_SHARD_IDS[sf.f]=f.id;gdSaveCfg();}
+        return sf.f+':'+f.version;
+      }).join('|');
     });
-  })).then(function(v){return v.join('|');});
 }
 function gdDownloadRaw(){
   return gdFetchShardParts().then(function(parts){
@@ -1997,7 +2003,7 @@ function gdFail(e){
 function devId(){try{var v=localStorage.getItem('khat-dev');if(!v){v=randHex().slice(0,16);localStorage.setItem('khat-dev',v);}return v;}catch(e){return 'nolocal';}}
 function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
-  if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
+  if(GD.busy&&Date.now()-GD.busyAt<30000){if(GD.seeded)GD.again=true;return Promise.resolve();}
   GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
   if(!GD.seeded)GD.pct=0;gdStage('جاري الاتصال بجوجل درايف…',5);
