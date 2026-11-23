@@ -3407,12 +3407,19 @@ function boxTplFormHTML(){
   var T=U.tpl||(U.tpl={name:'',items:[]});
   var K=U.tplKind||'cust';
   var fillP=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&(p.fill||'cust')===K;});
-  var pick=fillP.length?fillP.map(function(p){return '<div class="hist" style="align-items:center"><span><b>'+esc(p.name)+'</b></span><span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" step="any" inputmode="decimal" data-tq="'+p.id+'" value="'+esc(String((U.tplQ||{})[p.id]||''))+'" placeholder="الكمية" style="width:84px;height:38px;border:1.5px solid var(--field);border-radius:10px;padding:0 8px;font:inherit;background:var(--surface)"><button class="btn sm" data-act="tplAdd" data-p="'+p.id+'">أضف</button></span></div>';}).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
+  var gk=[];fillP.forEach(function(p){var k=p.grp||'__none';if(gk.indexOf(k)<0)gk.push(k);});
+  var pick=fillP.length?gk.map(function(k){
+    var list=fillP.filter(function(p){return (p.grp||'__none')===k;});
+    return '<div class="grp" style="margin-top:12px">'+(k==='__none'?'بدون مجموعة':esc(k))+' ('+list.length+')</div><div class="pkgrid">'+list.map(function(p){
+      var q=(U.tplQ||{})[p.id]||'';
+      return '<div class="pk on" style="--c:var(--orders);cursor:default"><div class="opk-h"><b>'+esc(p.name)+'</b></div><small>المتاح: '+f(S.ready[p.id]||0)+' '+esc(p.unit)+'</small><div class="opk-q"><input type="text" inputmode="'+qIM(p)+'" data-tq="'+p.id+'" value="'+esc(String(q))+'" placeholder="0" aria-label="الكمية"><span>'+esc(p.unit)+'</span></div></div>';
+    }).join('')+'</div>';
+  }).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
   return '<div class="card" style="--c:var(--orders)"><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span>'+
     '<div class="fld"><label>نوع القالب</label><select data-tkind style="width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font:inherit"><option value="cust"'+(K==='cust'?' selected':'')+'>أوردرات العملاء</option><option value="shop"'+(K==='shop'?' selected':'')+'>أوردرات المحل</option></select></div>'+
     '<div class="fld"><label>اسم القالب</label><input data-tname value="'+esc(T.name||'')+'" placeholder="مثال: علبة 6 قطع"></div>'+
-    '<div class="list">'+pick+'</div><div class="grp" style="margin-top:12px">أصناف القالب</div><div class="list">'+draft+'</div>'+
+    '<div>'+pick+'</div><div class="btns" style="margin-top:10px"><button class="btn main" data-act="tplAddAll">أضف كل الأصناف للقالب</button></div><div class="grp" style="margin-top:12px">أصناف القالب</div><div class="list">'+draft+'</div>'+
     '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></div>';
 }
 document.addEventListener('change',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.permsec!==undefined){U.permSec=t.value;render();}});
@@ -6219,7 +6226,7 @@ var ACT_CAT={
   fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
   runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
   boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
-  tplAdd:['boxes','إضافة قالب','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
+  tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
   approve:['approve','اعتماد الدفعة','w'],
   userAdd:['settings','إضافة مستخدم','w'],userDel:['settings','حذف مستخدم','w'],userEditOpen:['settings','تعديل مستخدم','w'],
   userEditSave:['settings','حفظ تعديلات المستخدم','w'],userLeave:['settings','إجازة مستخدم','w'],userLeaveClear:['settings','مسح فترة الإجازة','w'],weekMoveClear:['settings','مسح تأجيل الإجازة','w'],
@@ -6953,6 +6960,20 @@ var ACT={
     var it=U.tpl.items.filter(function(i){return i.p===p.id;})[0];
     if(it)it.q=r3(it.q+q);else U.tpl.items.push({p:p.id,name:p.name,unit:p.unit,q:r3(q)});
     if(U.tplQ)delete U.tplQ[d.p];
+  },
+  tplAddAll:function(){
+    var fillP=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&(p.fill||'cust')===(U.tplKind||'cust');});
+    U.tpl=U.tpl||{name:'',items:[]};
+    var n=0;
+    fillP.forEach(function(p){
+      var q=parseFloat((U.tplQ||{})[p.id]);
+      if(!(q>0))return;
+      var it=U.tpl.items.filter(function(i){return i.p===p.id;})[0];
+      if(it)it.q=r3(it.q+q);else U.tpl.items.push({p:p.id,name:p.name,unit:p.unit,q:r3(q)});
+      delete U.tplQ[p.id];n++;
+    });
+    if(!n){toast('اكتب كمية في صنف واحد على الأقل');return false;}
+    toast('اتضاف '+n+' صنف للقالب');
   },
   tplRemove:function(d){if(U.tpl)U.tpl.items=U.tpl.items.filter(function(i){return i.p!==d.p;});},
   tplSave:function(){
