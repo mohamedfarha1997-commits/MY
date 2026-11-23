@@ -3416,11 +3416,14 @@ function boxTplFormHTML(){
     }).join('')+'</div>';
   }).join(''):'<div class="meta">مفيش أصناف حشو. اعملها من تبويب تحضير حشو</div>';
   var draft=T.items.length?T.items.map(function(i){return '<div class="hist"><span><b>'+esc(i.name)+'</b></span><span>'+f(i.q)+' '+esc(i.unit||'')+' <button class="btn ghost sm" data-act="tplRemove" data-p="'+i.p+'">×</button></span></div>';}).join(''):'<div class="meta">ضيف أصناف للعلبة من فوق</div>';
-  return '<div class="card" style="--c:var(--orders)"><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span>'+
+  var all=S.boxTpl||[];
+  var savedH=all.length?'<div class="grp">علب محفوظة ('+all.length+')</div>'+all.map(function(t){return '<div class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(t.name)+'</b><small>'+(t.kind==='shop'?'أوردرات المحل':'أوردرات العملاء')+' · '+t.items.map(function(i){return esc(i.name)+' '+f(i.q)+' '+esc(i.unit||'');}).join(' · ')+'</small></div></div><div class="btns" style="margin-top:8px"><button class="btn ghost sm" data-act="tplDel" data-id="'+t.id+'">حذف القالب</button></div></div>';}).join(''):'<div class="meta">مفيش قوالب علب لسه</div>';
+  var formH='<div class="card" style="--c:var(--orders)"><h3 class="bn">قالب علبة جديد</h3><span class="meta">اختار الأصناف واحفظ القالب</span>'+
     '<div class="fld"><label>نوع القالب</label><select data-tkind style="width:100%;height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);padding:0 8px;font:inherit"><option value="cust"'+(K==='cust'?' selected':'')+'>أوردرات العملاء</option><option value="shop"'+(K==='shop'?' selected':'')+'>أوردرات المحل</option></select></div>'+
     '<div class="fld"><label>اسم القالب</label><input data-tname value="'+esc(T.name||'')+'" placeholder="مثال: علبة 6 قطع"></div>'+
     '<div>'+pick+'</div><div class="btns" style="margin-top:10px"><button class="btn main" data-act="tplAddAll">أضف كل الأصناف للقالب</button></div><div class="grp" style="margin-top:12px">أصناف القالب</div><div class="list">'+draft+'</div>'+
     '<button class="btn block" data-act="tplSave" style="margin-top:10px"'+((T.items.length&&T.name&&T.name.trim())?'':' disabled')+'>احفظ القالب</button></div>';
+  return savedH+'<div style="margin-top:14px">'+formH+'</div>';
 }
 document.addEventListener('change',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.permsec!==undefined){U.permSec=t.value;render();}});
 document.addEventListener('change',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.tkind!==undefined){U.tplKind=t.value;render();}});
