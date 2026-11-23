@@ -5208,7 +5208,11 @@ function okind(o){return o.kind||'cust';}
 function custName(o){return o.cust||'أوردر بدون اسم';}
 
 function lockKey(kind,k){return kind+'|'+k;}
+function todayKey(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* أوردر تاريخ تسليمه بعد يوم القفل بيفضل زي ما هو */
+function closeKeep(o){return !!(o.due&&String(o.due).slice(0,10)>todayKey());}
 function isLocked(o){
+  if(o.keepAfterLock)return false;
   var k=monthKey(o.created),t=S.locks&&S.locks[lockKey(okind(o),k)];
   if(!t)return false;
   if(typeof t==='number')return (o.created||0)<=t;
@@ -5295,28 +5299,42 @@ function monthOrders(kind,k){
   return list.concat(ordersOf(kind).filter(function(o){return monthKey(o.created)===k;})).sort(function(a,b){return a.created-b.created;});
 }
 function monthsHTML(){
-  return ['cust','shop'].map(function(kind){
-    var months={};
-    ordersOf(kind).forEach(function(o){var k=monthKey(o.created);months[k]=months[k]||{n:0,und:0,live:0};months[k].n++;months[k].live++;if(!o.deliveredAt)months[k].und++;});
-    archEntries().forEach(function(a){
-      if(!a.month)return;
-      var cnt=(a.orders||[]).filter(function(o){return okind(o)===kind;}).length;
-      if(!cnt&&!closedMonth(a.month,kind))return;
-      months[a.month]=months[a.month]||{n:0,und:0,live:0};months[a.month].n+=cnt;
-    });
-    var keys=Object.keys(months).sort().reverse();
-    if(!keys.length)return '';
-    var anyOpen=S.orders.some(function(o){return !o.deliveredAt;});
-    return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>قفل الشهور ('+(kind==='shop'?'أوردرات المحل':'الأوردرات')+')</h3></div>'+
-      '<p class="meta" style="margin:0">القفل بيلم كل بيانات التطبيق (الأوردرات والدفعات والإنتاج المنتهي والخامات) ويأرشفها ويمسحها من مكانها. مخزون الإنتاج الجاهز والوصفات والأصناف المحشوة (حشو) بيفضلوا زي ما هما. صدّر تقرير PDF قبل القفل لو محتاج.</p>'+
-      keys.map(function(k){
-        var m=months[k],locked=closedMonth(k,kind),conf=U.confirm==='lock:'+lockKey(kind,k),delConf=U.confirm==='delarch:'+lockKey(kind,k);
-        var act=(locked?'<button class="btn sm" data-act="monthPdf" data-kind="'+kind+'" data-k="'+k+'">تصدير PDF</button>':'')+
-          ((locked&&!limited())?'<button class="btn ghost sm" data-act="monthDelArchive" data-kind="'+kind+'" data-k="'+k+'" style="color:var(--bad)">'+(delConf?'اضغط تاني للتأكيد':'حذف من الأرشيف')+'</button>':'')+
-          ((!locked||m.live)?'<button class="btn ghost sm" data-act="lockMonth" data-kind="'+kind+'" data-k="'+k+'"'+(anyOpen?' disabled':'')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>':'');
-        return '<div class="hist" style="align-items:center"><span><b>'+k+'</b> <span class="meta">· '+m.n+' أوردر'+(m.und?' · لسه '+m.und+' مش متسلّم':'')+'</span></span><span class="acts">'+(locked?'<span class="pill ok">مقفول</span>':'')+act+'</span></div>';
-      }).join('')+'</section>';
+  var late=S.orders.filter(function(o){return !o.deliveredAt&&!closeKeep(o);}).length;
+  var keepN=S.orders.filter(closeKeep).length;
+  var toArch=S.orders.length-keepN;
+  var runB=S.batches.length, rawN=Object.keys(S.stock||{}).length;
+  var months={};
+  function slot(k){return months[k]=months[k]||{cust:0,shop:0,live:0,und:0};}
+  S.orders.forEach(function(o){var m=slot(monthKey(o.created));m[okind(o)]++;m.live++;if(!o.deliveredAt)m.und++;});
+  archEntries().forEach(function(a){if(!a.month)return;var m=slot(a.month);(a.orders||[]).forEach(function(o){m[okind(o)]++;});});
+  Object.keys(S.locks||{}).forEach(function(lk){var k=lk.split('|')[1];if(k)slot(k);});
+  var keys=Object.keys(months).sort().reverse();
+  var ok1=late===0,ok2=runB===0,canClose=ok1&&ok2;
+  var checks=[
+    [ok1,ok1?'كل الأوردرات اللي معادها النهارده أو قبله اتسلّمت':late+' أوردر معادها النهارده أو قبله لسه مش متسلّم'],
+    [ok2,ok2?'مفيش دفعات شغالة في التحضير أو الإنتاج':runB+' دفعة لسه شغالة في التحضير أو الإنتاج']
+  ];
+  var checksH=checks.map(function(c){return '<div class="hist"><span>'+(c[0]?'✅':'⛔')+' '+c[1]+'</span><span class="pill '+(c[0]?'ok':'low')+'">'+(c[0]?'تمام':'مطلوب')+'</span></div>';}).join('');
+  var tiles='<div class="pstats" style="grid-template-columns:repeat(4,1fr)">'+
+    '<div><b>'+toArch+'</b><small>أوردر هيتأرشف</small></div>'+
+    '<div><b>'+keepN+'</b><small>أوردر بعد النهارده</small></div>'+
+    '<div><b>'+runB+'</b><small>دفعات شغالة</small></div>'+
+    '<div><b>'+rawN+'</b><small>خامات هتتصفّر</small></div></div>';
+  var rows=keys.map(function(k){
+    var m=months[k],lk=closedMonth(k,'cust')||closedMonth(k,'shop');
+    var conf=U.confirm==='lock:'+lockKey('cust',k),delConf=U.confirm==='delarch:'+lockKey('cust',k);
+    var pdfs=lk?'<button class="btn sm" data-act="monthPdf" data-kind="cust" data-k="'+k+'">PDF الأوردرات</button>'+(m.shop?'<button class="btn sm" data-act="monthPdf" data-kind="shop" data-k="'+k+'">PDF المحل</button>':''):'';
+    var del=(lk&&!limited())?'<button class="btn ghost sm" data-act="monthDelArchive" data-kind="cust" data-k="'+k+'" style="color:var(--bad)">'+(delConf?'اضغط تاني للتأكيد':'حذف من الأرشيف')+'</button>':'';
+    var lockB=(!lk||m.live)?'<button class="btn ghost sm" data-act="lockMonth" data-kind="cust" data-k="'+k+'"'+(canClose?'':' disabled')+'>'+(conf?'اضغط تاني للتأكيد':'اقفل الشهر')+'</button>':'';
+    return '<div class="hist" style="align-items:center;flex-wrap:wrap;gap:8px"><span><b>'+k+'</b> <span class="meta">· '+m.cust+' أوردر عادي'+(m.shop?' · '+m.shop+' أوردر محل':'')+(m.und?' · لسه '+m.und+' مش متسلّم':'')+'</span></span><span class="acts" style="display:flex;gap:6px;flex-wrap:wrap">'+(lk?'<span class="pill ok">مقفول</span>':'')+pdfs+del+lockB+'</span></div>';
   }).join('');
+  var status=canClose?'<span class="pill ok">جاهز للقفل</span>':'<span class="pill low">مش جاهز</span>';
+  return '<section class="card dat" style="--c:var(--orders)"><div class="row"><h3>لوحة تقفيل الشهر</h3>'+status+'</div>'+
+    '<p class="meta" style="margin:0">القفل بيأرشف البيانات السابقة ويصفّرها، والأوردرات اللي معادها بعد النهارده بتفضل زي ما هي.</p>'+
+    tiles+
+    '<div class="grp" style="margin-top:12px">قبل القفل</div>'+checksH+
+    '<div class="grp" style="margin-top:12px">الشهور ('+keys.length+')</div>'+(keys.length?rows:'<div class="meta">مفيش شهور لسه</div>')+
+    '</section>';
 }
 function allOk(o){return (o.items||[]).every(function(it){return !!it.ok;});}
 function readyCard(o){
@@ -7370,24 +7388,27 @@ var ACT={
   },
   lockMonth:function(d){
     var key=lockKey(d.kind,d.k);
-    if(S.orders.some(function(o){return !o.deliveredAt;})){toast('فيه أوردرات لسه مش متسلّمة، سلّمها الأول');return false;}
+    if(S.orders.some(function(o){return !o.deliveredAt&&!closeKeep(o);})){toast('فيه أوردرات لسه مش متسلّمة، سلّمها الأول');return false;}
+    if(S.batches.length){toast('فيه دفعات لسه شغالة، خلّصها الأول');return false;}
     if(U.confirm!=='lock:'+key){U.confirm='lock:'+key;setTimeout(function(){if(U.confirm==='lock:'+key){U.confirm=null;render();}},3000);return;}
     U.confirm=null;
-    /* أرشفة: نسخة كاملة من كل بيانات التشغيل قبل ما تتمسح */
     var cp=function(x){return JSON.parse(JSON.stringify(x));};
+    var toArch=S.orders.filter(function(o){return !closeKeep(o);});
+    var keep=S.orders.filter(closeKeep);
+    /* أرشفة نسخة كاملة قبل المسح */
     S.archive=S.archive||{};
-    S.archive['close|'+d.k+'|'+Date.now()]={kind:'all',month:d.k,at:Date.now(),orders:cp(S.orders),batches:cp(S.batches),done:cp(S.done),stock:cp(S.stock||{})};
-    /* مسح: الأوردرات والدفعات والمنتهي والخامات. مخزون الإنتاج الجاهز والوصفات بيفضلوا */
-    S.orders.forEach(function(o){tombAdd('orders',o.id);});
+    S.archive['close|'+d.k+'|'+Date.now()]={kind:'all',month:d.k,at:Date.now(),orders:cp(toArch),batches:cp(S.batches),done:cp(S.done),stock:cp(S.stock||{})};
+    /* مسح كل البيانات السابقة، والأوردرات المستقبلية بتفضل */
+    toArch.forEach(function(o){tombAdd('orders',o.id);});
     S.batches.forEach(function(b){tombAdd('batches',b.id);});
     S.done.forEach(function(x){tombAdd('done',x.id);});
-    S.orders=[];S.batches=[];S.done=[];
+    keep.forEach(function(o){o.keepAfterLock=true;});
+    S.orders=keep;S.batches=[];S.done=[];
     S.stock={};
     S.locks=S.locks||{};S.locks[lockKey('cust',d.k)]=Date.now();S.locks[lockKey('shop',d.k)]=Date.now();
-    S.oseq=0;
     U.oexp=null;U.sheet=null;U.form=null;U.osheet=null;U.recv=null;
     bind(S);
-    toast('اتقفل شهر '+d.k+' واتأرشفت وتمسحت كل البيانات؛ مخزون الإنتاج والوصفات والأصناف المحشوة محفوظين');
+    toast('اتقفل شهر '+d.k+' واتأرشف. الأوردرات اللي تسليمها بعد النهارده فضلت');
   },
   fillPick:function(d){
     var p=PRODUCTS.filter(function(x){return x.id===d.id;})[0];
