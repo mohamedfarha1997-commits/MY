@@ -4421,9 +4421,9 @@ function loginBtnsHTML(){
   var bio=bioSupported()&&!!localStorage.getItem(BIO_KEY);
   var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>';
   var lbtn=U.lbusy?'<button class="btn block" data-act="login" disabled>جاري الدخول...</button>':'<button class="btn block" data-act="login">دخول</button>';
-  return '<style>.bioRow{display:flex;gap:10px;align-items:center;width:100%}.bioRow .btn.block{flex:1 1 auto;min-width:0}'+
+  return '<style>.bioRow{display:flex;gap:10px;align-items:center;width:100%}.bioRow .bioFp{flex:1 1 auto;width:100%;max-width:none;height:56px}'+
     '.bioFp{flex:0 0 96px;width:96px;height:46px;border-radius:999px;border:0;padding:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#5b68ff 0%,#293394 100%);box-shadow:0 12px 26px -12px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35);transition:transform .15s ease,box-shadow .2s ease}.bioFp:active{transform:scale(.96)}.bioFp:focus-visible{outline:2px solid #fff;outline-offset:3px}</style>'+
-    '<div class="bioRow">'+(bio?fp:'')+lbtn+'</div>';
+    '<div class="bioRow">'+(bio?fp:'')+'</div>';
 }
 /* لوحة أرقام مخصصة لشاشة الدخول بس: بتكتب في خانة الرقم السري، والزرار اللي تحتها بيبدّل بينها وبين كيبورد الجهاز */
 /* نقط بتوضح عدد الأرقام اللي اتكتبت: 4 على الأقل، ولو الباسورد أطول بتزيد */
@@ -6533,10 +6533,10 @@ var ACT={
     U.lbusy=true;U.loginErr=null;render();
     var done=function(){U.lbusy=false;};
     checkPin(p).then(function(ok){
-      if(ok){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return null;}
+      if(ok){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return null;}
       return findUserByPw(p).then(function(u){
         if(u&&u.cardActive===false){done();U.cardOffPop=true;}
-        else if(u){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return;}
+        else if(u){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return;}
         else{done();U.loginErr='الباسورد غلط';}
         render();
       });
@@ -6702,7 +6702,21 @@ var ACT={
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
-  bioGo:function(){bioUnlock().then(function(){U.bioOk=true;bioSessionSet();render();}).catch(function(){toast('مش اتعرّف عليك، جرّب تاني أو استخدم كلمة السر');});},
+  bioGo:function(){
+    if(U.lbusy)return false;
+    U.lbusy=true;
+    bioUnlock().then(function(){
+      var who='';try{who=localStorage.getItem('khat-bio-auth')||'';}catch(e){}
+      if(!who){U.lbusy=false;render();toast('سجّل دخول بالرقم السري مرة، والبصمة هتشتغل بعدها');return;}
+      lvRun(function(){
+        U.lbusy=false;U.bioOk=true;bioSessionSet();
+        try{localStorage.setItem(AUTH_KEY,who);}catch(e){}
+        if(who.indexOf('u:')===0)U.view='home';
+        render();
+      });
+    }).catch(function(e){U.lbusy=false;render();toast('البصمة ما نجحتش ('+((e&&e.name)||'خطأ')+')');});
+    return false;
+  },
   bioSkipAct:function(){U.bioSkip=true;bioSessionSet();render();},
   bioLater:function(){U.bioPrompt=false;},
   settingsBio:function(){
@@ -6712,7 +6726,7 @@ var ACT={
     return false;
   },
   loaderRetry:function(){GD.err=null;gdStage('جاري المحاولة…',Math.min(GD.pct||0,5));gdSync();},
-  bioEnableAct:function(){bioEnable().then(function(){U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
+  bioEnableAct:function(){bioEnable().then(function(){try{localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.bioPrompt=false;toast('اتفعّل فتح التطبيق بالبصمة');render();}).catch(function(){toast('تعذّر تفعيل البصمة على الجهاز ده');});},
   prepTabSet:function(d){U.prepTab=d.v;render();return false;},
   recImport:function(d){return recImportFile(d);},
   archDel:function(d){if(limited())return false;
