@@ -4455,7 +4455,7 @@ function loginHTML(){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">'+msg+'</p>'+(GD.on?'':gbtn)+'</div></main>';
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
-    '<div class="fld"><label for="lpin">الرقم السري</label><div style="position:relative"><input id="lpin" type="password" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="current-password" value="'+esc(U.lpinVal||'')+'" style="color:transparent;caret-color:transparent" autofocus><div class="pdots" id="pdots">'+pinDotsInner((U.lpinVal||'').length)+'</div></div></div>'+
+    '<div class="fld"><label for="lpin">الرقم السري</label><div style="position:relative"><input id="lpin" type="text" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="off" value="'+esc(U.lpinVal||'')+'" style="opacity:0;caret-color:transparent" autofocus><div class="pdots" id="pdots">'+pinDotsInner((U.lpinVal||'').length)+'</div></div></div>'+
     padHTML()+
     loginBtnsHTML()+
     '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
