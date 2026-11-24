@@ -2543,7 +2543,7 @@ function navItems(){
   var running=by('prod').some(function(b){return b.startedAt&&!timerDone(b);});
   var st=[
     {k:'orders',l:'أوردرات',n:openCount('cust'),u:'طلبية',g:'orders'},{k:'shopOrders',l:'أوردرات المحل',n:openCount('shop'),u:'طلبية',g:'orders'},{k:'reserved',l:'تحت التشغيل',n:reservedList().length,u:'طلبية',g:'orders',warn:reservedToday().length>0},
-    {k:'prep',l:'إضافة علبة جاهزة',n:by('prep').length,u:'دفعة'},
+    {k:'prep',l:'تحضير',n:by('prep').length,u:'دفعة'},
     {k:'prod',l:'إنتاج',n:by('prod').length,u:'دفعة',live:running},
     {k:'stock',l:'مكوّنات',n:MATERIALS.length,u:'مكوّن'},
     {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
@@ -4140,7 +4140,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.2.8';
+var APP_VERSION='1.2.9';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -4560,7 +4560,7 @@ function settingsView(){
     return head0+'<button class="btn ghost sm" data-act="sTab" data-k="">رجوع للتبويبات</button><div style="margin-top:10px">'+foldTables(secs[idx],'sTbl'+idx)+'</div>'+fine;
   }
   var tiles=pairs.map(function(x,i){
-    return '<button class="stile" data-act="sTab" data-k="'+i+'"><span class="sic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(SET_IC[x[1]]||SET_IC.users)+'</svg></span><span class="stl">'+(title(x[0])||('تبويب '+(i+1)))+'</span></button>';
+    return '<button class="stile" data-act="sTab" data-k="'+i+'"><span class="sic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(SET_IC[x[1]]||SET_IC.users)+'</svg></span><span class="stl">'+(x[1]==='boxtpl'?'إضافة علبة جاهزة':(title(x[0])||('تبويب '+(i+1))))+'</span></button>';
   }).join('');
   return head0+'<div class="sgrid">'+tiles+'</div>'+fine;
 }
