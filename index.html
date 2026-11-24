@@ -1728,11 +1728,14 @@ var OB_DB='rmy-outbox';
 function obOpen(){return new Promise(function(res,rej){var r=indexedDB.open(OB_DB,1);r.onupgradeneeded=function(){r.result.createObjectStore('q',{keyPath:'id'});};r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
 function obPut(item){return obOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('q','readwrite');tx.objectStore('q').put(item);tx.oncomplete=function(){db.close();res();};tx.onerror=function(){rej(tx.error);};});});}
 function obDel(id){return obOpen().then(function(db){return new Promise(function(res,rej){var tx=db.transaction('q','readwrite');tx.objectStore('q').delete(id);tx.oncomplete=function(){db.close();res();};tx.onerror=function(){rej(tx.error);};});});}
+function obGet(id){return obOpen().then(function(db){return new Promise(function(res,rej){var rq=db.transaction('q').objectStore('q').get(id);rq.onsuccess=function(){db.close();res(rq.result||null);};rq.onerror=function(){db.close();rej(rq.error);};});});}
+/* بيمسح صف الرفع بس لو مفيش تعديل أحدث اتكتب فيه أثناء المزامنة */
+function obDelUpTo(id,t){return obGet(id).then(function(it){if(it&&(it.at||0)<=t)return obDel(id);});}
 function obRegister(){
   try{navigator.serviceWorker.ready.then(function(reg){if(reg.sync)return reg.sync.register('rmy-sync');}).catch(function(){});}catch(e){}
 }
 function gdOutboxQueue(){
-  if(!GD.on||!GD.id||!GD.ver||!gdTokOk()||!window.indexedDB||!navigator.serviceWorker)return;
+  if(!GD.on||!GD.id||!GD.ver||!window.indexedDB||!navigator.serviceWorker)return;
   obPut({id:'main',fileId:GD.id,baseVersion:GD.ver,token:GD.tok,body:gdBody(),at:Date.now()}).then(obRegister).catch(function(){});
   if(GD.cardsId){
     var cards=usersList().map(cardData);
@@ -1908,23 +1911,33 @@ function gdSync(){
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
   if(!GD.seeded)GD.pct=0;gdStage('جاري الاتصال بجوجل درايف…',5);
   var g0=guardState(S,GD.snap);if(g0!==S){S=g0;bind(S);}
+  var syncStart=Date.now();
+  /* التعديلات اللي لسه متترفعتش (صندوق الرفع) بتتقري وبتتدمج، ومابتتمسحش إلا بعد ما تتحفظ على درايف */
+  var pendP=obGet('main').catch(function(){return null;});
   return gdAuth().then(gdEnsureFile).then(function(){
     if(!GD.id)return;
     return gdApi('https://www.googleapis.com/drive/v3/files/'+GD.id+'?fields=version,trashed').then(function(r){return r.json();}).then(function(m){
       if(m.trashed){GD.id=null;GD.ver=null;gdSaveCfg();return;}
       var pull=!GD.ver||String(m.version)!==String(GD.ver);
-      return (pull?(gdStage('جاري فحص البيانات…',20),gdDownload()):(gdStage('البيانات محدّثة',95),Promise.resolve(undefined))).then(function(remote){
+      var remoteP=pull?(gdStage('جاري فحص البيانات…',20),gdDownload()):(gdStage('البيانات محدّثة',95),Promise.resolve(undefined));
+      return Promise.all([pendP,remoteP]).then(function(res){
+        var pend=res[0],remote=res[1],pendState=null;
+        if(pend&&pend.body){try{var pj=JSON.parse(pend.body);pendState=pj&&pj.data?fix(pj.data):null;}catch(e){pendState=null;}}
         markEdits();
         var need=false;
+        var local=pendState?mergeStates(S,pendState,SYNCBASE):S;
         if(remote!==undefined){
-          var local=S,Mg=remote?mergeStates(local,remote,SYNCBASE):local;
+          var Mg=remote?mergeStates(local,remote,SYNCBASE):local;
           need=!remote||canon(Mg)!==canon(remote);
-          var fresh=GD.seeded?newRemote(local,Mg):[];
-          if(canon(Mg)!==canon(local)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
+          var fresh=GD.seeded?newRemote(S,Mg):[];
+          if(canon(Mg)!==canon(S)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
           if(fresh.length)notifyRemote(fresh);
           GD.ver=String(m.version);
           if(!need)GD.upAt=S.savedAt||0;
-        }else need=(S.savedAt||0)!==GD.upAt;
+        }else{
+          need=pendState?true:(S.savedAt||0)!==GD.upAt;
+          if(pendState&&canon(local)!==canon(S)){S=local;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
+        }
         /* fix() inside gdDownload points MATERIALS/PRODUCTS at the downloaded copy; re-point them at the live state, or edits go to a copy that never gets saved */
         bind(S);
         S.devs=S.devs||{};S.devs[devId()]=nowStamp();
@@ -1933,7 +1946,7 @@ function gdSync(){
         return need?gdUpload():undefined;
       });
     });
-  }).then(function(){obDel('main').catch(function(){});gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
+  }).then(function(){obDelUpTo('main',syncStart).catch(function(){});gdCardsSync();var firstLoad=!GD.seeded;GD.pct=100;GD.ok=true;GD.seeded=true;GD.err=null;GD.at=Date.now();if(limited()&&GD.snapped!==GD.ver){GD.snap=snapOf(S);GD.snapped=GD.ver;}gdPaint();if(firstLoad){render();document.dispatchEvent(new Event('rmy:loaded'));}})
     .catch(gdFail).then(function(){GD.busy=false;gdPaint();if(GD.again){GD.again=false;gdSync();}});
 }
 /* ملف الكروت: ملف منفصل على درايف بيتقري من صفحة الكروت (وأي حد معاه الرابط يقدر يقراه) */
@@ -2713,7 +2726,7 @@ function shortEditTxt(p){
   return 'تعديل منذ '+Math.floor(m/1440)+' ي';
 }
 function rOptions(shown,sel){
-  return '<option value="">'+(shown.length?'اختار وصفة...':'مفيش نتيجة')+'</option>'+shown.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+' · '+shortEditTxt(p)+'</option>';}).join('');
+  return '<option value="">'+(shown.length?'اختار وصفة...':'مفيش نتيجة')+'</option>'+shown.map(function(p){return '<option value="'+p.id+'"'+(p.id===sel?' selected':'')+'>'+esc(p.name)+' · '+shortEditTxt(p)+(p.ownerOnly?' · مخفية':'')+'</option>';}).join('');
 }
 function tempTxt(p){return (p.temp!==''&&p.temp!=null)?f(p.temp)+'°م':'';}
 function compText(p,q){
@@ -2721,11 +2734,19 @@ function compText(p,q){
   if(!c.length)return '';
   return '<div class="livec" style="--c:var(--prep)">من مخزن الإنتاج: '+c.map(function(x){var cp=P(x.p);return cp.name+' '+f(r3(x.q*(q||1)))+' '+cp.unit;}).join(' · ')+'</div>';
 }
+/* زرار العين: يخفي الوصفة عن الموظفين (تفضل ظاهرة للمالك بس) */
+function ownerEyeHTML(p){
+  var hid=!!p.ownerOnly;
+  return '<button class="btn ghost sm" data-act="toggleOwnerOnly" data-id="'+p.id+'" aria-pressed="'+(hid?'true':'false')+'" title="'+(hid?'إظهار للموظفين':'إخفاء عن الموظفين')+'">'+
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+    (hid?'<path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/>':'<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>')+
+    '</svg><span>'+(hid?'مخفية':'ظاهرة')+'</span></button>';
+}
 function recipeCardHTML(p,q){
   var full=stagesText(p,'prep',q);
   var meta=[p.mins+' دقيقة'].concat(tempTxt(p)?['درجة الحرارة '+tempTxt(p)]:[]).join(' · ');
-  return '<article class="card"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button><button class="btn ghost sm" data-act="copyProd" data-id="'+p.id+'">نسخ</button></div>'+
-    '<div class="meta">'+lastEditTxt(p)+'</div>'+(p.notes?'<div class="meta">'+esc(p.notes)+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
+  return '<article class="card"><div class="bh"><div><h3 class="bn">'+esc(p.name)+'</h3><span class="meta">'+meta+'</span></div><button class="btn ghost sm" data-act="editProd" data-id="'+p.id+'">تعديل</button><button class="btn ghost sm" data-act="copyProd" data-id="'+p.id+'">نسخ</button>'+(limited()?'':ownerEyeHTML(p))+'</div>'+
+    (p.ownerOnly&&!limited()?'<span class="pill low">مخفية عن الموظفين</span>':'')+'<div class="meta">'+lastEditTxt(p)+'</div>'+(p.notes?'<div class="meta">'+esc(p.notes)+'</div>':'')+compText(p,q)+(full||'<span class="meta">مفيش مراحل</span>')+'</article>';
 }
 function lastEditTxt(p){
   var t=p._u;
@@ -5302,7 +5323,7 @@ function isLocked(o){
   return at?(o.created||0)<=at:true;
 }
 function isFill(p){return !!(p&&p.fill);}
-function prodsOf(kind){return PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived&&(kind==='shop'?!!p.shop:!p.shop);});}
+function prodsOf(kind){return PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived&&(kind==='shop'?!!p.shop:!p.shop)&&(!limited()||!p.ownerOnly);});}
 function ordProdsOf(kind){return PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&p.fill===kind;});}
 function ordersOf(kind){return S.orders.filter(function(o){return okind(o)===kind&&(o.season||'normal')===ordSeason();});}
 function openCount(kind){return ordersOf(kind).filter(function(o){return !o.deliveredAt;}).length;}
@@ -6243,7 +6264,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6699,6 +6720,7 @@ var ACT={
     GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
   },
   deepRefresh:function(){deepRefresh();return false;},
+  toggleOwnerOnly:function(d){if(limited())return false;var p=P(d.id);if(!p)return false;p.ownerOnly=!p.ownerOnly;toast(p.ownerOnly?'الوصفة اتخفت عن الموظفين':'الوصفة ظهرت للكل');},
   syncEvery:function(d){var v=Number(d.v);if(!SYNC_CHOICES.hasOwnProperty(v))return false;uiSave('syncEvery',v);toast('معدل المزامنة: '+SYNC_CHOICES[v]);render();return false;},
   gdNow:function(){
     if(!GD.on)return false;
