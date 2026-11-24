@@ -1098,6 +1098,8 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'
 function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
 function canon(x){return JSON.stringify(x,function(k,v){
   return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
+/* مقارنة المحتوى بس: من غير أوقات الجهاز (devs/clk/savedAt) عشان مايحصلش رفع مستمر بين الأجهزة */
+function coreKey(x){return canon(Object.assign({},x,{devs:0,clk:0,savedAt:0}));}
 function recSig(r){var c={};Object.keys(r).forEach(function(k){if(k!=='_u')c[k]=r[k];});return canon(c);}
 function parseTolerant(t){
   try{return JSON.parse(t);}catch(e){
@@ -1957,7 +1959,7 @@ function gdSync(){
         var local=pendState?mergeStates(S,pendState,SYNCBASE):S;
         if(remote!==undefined){
           var Mg=remote?mergeStates(local,remote,SYNCBASE):local;
-          need=!remote||canon(Mg)!==canon(remote);
+          need=!remote||coreKey(Mg)!==coreKey(remote);
           var fresh=GD.seeded?newRemote(S,Mg):[];
           if(canon(Mg)!==canon(S)){S=Mg;bind(S);baseline();applyTheme();persistLocal();renderIdle();}
           if(fresh.length)notifyRemote(fresh);
@@ -1969,7 +1971,7 @@ function gdSync(){
         }
         /* fix() inside gdDownload points MATERIALS/PRODUCTS at the downloaded copy; re-point them at the live state, or edits go to a copy that never gets saved */
         bind(S);
-        S.devs=S.devs||{};S.devs[devId()]=nowStamp();
+        S.devs=S.devs||{};if(!S.devs[devId()]||nowStamp()-S.devs[devId()]>600000)S.devs[devId()]=nowStamp();
         pruneTombs(S,Date.now());
         SYNCBASE=snapshotBase();
         return need?gdUpload():undefined;
