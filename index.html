@@ -1586,6 +1586,9 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
 var SYNC_MS=1000,SYNC_WAIT=0;
+/* معدل المزامنة على الجهاز ده: كل ثانية (افتراضي)، أو كل 10 ثواني، أو عند الفتح والتركيز بس */
+var SYNC_CHOICES={0:'عند الفتح والتركيز بس',1000:'كل ثانية',10000:'كل 10 ثواني'};
+function syncEvery(){var v=Number(uiLoad().syncEvery);return SYNC_CHOICES.hasOwnProperty(v)?v:SYNC_MS;}
 var LAST={},LASTN={stock:{},ready:{}};
 function isTyping(){var a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));}
 
@@ -1839,7 +1842,7 @@ function gdDownload(){
   return fix(Object.assign({},main||{},sh.data,{savedAt:sh.savedAt}));
   });
 }
-/* ---------- ملفات الأقسام (المرحلة 1: بتتكتب جنب الملف الأساسي، والتطبيق لسه بيقرأ من الأساسي) ---------- */
+/* ---------- ملفات الأقسام (الأقسام بتتكتب جنب الملف الأساسي، وبتتقري وتتدمج معاه عند التنزيل) ---------- */
 var SHARD_FILES=[
   {f:'orders.json',keys:['orders']},
   {f:'batches.json',keys:['batches']},
@@ -1985,6 +1988,11 @@ function driveHTML(){
   return '<span class="dstat '+st+'" data-act="'+act+'"'+(act==='tab'?' data-v="settings"':'')+' role="button" tabindex="0">'+
     '<svg class="dico" viewBox="0 0 24 24" aria-hidden="true">'+ico+'</svg><span>'+lbl+'</span></span>';
 }
+function syncChoicesHTML(){
+  var cur=syncEvery();
+  return '<div class="grp" style="margin-top:12px">معدل المزامنة على الجهاز ده</div><div class="dbtns">'+
+    Object.keys(SYNC_CHOICES).map(function(k){var n=Number(k);return '<button class="btn '+(n===cur?'sm':'ghost sm')+'" data-act="syncEvery" data-v="'+n+'">'+SYNC_CHOICES[k]+'</button>';}).join('')+'</div>';
+}
 function gdBadge(){
   if(GD.ok)return '<span class="pill ok" data-act="gdNow">متصل بدرايف</span>';
   if(GD.err&&!GD.needTap)return '<span class="pill bad" data-act="tab" data-v="settings">درايف: خطأ، اضغط للتفاصيل</span>';
@@ -1993,9 +2001,9 @@ function gdBadge(){
 function gdCardHTML(){
   gdLoadGis();
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>جوجل درايف</h3>'+(GD.on?gdBadge():'<span class="pill">غير متصل</span>')+'</div>'+
-    '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة كل ثانية مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):''):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
+    '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة ('+SYNC_CHOICES[syncEvery()]+') مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):'')+(hasPending()?' · فيه تعديلات لسه مترفعتش':' · كل التعديلات متزامنة'):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
     (GD.on&&GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
-    '<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
+    (GD.on?syncChoicesHTML():'')+'<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
 }
 
 /* header and settings */
@@ -2181,7 +2189,7 @@ function recImportFile(d){
 }
 function backupCardHTML(){
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>نسخة احتياطية</h3></div>'+
-    '<p class="meta" style="margin:0">تُحفظ نسخة محلية تلقائيًا، وتظل المزامنة بين الأجهزة عبر Google Drive. يمكنك تنزيل نسخة احتياطية أو استيراد نسخة سابقة.</p>'+
+    '<p class="meta" style="margin:0">البيانات الأساسية محفوظة ومتزامنة على Google Drive. النسخة دي ملف احتياطي تنزّله على جهازك، وتقدر ترجّعه بالاستيراد لو احتجت.</p>'+
     '<div class="dbtns"><button class="btn sm" data-act="exportBackup">تنزيل نسخة</button><button class="btn ghost sm" data-act="importBackup">استيراد نسخة</button></div></section>';
 }
 
@@ -4429,7 +4437,7 @@ function settingsView(){
 
 
 function footFine(){
-  return '<div class="fine"><span>الحفظ تلقائي على جوجل درايف · نسخة 13/11 · المجموعات والتعبئة الجديدة</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button></div>';
+  return '<div class="fine"><span>الحفظ تلقائي على جوجل درايف · نسخة '+APP_BUILD+' · المجموعات والتعبئة الجديدة</span><button class="btn ghost sm" data-act="logout">تسجيل خروج</button></div>';
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
@@ -4518,7 +4526,7 @@ function loginHTML(){
   if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
   var logo='<svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="96" height="96" role="img" aria-label="RMY"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg>';
-  /* مافيش خطوة ربط درايف في الدخول: لو مفيش بيانات على الجهاز بنقول الحالة من غير أزرار */
+  /* الربط بدرايف بقى شرط للدخول (بوابة في render)، فهنا بس نعرض حالة التحميل لو البيانات لسه بتتجاب */
   if(!S.auth){
     var msg=(GD.on&&!GD.ok)?'استنى لحد ما البيانات تتحمّل':'مافيش بيانات على الجهاز حالياً';
     var gbtn='<button class="gbtn" data-act="gdConnect" aria-label="ربط جوجل درايف" title="ربط جوجل درايف">'+'<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>'+'</button>';
@@ -4882,6 +4890,15 @@ function flushPendingRender(){
   render();
 }
 document.addEventListener('focusout',function(){setTimeout(flushPendingRender,400);},true);
+/* بوابة الربط: مفيش دخول للتطبيق من غير ربط جوجل درايف، لأن البيانات كلها بتتحفظ عليه */
+function linkGateRender(){
+  gdLoadGis();
+  var app=document.getElementById('app');if(!app)return;
+  app.innerHTML='<main class="login" dir="rtl" lang="ar"><div class="lcard"><h2 style="margin:0 0 8px">لازم تربط جوجل درايف</h2>'+
+    '<p class="meta">البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك. من غير الربط التطبيق مش هيحفظ أي تعديل.</p>'+
+    (GD.err?'<div class="note" role="status">'+esc(GD.err)+'</div>':'')+
+    '<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
+}
 function render(){
   if(typingBusy()&&document.querySelector('#app main, #app .sheet')){
     window.RENDER_PENDING=true;setTimeout(flushPendingRender,600);return;
@@ -4889,6 +4906,7 @@ function render(){
   if(U.view&&!routeAllowed(U.view))U.view='home';
   /* صفحة إعادة تعيين الـ PIN مفتوحة: مانعيدش رسمها في الخلفية (المزامنة وغيرها) عشان البيانات اللي اتكتبت ماتتمسحش */
   if(!authed()&&U.reset&&!U.resetDone&&document.getElementById('rCode'))return;
+  if(!GD.on){linkGateRender();return;}
   if(GD.on&&!GD.seeded){var lh=document.getElementById('ldHost');if(lh){lh.innerHTML=loaderHTML(true);document.getElementById('app').innerHTML='';}else{document.getElementById('app').innerHTML=loaderHTML();}ldStart();return;}
   applyTheme();
   if(U.view!=='filling')U.fillTab=null;
@@ -6225,7 +6243,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6681,12 +6699,15 @@ var ACT={
     GD.on=true;GD.needTap=false;GD.err=null;gdSaveCfg();gdRequest();
   },
   deepRefresh:function(){deepRefresh();return false;},
+  syncEvery:function(d){var v=Number(d.v);if(!SYNC_CHOICES.hasOwnProperty(v))return false;uiSave('syncEvery',v);toast('معدل المزامنة: '+SYNC_CHOICES[v]);render();return false;},
   gdNow:function(){
     if(!GD.on)return false;
     if(!gdTokOk()){GD.needTap=false;gdRequest();return false;}
     GD.busy=false;gdSync().then(function(){render();});return false;
   },
   gdOff:function(){
+    if(hasPending()&&!confirm('فيه تعديلات لسه مترفعتش على درايف. لو فصلت دلوقتي ممكن تضيع. تكمل الفصل؟'))return false;
+    obDel('main').catch(function(){});obDel('cards').catch(function(){});
     GD.on=false;GD.ok=false;GD.id=null;GD.tok=null;GD.exp=0;GD.ver=null;GD.err=null;GD.shown=null;
     try{localStorage.removeItem('khat-gd-tok');}catch(e){}
     gdSaveCfg();toast('اتفصل عن درايف');
@@ -8108,7 +8129,7 @@ function tick(){
   if(changed){save();render();}
   wakeSync();
   alarmDue();
-  if(Date.now()-lastSyncAt>=SYNC_MS){lastSyncAt=Date.now();gdSync();}
+  var ev=syncEvery();if(ev>0&&Date.now()-lastSyncAt>=ev){lastSyncAt=Date.now();gdSync();}
   if(document.hidden||changed)return;
   var hc=document.querySelector('.hcd');
   if(hc){var cb=prodCountdown();if(cb){var fg=hc.querySelector('.hcd-fg');if(fg)fg.style.strokeDashoffset=100*(1-elapsed(cb)/dur(cb));var tt=document.querySelector('.hcdt');if(tt)tt.textContent=mmss(dur(cb)-elapsed(cb));}}
