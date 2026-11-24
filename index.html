@@ -1130,6 +1130,16 @@ function combineShards(parts,mainAt){
   parts.forEach(function(p){Object.assign(data,p.data);at=Math.max(at,p.savedAt||0);});
   return {data:data,savedAt:at};
 }
+/* دمج قايمتين من الأساس: العنصر بيفضل لو موجود في الاتنين، والجديد من أي طرف بيتضاف */
+function mergeArr(base,a,b){
+  var B={},A={},Bb={},out=[],seen={};
+  base.forEach(function(x){B[canon({v:x})]=1;});
+  a.forEach(function(x){A[canon({v:x})]=1;});
+  b.forEach(function(x){Bb[canon({v:x})]=1;});
+  base.forEach(function(x){var k=canon({v:x});if(A[k]&&Bb[k]&&!seen[k]){seen[k]=1;out.push(x);}});
+  a.concat(b).forEach(function(x){var k=canon({v:x});if(!B[k]&&!seen[k]){seen[k]=1;out.push(x);}});
+  return out;
+}
 function mergeRec(base,a,b){
   var ua=a._u||0,ub=b._u||0;
   if(!base)return ub>ua?b:a;
@@ -1140,6 +1150,8 @@ function mergeRec(base,a,b){
     var va=a[k],vb=b[k],v0=base[k];
     var ca=canon({v:va})!==canon({v:v0}),cb=canon({v:vb})!==canon({v:v0});
     var pick=(!ca&&!cb)?v0:(ca&&!cb)?va:(!ca&&cb)?vb:(ub>ua?vb:va);
+    /* قايمتين اتغيروا من الاتنين (زي خطوات الدفعة): نجمع التغييرات بدل ما واحدة تمسح التانية */
+    if(ca&&cb&&Array.isArray(va)&&Array.isArray(vb))pick=mergeArr(Array.isArray(v0)?v0:[],va,vb);
     if(pick!==undefined)out[k]=pick;
   });
   out._u=Math.max(ua,ub);
@@ -1364,6 +1376,9 @@ function markBy(b,act){
   var e=S.plog[b.id]||{p:b.p,qty:b.qty,by:[],at:Date.now()};
   e.p=b.p;e.qty=b.qty;
   var c=actorCode();
+  /* تنبيه: لو زميل تاني عمل حاجة على نفس الدفعة قبل أقل من دقيقة */
+  var last=(e.ev||[]).slice(-1)[0];
+  if(act&&last&&last.c&&last.c!==c&&Date.now()-(last.t||0)<60000)toast('⚠ الدفعة دي اتعدلت من زميل تاني قبل أقل من دقيقة، اتأكد قبل ما تكمل');
   if(e.by.indexOf(c)<0)e.by.push(c);
   if(act)e.ev=(e.ev||[]).concat([{c:c,a:act,t:Date.now()}]).slice(-40);
   S.plog[b.id]=e;
