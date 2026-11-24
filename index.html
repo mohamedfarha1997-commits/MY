@@ -6568,6 +6568,7 @@ function onlineTableHTML(list){
   return FOLD_CSS+'<details class="card ev-card" data-fk="usr-online"'+(FOLD_OPEN['usr-online']===false?'':' open')+' style="margin:12px 0"><summary class="ev-sum"><div><b>المتصلين الآن</b><small>'+rows.length+' متصل</small></div></summary>'+
     '<div style="overflow-x:auto"><table class="online-tbl" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:right">الاسم</th><th>الكود</th><th style="text-align:right">آخر عملية</th><th>الوقت</th></tr></thead><tbody>'+body+'</tbody></table></div></details>';
 }
+var EVENT_LABEL={toProd:'حوّل الدفعة للإنتاج',approve:'اعتمد دفعة',skipTimer:'تخطّى مؤقت دفعة',startRun:'بدأ تشغيل دفعة',toggleCheck:'علّم خطوة في دفعة',withdraw:'سحب خامات',toggleMat:'علّم خامة في دفعة'};
 /* آخر الأحداث: من سجل الدفعات المتزامن، مع فلترة لكل مستخدم وطباعة */
 function allEventsFor(code){
   var out=[];
