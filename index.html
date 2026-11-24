@@ -1065,7 +1065,7 @@ body::before{ /* subtle dot texture */
 .login .fld label{font-family:var(--mono,monospace);font-size:10px !important;letter-spacing:1.6px;text-transform:uppercase;color:rgba(160,176,255,.8)}
 .login .fld input{border-radius:0 !important;background:rgba(255,255,255,.04) !important;border:1px solid rgba(160,176,255,.28) !important;color:#E8ECFF !important;font-family:var(--mono,monospace);letter-spacing:2px}
 html body .login.rst .fld input{border-radius:0 !important}
-.login .bioFp{border-radius:0 !important;background:linear-gradient(120deg,#F6E7B0 0%,#E2B25A 100%) !important;color:#070A20 !important;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+.login .bioFp{border-radius:0 !important;background:linear-gradient(120deg,#F6E7B0 0%,#E2B25A 100%) !important;color:#070A20 !important;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);width:100% !important;max-width:none !important;height:56px !important;flex:1 1 auto !important;display:flex !important;align-items:center;justify-content:center;gap:10px;font:800 16px/1 Cairo,system-ui,sans-serif}
 .login .note{border-radius:0 !important}
 .fx-login-wm{display:flex;justify-content:center}
 .fx-login-wm svg{filter:drop-shadow(0 0 12px rgba(120,140,255,.6))}
@@ -4202,7 +4202,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.9.0';
+var APP_VERSION='1.11.0';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -4695,10 +4695,10 @@ function updOverlay(){
     '<div class="uprow"><span class="upk">SYSTEM UPDATE</span><span class="upnew">NEW ◆</span></div>'+
     '<h3>فيه تحديث جديد للتطبيق</h3>'+
     '<p>لازم تحدّث عشان تكمل بأحدث التحسينات والإصلاحات.</p>'+
-    '<div class="upcmp"><div><div class="upk">CURRENT</div><div class="upv" dir="ltr">'+esc(typeof APP_VERSION!=="undefined"?APP_VERSION:"")+'</div></div>'+
-    '<span class="uparr" aria-hidden="true">←</span>'+
-    '<div style="text-align:end"><div class="upk">LATEST</div><div class="upv new">أحدث</div></div></div>'+
-    '<div class="upbar" aria-hidden="true"></div>'+
+    '<div class="upcmp"><div style="text-align:start"><div class="upk">LATEST</div><div class="upv new">أحدث</div></div>'+
+    '<span class="uparr" aria-hidden="true">→</span>'+
+    '<div style="text-align:end"><div class="upk">CURRENT</div><div class="upv" dir="ltr">'+esc(APP_VERSION)+'</div></div></div>'+
+    '<div><div class="upbar" aria-hidden="true"></div><div class="upfoot" style="margin-top:8px;text-align:end">READY · 0%</div></div>'+
     '<button class="btn upbtn" data-act="deepRefresh">تحديث الآن</button>'+
     '<p class="upfoot">DATA IS SAFE · SYNCED TO DRIVE</p>'+
     '</div></div></div>';
@@ -4707,7 +4707,7 @@ function deepBtn(){return '<button class="btn ghost sm themebtn" data-act="deepR
 /* زرار الدخول + زرار البصمة جنبه (بيظهر بس لو البصمة متفعلة على الجهاز ده) */
 function loginBtnsHTML(){
   var bio=bioSupported()&&!!localStorage.getItem(BIO_KEY);
-  var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg></button>';
+  var fp='<button class="bioFp" data-act="bioGo" aria-label="الدخول بالبصمة" title="الدخول بالبصمة"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></svg><span>الدخول بالبصمة</span></button>';
   var lbtn=U.lbusy?'<button class="btn block" data-act="login" disabled>جاري الدخول...</button>':'<button class="btn block" data-act="login">دخول</button>';
   return '<style>.bioRow{display:flex;gap:10px;align-items:center;width:100%}.bioRow .bioFp{flex:1 1 auto;width:100%;max-width:none;height:56px}'+
     '.bioFp{flex:0 0 96px;width:96px;height:46px;border-radius:999px;border:0;padding:0;cursor:pointer;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#5b68ff 0%,#293394 100%);box-shadow:0 12px 26px -12px #4F5DFF,inset 0 1px 0 rgb(255 255 255 / .35);transition:transform .15s ease,box-shadow .2s ease}.bioFp:active{transform:scale(.96)}.bioFp:focus-visible{outline:2px solid #fff;outline-offset:3px}</style>'+
@@ -4737,9 +4737,9 @@ function padHTML(){
   var css='<style>.lpad{width:100%;max-width:360px;margin:14px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lpad button{height:58px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(255 255 255 / .08);color:#fff;font:700 24px/1 var(--f-disp),system-ui,sans-serif;cursor:pointer;transition:transform .12s ease,background .2s ease;-webkit-tap-highlight-color:transparent}.lpad button:active{transform:scale(.94);background:rgb(255 255 255 / .2)}.lpad .lp-sm{font-size:15px}.pdots{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:18px;pointer-events:none}.pd{width:14px;height:14px;border-radius:50%;border:2px solid rgb(255 255 255 / .45);transition:background .15s,transform .15s,box-shadow .15s}.pd.on{background:#fff;border-color:#fff;transform:scale(1.1);box-shadow:0 0 10px rgb(255 255 255 / .7)}</style>';
   if(U.lpadNative)return css+'<div class="lpad" style="grid-template-columns:1fr"><button type="button" class="lp-sm" data-act="padMode">لوحة الأرقام</button></div>';
   var k=function(n){return '<button type="button" data-act="padKey" data-k="'+n+'">'+n+'</button>';};
-  return css+'<div class="lpad" dir="ltr">'+k(1)+k(2)+k(3)+k(4)+k(5)+k(6)+k(7)+k(8)+k(9)+
-    '<span></span>'+k(0)+
-    '<button type="button" data-act="padKey" data-k="del" aria-label="مسح">&#9003;</button></div>';
+  return css+'<div class="lpad" dir="ltr">'+k(3)+k(2)+k(1)+k(6)+k(5)+k(4)+k(9)+k(8)+k(7)+
+    '<button type="button" data-act="padKey" data-k="del" aria-label="مسح">&#9003;</button>'+k(0)+
+    '<span></span></div>';
 }
 /* كيبورد الكمبيوتر: الأرقام والـ Backspace بيشتغلوا في اللوحة وهي شغالة */
 document.addEventListener('keydown',function(e){
@@ -4760,7 +4760,7 @@ function loginHTML(){
     return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">'+msg+'</p>'+(GD.on?'':gbtn)+'</div></main>';
   }
   return '<main class="login" dir="rtl" lang="ar"><div class="lcard">'+logo+'<p class="meta">سجّل دخولك عشان تكمل</p>'+err+
-    '<div class="fld"><label for="lpin">الرقم السري</label><div style="position:relative"><input id="lpin" type="text" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="off" value="'+esc(U.lpinVal||'')+'" style="opacity:0;caret-color:transparent" autofocus><div class="pdots" id="pdots">'+pinDotsInner((U.lpinVal||'').length)+'</div></div></div>'+
+    '<div class="fld"><label for="lpin">ENTER PIN</label><div style="position:relative"><input id="lpin" type="text" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="off" value="'+esc(U.lpinVal||'')+'" style="opacity:0;caret-color:transparent" autofocus><div class="pdots" id="pdots">'+pinDotsInner((U.lpinVal||'').length)+'</div></div></div>'+
     padHTML()+
     loginBtnsHTML()+
     '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button><div class="fx-login-foot">ENCRYPTED · SYNCED TO DRIVE</div></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
@@ -4937,12 +4937,12 @@ function resetHTML(){
     '<p class="meta">اكتب الكود بتاعك، وآخر ٤ أرقام من رقم الواتساب المسجل عندنا، والـ PIN الجديد.</p>'+
     err+
     '<div id="rIdSec" style="display:'+(vd?'none':'block')+'">'+
-    rField('rCode','الكود بتاعك','autocomplete="off"',m.code,v.code,false,'')+
+    rField('rCode','CODE · الكود بتاعك','autocomplete="off" placeholder="RMY-0000"',m.code,v.code,false,'')+
     slotsField(m.last,v.last,findUserByCode(v.code))+
     '</div>'+
     '<div id="rPinSec" style="display:'+(vd?'block':'none')+'">'+
-    rField('rPw','الـ PIN الجديد (4 لـ 6 أرقام)',pinAttrs,m.pw,v.pw,false,'')+
-    rField('rPw2','اكتب الـ PIN تاني',pinAttrs,m.pw2,v.pw2,false,'')+
+    rField('rPw','NEW PIN · الـ PIN الجديد',pinAttrs,m.pw,v.pw,false,'')+
+    rField('rPw2','CONFIRM · تأكيد الـ PIN',pinAttrs,m.pw2,v.pw2,false,'')+
     '<button class="btn block" data-act="resetSend">تغيير الـ PIN</button></div>'+
     '<button class="btn ghost sm block" data-act="resetBack" style="margin-top:10px">رجوع لتسجيل الدخول</button></div></main>';
 }
@@ -5084,8 +5084,11 @@ function loaderHTML(dark){
     '<div style="display:none">'+svg+'</div>'+
     '<div id="ldPct" style="font-weight:800;color:'+C.pct+';font-size:18px;font-variant-numeric:tabular-nums;display:none">'+pct+'%</div>'+
     '<div class="ld26-bar"><span id="ldBarFill" style="width:'+pct+'%"></span></div>'+
-    '<div class="ld26-row"><span>LOADING</span><span id="ldPctLbl">'+pct+'%</span></div>'+
-    '<div id="ldMsg" style="color:'+C.msg+';font-size:14px;max-width:300px">'+esc(msg)+'</div>'+
+    '<div class="ld26-row"><span id="ldPctLbl">'+pct+'%</span><span>LOADING</span></div>'+
+    '<div style="font-family:var(--mono,monospace);font-size:10px;letter-spacing:2px;color:rgba(232,236,255,.4);margin-top:20px">RMY PRO · v'+APP_VERSION+'</div>'+
+    '<div style="font-size:22px;font-weight:800;color:#fff">جاري تحميل البيانات</div>'+
+    '<div style="margin-top:-6px;font-family:var(--mono,monospace);font-size:11px;letter-spacing:1.8px;color:rgba(160,176,255,.85)">SYNCING WITH DRIVE</div>'+
+    '<div id="ldMsg" style="color:'+C.msg+';font-size:12px;max-width:300px;opacity:.75;display:'+((failed||GD.needTap)?'block':'none')+'">'+esc(msg)+'</div>'+
     ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
     '</div>';
 }
