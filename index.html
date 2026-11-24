@@ -1726,10 +1726,21 @@ function gdInitTc(){
   if(GD.on){if(gdTokOk())gdSync();else gdArm();}
   GD.shown=null;gdPaint();
 }
+/* بريد حساب جوجل: بيتحفظ مرة واحدة على الجهاز، ويتبعت كتلميح للحساب في الطلب الصامت */
+function gdHint(){
+  var el=document.getElementById('gdHint');if(el&&el.value.trim())return el.value.trim();
+  try{return localStorage.getItem('khat-gd-hint')||'';}catch(e){return '';}
+}
+function gdHintHTML(){
+  var v='';try{v=localStorage.getItem('khat-gd-hint')||'';}catch(e){}
+  return '<div class="fld" style="margin-top:10px"><label for="gdHint">بريد حساب جوجل (اختياري، بيخلّي إعادة الدخول تلقائية)</label><input id="gdHint" type="email" dir="ltr" value="'+esc(v)+'" placeholder="name@gmail.com" autocomplete="email"></div>'+
+    '<div class="dbtns"><button class="btn ghost sm" data-act="gdSetHint">احفظ البريد</button></div>';
+}
 function gdRequest(){
   if(!GD.tc||Date.now()-GD.reqAt<1500)return;
   GD.reqAt=Date.now();
-  try{GD.tc.requestAccessToken({prompt:''});}catch(e){}
+  var hn=gdHint();
+  try{GD.tc.requestAccessToken(hn?{prompt:'',hint:hn}:{prompt:''});}catch(e){}
 }
 function gdTokCb(r){
   if(r&&r.access_token){
@@ -2047,7 +2058,7 @@ function gdCardHTML(){
   return '<section class="card" style="--c:var(--stock)"><div class="row"><h3>جوجل درايف</h3>'+(GD.on?gdBadge():'<span class="pill">غير متصل</span>')+'</div>'+
     '<p class="meta" style="margin:0">'+(GD.on?'المزامنة شغالة ('+SYNC_CHOICES[syncEvery()]+') مع ملف <span class="ltr">'+GD_NAME+'</span> على حساب جوجل بتاعك. لازم كل الأجهزة تدخل بنفس الحساب.'+(GD.at?' آخر مزامنة: '+tstr(GD.at):'')+(hasPending()?' · فيه تعديلات لسه مترفعتش':' · كل التعديلات متزامنة'):'اربط حساب جوجل عشان كل الأجهزة تشوف نفس البيانات، من غير ما تعتمد على ملف الجهاز.')+'</p>'+
     (GD.on&&GD.err?'<div class="note">'+esc(GD.err)+'</div>':'')+
-    (GD.on?syncChoicesHTML():'')+'<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
+    gdHintHTML()+(GD.on?syncChoicesHTML():'')+'<div class="dbtns">'+(GD.on?'<button class="btn sm" data-act="gdNow">زامن الآن</button><button class="btn ghost sm" data-act="gdOff">فصل</button>':'<button class="btn sm" data-act="gdConnect">ربط جوجل درايف</button>')+'</div></section>';
 }
 
 /* header and settings */
@@ -4993,7 +5004,7 @@ function linkGateRender(){
   app.innerHTML='<main class="login" dir="rtl" lang="ar"><div class="lcard"><h2 style="margin:0 0 8px">لازم تربط جوجل درايف</h2>'+
     '<p class="meta">البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك. من غير الربط التطبيق مش هيحفظ أي تعديل.</p>'+
     (GD.err?'<div class="note" role="status">'+esc(GD.err)+'</div>':'')+
-    '<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
+    gdHintHTML()+'<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
 }
 function render(){
   U.remoteNote=0;
@@ -6340,7 +6351,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6797,6 +6808,7 @@ var ACT={
   },
   deepRefresh:function(){deepRefresh();return false;},
   toggleOwnerOnly:function(d){if(limited())return false;var p=P(d.id);if(!p)return false;p.ownerOnly=!p.ownerOnly;toast(p.ownerOnly?'الوصفة اتخفت عن الموظفين':'الوصفة ظهرت للكل');},
+  gdSetHint:function(){var v=gdHint();try{if(v)localStorage.setItem('khat-gd-hint',v);else localStorage.removeItem('khat-gd-hint');}catch(e){}toast(v?'اتحفظ البريد، الدخول الجاي هيتم بيه':'اتشال البريد');},
   syncEvery:function(d){var v=Number(d.v);if(!SYNC_CHOICES.hasOwnProperty(v))return false;uiSave('syncEvery',v);toast('معدل المزامنة: '+SYNC_CHOICES[v]);render();return false;},
   gdNow:function(){
     if(!GD.on)return false;
