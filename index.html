@@ -1275,7 +1275,10 @@ function checkPin(p){
   if(!S.auth)return Promise.resolve(false);
   return hexPbkdf2(p,S.auth.salt,S.auth.iter||200000).then(function(h){return h===S.auth.hash;});
 }
-function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return a==='1'||a.indexOf('u:')===0;}catch(e){return false;}}
+/* الدخول بالـ PIN بيتطلب مع كل فتح للتطبيق: الحالة بتتحفظ في الجلسة (sessionStorage) مش في الجهاز بس */
+function sessLive(){try{return sessionStorage.getItem('khat-live')==='1';}catch(e){return true;}}
+function liveSet(){try{sessionStorage.setItem('khat-live','1');}catch(e){}}
+function authed(){try{var a=localStorage.getItem(AUTH_KEY)||'';return (a==='1'||a.indexOf('u:')===0)&&sessLive();}catch(e){return false;}}
 /* حسابات اتشالت نهائياً: مش بتترجع من الحفظ القديم */
 var REMOVED_USER_CODES=['879'];
 function usersList(){
@@ -6778,10 +6781,10 @@ var ACT={
     U.lbusy=true;U.loginErr=null;render();
     var done=function(){U.lbusy=false;};
     checkPin(p).then(function(ok){
-      if(ok){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return null;}
+      if(ok){lvRun(function(){done();lockSettings();bioSessionSet();liveSet();try{localStorage.setItem(AUTH_KEY,'1');}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return null;}
       return findUserByPw(p).then(function(u){
         if(u&&u.cardActive===false){done();U.cardOffPop=true;}
-        else if(u){lvRun(function(){done();lockSettings();bioSessionSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return;}
+        else if(u){lvRun(function(){done();lockSettings();bioSessionSet();liveSet();try{localStorage.setItem(AUTH_KEY,'u:'+u.code);}catch(e){}try{if(localStorage.getItem(BIO_KEY)&&!localStorage.getItem('khat-bio-auth'))localStorage.setItem('khat-bio-auth',localStorage.getItem(AUTH_KEY)||'1');}catch(e){}U.view='home';U.bioPrompt=bioSupported()&&!localStorage.getItem(BIO_KEY);render();});return;}
         else{done();U.loginErr='الباسورد غلط';}
         render();
       });
@@ -6960,7 +6963,7 @@ var ACT={
       if(!who){U.lbusy=false;render();toast('سجّل دخول بالرقم السري مرة، والبصمة هتشتغل بعدها');return;}
       window.LV_BIO=true;lvRun(function(){
         U.lbusy=false;U.bioOk=true;bioSessionSet();
-        try{localStorage.setItem(AUTH_KEY,who);}catch(e){}
+        liveSet();try{localStorage.setItem(AUTH_KEY,who);}catch(e){}
         if(who.indexOf('u:')===0)U.view='home';
         render();
       });
