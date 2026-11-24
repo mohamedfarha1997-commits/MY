@@ -2034,6 +2034,10 @@ function gdStart(){
   gdLoadCfg();
   gdLoadGis();
   document.addEventListener('visibilitychange',function(){if(!document.hidden)gdSync();});
+  /* لما التطبيق يروح للخلفية: نحفظ ونرفع فورًا قبل ما المتصفح يوقفه. لو التوكن منتهي مش هنفتح نافذة، والتعديلات بتفضل محفوظة في الطابور لحد الفتح الجاي */
+  var bgFlush=function(){if(!GD.on)return;try{save();if(gdTokOk())gdSync();}catch(e){}};
+  document.addEventListener('visibilitychange',function(){if(document.hidden)bgFlush();});
+  window.addEventListener('pagehide',bgFlush);
   if(GD.on&&!gdTokOk())gdArm();
   if(GD.on&&gdTokOk())gdScheduleRefresh();
 }
@@ -4529,6 +4533,18 @@ function updFinish(id){
   if(a)a.innerHTML='<p class="updov-msg">جاري إعادة تشغيل التطبيق...</p>';
   setTimeout(deepRefresh,600);
 }
+/* أي جدول داخل تبويب الإعدادات بيتقفل ويتفتح */
+function foldTables(html,pfx){
+  var src=String(html),n=0;
+  return src.replace(/<table[\s\S]*?<\/table>/g,function(t,off){
+    n++;
+    var before=src.slice(0,off),k=before.lastIndexOf('<h3');
+    var m=k>=0?/<h3[^>]*>([\s\S]*?)<\/h3>/.exec(before.slice(k)):null;
+    var title=m?m[1].replace(/<[^>]+>/g,'').trim():'جدول '+n;
+    var fk=pfx+'-'+n;
+    return (n===1?FOLD_CSS:'')+'<details class="tblfold" data-fk="'+fk+'"'+(FOLD_OPEN[fk]===false?'':' open')+'><summary class="tblfold-sum">'+esc(title)+'</summary>'+t+'</details>';
+  });
+}
 function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
@@ -4541,7 +4557,7 @@ function settingsView(){
   var title=function(h){var m=/<h3>([\s\S]*?)<\/h3>/.exec(h);return m?m[1]:'';};
   var idx=U.sTab;
   if(idx!=null&&secs[idx]){
-    return head0+'<button class="btn ghost sm" data-act="sTab" data-k="">رجوع للتبويبات</button><div style="margin-top:10px">'+secs[idx]+'</div>'+fine;
+    return head0+'<button class="btn ghost sm" data-act="sTab" data-k="">رجوع للتبويبات</button><div style="margin-top:10px">'+foldTables(secs[idx],'sTbl'+idx)+'</div>'+fine;
   }
   var tiles=pairs.map(function(x,i){
     return '<button class="stile" data-act="sTab" data-k="'+i+'"><span class="sic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+(SET_IC[x[1]]||SET_IC.users)+'</svg></span><span class="stl">'+(title(x[0])||('تبويب '+(i+1)))+'</span></button>';
@@ -6408,7 +6424,7 @@ var ACT_CAT={
   plAll:['settings','تحديد سجل الإنتاج','w'],plToggle:['settings','تحديد سجل إنتاج','w'],plDel:['settings','حذف سجل الإنتاج','w'],
   calDay:['calendar','فتح يوم في التقويم','r'],calNav:['calendar','تنقل بين الشهور','r'],calToday:['calendar','الرجوع لليوم الحالي','r'],calClose:['calendar','إغلاق نافذة اليوم','r'],
   cleanStart:['stock','بدء تفريغ المخزن','w'],
-  uFilter:['settings','فلترة المستخدمين','r'],uSort:['settings','ترتيب المستخدمين','r'],userEditCancel:['settings','إلغاء تعديل المستخدم','r'],
+  uFilter:['settings','فلترة المستخدمين','r'],evUser:['settings','فلترة الأحداث','r'],evMore:['settings','عرض أحداث أكتر','r'],evPrint:['settings','طباعة الأحداث','r'],uSort:['settings','ترتيب المستخدمين','r'],userEditCancel:['settings','إلغاء تعديل المستخدم','r'],
   sChangeStart:['settings','تغيير الـ PIN','w'],sLock:['settings','قفل الإعدادات','w']
 };
 function actAllowed(act){
@@ -6549,29 +6565,69 @@ function onlineTableHTML(list){
   var body=rows.length?rows.map(function(r){var d=new Date(r.t);var hm=fmt12(d.getHours(),d.getMinutes());
     return '<tr><td>'+esc(r.name)+'</td><td class="ltr">'+esc(r.code)+'</td><td>'+esc(r.a)+'</td><td class="ltr">'+hm+'</td></tr>';}).join('')
     :'<tr><td colspan="4" class="dash-empty">مفيش حد متصل دلوقتي</td></tr>';
-  return '<section class="card" style="margin:12px 0"><h3 style="margin:0 0 8px">المتصلين الآن ('+rows.length+')</h3>'+
-    '<div style="overflow-x:auto"><table class="online-tbl" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:right">الاسم</th><th>الكود</th><th style="text-align:right">آخر عملية</th><th>الوقت</th></tr></thead><tbody>'+body+'</tbody></table></div></section>';
+  return FOLD_CSS+'<details class="card ev-card" data-fk="usr-online"'+(FOLD_OPEN['usr-online']===false?'':' open')+' style="margin:12px 0"><summary class="ev-sum"><div><b>المتصلين الآن</b><small>'+rows.length+' متصل</small></div></summary>'+
+    '<div style="overflow-x:auto"><table class="online-tbl" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:right">الاسم</th><th>الكود</th><th style="text-align:right">آخر عملية</th><th>الوقت</th></tr></thead><tbody>'+body+'</tbody></table></div></details>';
 }
-/* آخر الأحداث: بنجمع أحداث الدفعات (المتزامنة) ونرتبها بالأحدث */
-var EVENT_LABEL={toProd:'حوّل الدفعة للإنتاج',approve:'اعتمد دفعة',skipTimer:'تخطّى مؤقت دفعة',startRun:'بدأ تشغيل دفعة',toggleCheck:'علّم خطوة في دفعة',withdraw:'سحب خامات',toggleMat:'علّم خامة في دفعة'};
-function recentEventsHTML(list){
-  var byCode={};list.forEach(function(u){byCode[u.code]=u;});
-  var evs=[];
+/* آخر الأحداث: من سجل الدفعات المتزامن، مع فلترة لكل مستخدم وطباعة */
+function allEventsFor(code){
+  var out=[];
   Object.keys(S.plog||{}).forEach(function(id){
     var e=S.plog[id]||{};
-    (e.ev||[]).forEach(function(x){evs.push({c:x.c,a:x.a,t:x.t||0});});
+    var pr=(PRODUCTS||[]).filter(function(p){return p.id===e.p;})[0];
+    (e.ev||[]).forEach(function(x){
+      if(code&&x.c!==code)return;
+      out.push({c:x.c,a:x.a,t:x.t||0,p:pr?pr.name:'—',b:sid(id)});
+    });
   });
-  evs.sort(function(x,y){return y.t-x.t;});
-  evs=evs.slice(0,12);
-  var body=evs.length?evs.map(function(x){
-    var u=byCode[x.c];var name=u?u.name:(x.c==='CHEF MYF'?'المالك':x.c);
-    var d=new Date(x.t);var hm=fmt12(d.getHours(),d.getMinutes());
-    return '<li class="ev-row"><span class="uava sm">'+esc((name||'?').charAt(0))+'</span>'+
-      '<div class="ev-txt"><b>'+esc(name)+'</b> '+esc(EVENT_LABEL[x.a]||'عمل على الدفعة')+'</div>'+
-      '<time class="ltr">'+hm+'</time></li>';
-  }).join(''):'<li class="dash-empty">مفيش أحداث لسه</li>';
-  return '<section class="card" style="margin:12px 0"><h3 style="margin:0 0 8px">آخر الأحداث</h3>'+
-    '<ul class="ev-list" style="list-style:none;margin:0;padding:0">'+body+'</ul></section>';
+  return out.sort(function(x,y){return y.t-x.t;});
+}
+function evNameOf(list,c){var u=list.filter(function(x){return x.code===c;})[0];return u?u.name:(c==='CHEF MYF'?'المالك':c);}
+function evDateStr(t){var d=new Date(t);return d.toLocaleDateString('ar-EG',{day:'numeric',month:'short',year:'numeric',timeZone:TZ_CAIRO})+' · '+fmt12(d.getHours(),d.getMinutes());}
+var FOLD_CSS='<style>'+
+  '.ev-sum{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}'+
+  '.ev-sum::-webkit-details-marker{display:none}'+
+  '.ev-sum small{display:block;color:var(--muted,#6b7090);font-size:12px;font-weight:400}'+
+  '.ev-tbl{width:100%;border-collapse:collapse;font-size:13px}'+
+  '.ev-tbl th{text-align:right;color:var(--muted,#6b7090);font-weight:600;padding:8px 8px;border-bottom:1px solid var(--line,#D5DDE6);background:var(--surface-2,#F4F6F8);white-space:nowrap}'+
+  '.ev-tbl td{padding:9px 8px;border-bottom:1px solid var(--line-2,#E5EBF1);white-space:nowrap;vertical-align:middle;text-align:right}'+
+  '.ev-time{font-variant-numeric:tabular-nums;color:var(--ink-2,#3A4959)}'+
+  '.ev-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}'+
+  '.ev-card{padding:12px 14px}'+
+  '.tblfold{margin:8px 0;border:1px solid var(--line,#D5DDE6);border-radius:12px;padding:8px 12px}'+
+  '.tblfold-sum{cursor:pointer;font-weight:700;padding:4px 0;list-style:none;display:flex;justify-content:space-between}'+
+  '.tblfold-sum::-webkit-details-marker{display:none}'+
+  '.tblfold-sum::after{content:"▾";color:var(--muted,#6b7090)}'+
+  '.tblfold[open]>.tblfold-sum::after{content:"▴"}'+
+  '</style>';
+function recentEventsHTML(list){
+  var sel=U.evUser||'', n=U.evN||40;
+  var all=allEventsFor(sel), shown=all.slice(0,n);
+  var userChips=list.map(function(u){return '<button class="dash-chip'+(sel===u.code?' on':'')+'" data-act="evUser" data-c="'+esc(u.code)+'">'+esc(u.name)+'</button>';}).join('');
+  var chips='<button class="dash-chip'+(!sel?' on':'')+'" data-act="evUser" data-c="">الكل</button>'+userChips+
+    (list.some(function(u){return u.code==='CHEF MYF';})?'':'<button class="dash-chip'+(sel==='CHEF MYF'?' on':'')+'" data-act="evUser" data-c="CHEF MYF">المالك</button>');
+  var rows=shown.length?shown.map(function(x){
+    var nm=evNameOf(list,x.c);
+    return '<tr><td class="ev-time">'+evDateStr(x.t)+'</td>'+
+      '<td><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span> <b>'+esc(nm)+'</b> <small class="ltr">'+esc(x.c)+'</small></td>'+
+      '<td><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span></td>'+
+      '<td>'+esc(x.p)+'</td><td class="ltr">'+esc(x.b)+'</td></tr>';
+  }).join(''):'<tr><td colspan="5" class="dash-empty">مفيش عمليات مسجلة للاختيار ده</td></tr>';
+  var more=all.length>n?'<button class="btn ghost sm" data-act="evMore">عرض أكتر ('+(all.length-n)+' باقي)</button>':'<span></span>';
+  return FOLD_CSS+'<details class="card ev-card" data-fk="usr-events"'+(FOLD_OPEN['usr-events']===false?'':' open')+' style="margin:12px 0">'+
+    '<summary class="ev-sum"><div><b>آخر الأحداث</b><small>'+all.length+' عملية'+(sel?' للمستخدم المختار':'')+'</small></div></summary>'+
+    '<div class="dash-filters" style="margin:10px 0">'+chips+'</div>'+
+    '<div style="overflow-x:auto"><table class="ev-tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الصنف</th><th>الدفعة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="ev-foot">'+more+'<button class="btn primary sm" data-act="evPrint">طباعة '+(sel?'عمليات المستخدم':'كل العمليات')+'</button></div>'+
+    '</details>';
+}
+function printEvents(sel){
+  var list=usersList(), all=allEventsFor(sel);
+  var who=sel?evNameOf(list,sel)+' ('+sel+')':'كل المستخدمين';
+  var rows=all.map(function(x,i){var nm=evNameOf(list,x.c);
+    return '<tr><td>'+(i+1)+'</td><td>'+evDateStr(x.t)+'</td><td>'+esc(nm)+'</td><td>'+esc(EVENT_LABEL[x.a]||'عملية')+'</td><td>'+esc(x.p)+'</td><td>'+esc(x.b)+'</td></tr>';}).join('');
+  doPrint('<h1>سجل العمليات</h1><div class="pm">'+esc(who)+' · '+all.length+' عملية · طُبع '+esc(tstr(Date.now()))+'</div>'+
+    '<table class="pt"><thead><tr><th>#</th><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الصنف</th><th>الدفعة</th></tr></thead><tbody>'+
+    (rows||'<tr><td colspan="6">لا توجد عمليات</td></tr>')+'</tbody></table>');
 }
 function userDonutHTML(list,todayK){
   var n=list.length, c={active:0,inactive:0,leave:0,off:0}, R=52, C=2*Math.PI*R, acc=0, segs='';
@@ -7602,6 +7658,9 @@ var ACT={
     render();return false;
   },
   uFilter:function(d){U.uFilter=d.f;render();return false;},
+  evUser:function(d){U.evUser=d.c||'';U.evN=40;render();return false;},
+  evMore:function(d){U.evN=(U.evN||40)+40;render();return false;},
+  evPrint:function(d){printEvents(U.evUser||'');return false;},
   uSort:function(d){U.uSort=d.s;render();return false;},
   userCardToggle:function(d){
     var u=usersList().filter(function(x){return x.id===d.id;})[0];if(!u)return false;
