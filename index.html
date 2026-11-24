@@ -257,6 +257,11 @@ button,input{font-family:inherit}
 .back{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:50;border:0;padding:0;cursor:default}
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;max-height:90%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));z-index:51;display:flex;flex-direction:column;gap:14px;border:1px solid var(--line);border-bottom:0}
 .sheet h3{margin:0;font-family:var(--f-disp);font-size:21px;color:var(--c)}
+.scards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:6px 0 10px}
+.scard{min-height:130px;border-radius:20px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:var(--shadow);transition:transform .18s var(--ease),border-color .2s}
+.scard:hover{border-color:var(--prep)}
+.scard:active{transform:scale(.97)}
+.scard .sico{font-size:38px;line-height:1}
 .pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pk{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;text-align:start;background:var(--surface);color:var(--ink);cursor:pointer;font-size:14px;font-weight:600}
 .pk small{display:block;color:var(--muted);font-weight:400;font-size:12px}
@@ -3668,6 +3673,9 @@ function fgStockView(){
   return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+zb+body;
 }
 
+var SEASON_ICO={normal:'🍞',ramadan:'🌙',mawlid:'🕌',christmas:'🎄',halloween:'🎃',boxes:'📦'};
+/* اختيار الموسم: بطاقات كبيرة جنب بعض */
+function seasonCardsHTML(act){return '<div class="scards">'+SEASONS.map(function(x){return '<button class="scard" data-act="'+act+'" data-v="'+x[0]+'"><span class="sico" aria-hidden="true">'+(SEASON_ICO[x[0]]||'📅')+'</span><span>'+esc(x[1])+'</span></button>';}).join('')+'</div>';}
 function sheetHTML(){
   if(!U.sheet)return '';
   var s=U.sheet,n={},sh=[];
@@ -3687,7 +3695,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     (!s.season?
-      '<div class="meta">اختار الموسم الأول</div>'+seasonSeg(null,'sheetSeason',SEASONS)
+      '<div class="meta">اختار الموسم الأول</div>'+seasonCardsHTML('sheetSeason')
     :
       '<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">الموسم: <b>'+esc(seasonName)+'</b><button class="btn ghost sm" data-act="sheetSeason" data-v="">غيّر الموسم</button></div>'+
       '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
