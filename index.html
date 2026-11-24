@@ -3417,16 +3417,26 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+'<div class="meta" style="margin-top:8px">الموسم</div>'+seasonBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
-  var opts=[];
+  var opts=[['short','نواقص الأوردرات','اضغط على الصنف عشان تتملي بياناته في الفورم'],['new','صنف محشو جديد','اعمل صنف محشو بكود جديد']];
   if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
-  if(!opts.length)return head('تحضير حشو','','')+'<div class="empty"><b>مفيش تبويبات ظاهرة ليك هنا</b></div>';
-  var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:opts[0][0];
+  var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:'new';
   var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
       var on=ft===x[0];
       return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
     }).join('')+'</div>';
   if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+runFillHTML()+prodLogHTML('fill');
-  return head('تحضير حشو','إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles+form;
+  var nShort=shortByProduct(fgShortRows()).length;
+  var body=ft==='short'?fillShortHTML():form;
+  return head('تحضير حشو',ft==='short'?'نواقص الأوردرات من مخزن الإنتاج':'إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles.replace('نواقص الأوردرات</b>','نواقص الأوردرات ('+nShort+')</b>')+body;
+}
+/* نواقص الأوردرات (نفس اللي كانت في مخزن الإنتاج): الضغط على الصنف بيملّي الفورم */
+function fillShortHTML(){
+  var g=shortByProduct(fgShortRows());
+  if(!g.length)return '<div class="empty"><b>مفيش نواقص لأوردراتك</b><span>كل الأوردرات متغطية من مخزن الإنتاج.</span></div>';
+  return '<div class="list">'+g.map(function(a){var p=P(a.p)||{name:'صنف محذوف',unit:''};
+    return '<article class="card" role="button" data-act="fillFromShort" data-p="'+a.p+'" style="--c:var(--orders);cursor:pointer"><div class="mtop"><div><b>'+esc(p.name)+'</b>'+
+      '<small>في '+a.ords.length+' '+(a.ords.length>1?'أوردرات':'أوردر')+' · مطلوب '+f(a.qty)+' · متاح '+f(a.have)+(a.pend?' · في التحضير '+f(a.pend):'')+'</small></div>'+
+      '<div class="mq"><b>'+f(a.short)+'</b> <span>'+esc(p.unit)+'</span></div></div></article>';}).join('')+'</div>';
 }
 function wasteCardHTML(p){
   var stk=S.ready[p.id]||0,open=U.wasteOpen===p.id;
@@ -3654,7 +3664,7 @@ function fgStockView(){
   var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
   PRODUCTS.forEach(function(p){if(fgUserHidden(p))return;inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
-  var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['short','نواقص ('+nS+')'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
+  var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
     return '<button class="'+(F===x[0]?'on':'')+'" data-act="fgFilter" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>'+fgSeasonRow();
   var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.filter(function(p){return !fgUserHidden(p);}).length+'</b><span>صنف</span></div>'+
@@ -3663,14 +3673,14 @@ function fgStockView(){
     '<div class="tile"><b style="color:'+(nS?'var(--warn)':'inherit')+'">'+nS+'</b><span>ناقص</span></div></div>';
   var body;
   var mainP=PRODUCTS.filter(function(p){return !isFill(p)&&!p.archived&&fgSeasonOK(p);});
-  if(F==='short') body=fgShortHTML(rows,raw);
+  if(F==='short') body='<div class="empty"><b>النواقص اتنقلت لتبويب تحضير حشو</b></div>';
   else if(F==='fillcust'||F==='fillshop'){
     var fl=PRODUCTS.filter(function(p){return isFill(p)&&!p.archived&&p.fill===F.slice(4)&&fgSeasonOK(p);});
     var tb='<div class="btns" style="margin-bottom:8px"><button class="btn main sm" data-act="fillEdit" data-id="new">+ صنف جديد</button></div>';
     body=U.fedit?feHTML():tb+(fl.length?groupFillCards(fl):'<div class="empty"><b>مفيش أصناف هنا</b><span>اضغط "صنف جديد" عشان تضيف.</span></div>');
   }
   else if(!mainP.length) body='<div class="empty"><b>مفيش منتجات</b><span>ضيف وصفات الأول عشان تظهر هنا.</span></div>';
-  else body=(nS?'<div class="grp">النواقص اللي محتاجة دفعات ('+nS+')</div>'+fgShortHTML(rows,raw):'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>'+archSection();
+  else body=(nS?'<div class="meta" style="margin-bottom:8px">فيه '+nS+' صنف ناقص لأوردراتك، اتنقلوا لتبويب تحضير حشو</div>':'')+'<div class="grp" style="margin-top:12px">الأصناف في المخزن</div><div class="fgcards">'+mainP.map(function(p){return fgCardHTML(p,S.ready[p.id]||0,fgReserved(p.id));}).join('')+'</div>'+archSection();
   var zb=fgZeroBar();
   return head('مخزن الإنتاج','الجاهز بعد الاعتماد، والمحجوز للأوردرات، والنواقص اللي محتاجة دفعة','')+sum+'<div style="margin:12px 0">'+seg+'</div>'+zb+body;
 }
@@ -6337,7 +6347,7 @@ var ACT_CAT={
   rQty:['recipes','تعديل كمية الوصفة','r'],rSet:['recipes','تعيين كمية الوصفة','r'],
   fillMake:['filling','اعمل الصنف المحشو','w'],fillEdit:['filling','تعديل صنف حشو','w'],feToggle:['filling','تعديل صنف حشو','w'],feAdd:['filling','تعديل صنف حشو','w'],feRemove:['filling','تعديل صنف حشو','w'],feSave:['filling','تعديل صنف حشو','w'],feCancel:['filling','تعديل صنف حشو','r'],fillTab:['filling','تبويب الحشو','r'],fillSel:['filling','اختيار صنف حشو','r'],
   fillKind:['filling','نوع الحشو','r'],fillSeason:['filling','موسم الحشو','r'],fillUnit:['filling','وحدة الحشو','r'],
-  runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],
+  runDo:['prepreq','تنفيذ الحشو','w'],runMakeBatches:['prepreq','إنشاء دفعة بالنواقص','w'],runPick:['prepreq','اختيار صنف للتشغيل','r'],fillFromShort:['filling','نواقص الحشو','r'],
   boxAdd:['boxes','تعبئة جديدة','w'],boxDel:['boxes','حذف تعبئة','w'],boxOrder:['boxes','طلب تعبئة كأوردر','w'],
   tplAdd:['boxes','إضافة قالب','w'],tplAddAll:['boxes','إضافة قالب','w'],tplSel:['boxes','اختيار علبة','w'],boxOrderSel:['boxes','طلب علب كأوردر','w'],tplDel:['boxes','حذف قالب','w'],tplRemove:['boxes','إزالة من القالب','w'],tplSave:['boxes','حفظ القالب','w'],
   approve:['approve','اعتماد الدفعة','w'],
@@ -7642,6 +7652,7 @@ var ACT={
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
+  fillFromShort:function(d){var p=P(d.p);if(!p)return false;var a=shortByProduct(fgShortRows()).filter(function(x){return x.p===d.p;})[0];var F=U.fill||(U.fill={name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]});F.name=p.name;F.out=a?String(r3(a.short)):'';U.fillTab='new';},
   fillSel:function(d){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
     var k=U.fill.sel.indexOf(d.p);
@@ -8035,7 +8046,7 @@ ACT.rpPrint=function(){
   doPrint(recipePrintHTML(list,s.q>0?s.q:1));document.title=old;return false;
 };
 READ_ACTS.rpOpen=1;READ_ACTS.rpClose=1;READ_ACTS.rpToggle=1;READ_ACTS.rpAll=1;READ_ACTS.rpNone=1;READ_ACTS.rpPrint=1;
-READ_ACTS.plToggle=1;READ_ACTS.plAll=1;READ_ACTS.sTab=1;READ_ACTS.fillTab=1;READ_ACTS.runPick=1;
+READ_ACTS.plToggle=1;READ_ACTS.plAll=1;READ_ACTS.sTab=1;READ_ACTS.fillTab=1;READ_ACTS.fillFromShort=1;READ_ACTS.runPick=1;
 document.addEventListener('click',function(e){
   var t=e.target.closest?e.target.closest('[data-act]'):null;
   if(!t||t.disabled)return;
