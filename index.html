@@ -952,7 +952,7 @@ body::before{ /* subtle dot texture */
 }
 .head{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:1}
 .mark{display:flex;align-items:center;gap:10px}
-.mark svg{width:auto;height:34px;border-radius:6px;flex:none}
+.mark svg{width:auto;height:40px;flex:none}
 .mark b{display:block;font:800 17px/1 var(--sans);letter-spacing:2px}
 .mark small{display:block;font:500 9.5px/1.4 var(--sans);letter-spacing:2.2px;text-transform:uppercase;opacity:.7;margin-top:3px}
 .tag{font:600 9.5px/1 var(--sans);letter-spacing:2px;text-transform:uppercase;padding:7px 10px;border-radius:999px;
@@ -6624,16 +6624,29 @@ function recentEventsHTML(list){
     (list.some(function(u){return u.code==='CHEF MYF';})?'':'<button class="dash-chip'+(sel==='CHEF MYF'?' on':'')+'" data-act="evUser" data-c="CHEF MYF">المالك</button>');
   var rows=shown.length?shown.map(function(x){
     var nm=evNameOf(list,x.c);
-    return '<tr><td class="ev-time">'+evDateStr(x.t)+'</td>'+
-      '<td><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span> <b>'+esc(nm)+'</b> <small class="ltr">'+esc(x.c)+'</small></td>'+
-      '<td><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span></td>'+
-      '<td>'+esc(x.p)+'</td><td class="ltr">'+esc(x.b)+'</td></tr>';
-  }).join(''):'<tr><td colspan="5" class="dash-empty">مفيش عمليات مسجلة للاختيار ده</td></tr>';
+    return '<li class="ev-row">'+
+      '<div class="ev-who"><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span><div><b>'+esc(nm)+'</b><small class="ltr">'+esc(x.c)+'</small></div></div>'+
+      '<time class="ev-time">'+evDateStr(x.t)+'</time>'+
+      '<div class="ev-act"><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span><small>'+esc(x.p)+' · <span class="ltr">'+esc(x.b)+'</span></small></div>'+
+      '</li>';
+  }).join(''):'<li class="dash-empty">مفيش عمليات مسجلة للاختيار ده</li>';
   var more=all.length>n?'<button class="btn ghost sm" data-act="evMore">عرض أكتر ('+(all.length-n)+' باقي)</button>':'<span></span>';
-  return FOLD_CSS+'<details class="card ev-card" data-fk="usr-events"'+(FOLD_OPEN['usr-events']===false?'':' open')+' style="margin:12px 0">'+
+  var evCss='<style>'+
+    '.ev-list{list-style:none;margin:0;padding:0}'+
+    '.ev-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line-2,#E5EBF1);align-items:center}'+
+    '.ev-row:last-child{border-bottom:0}'+
+    '.ev-who{display:flex;align-items:center;gap:8px;min-width:0}'+
+    '.ev-who>div{min-width:0}'+
+    '.ev-who b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+    '.ev-who small{display:block;font-size:11px;color:var(--muted,#6b7090)}'+
+    '.ev-time{font-size:11.5px;color:var(--muted,#6b7090);white-space:nowrap;font-variant-numeric:tabular-nums}'+
+    '.ev-act{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0;padding-inline-start:36px}'+
+    '.ev-act small{font-size:11.5px;color:var(--muted,#6b7090);overflow-wrap:anywhere;min-width:0}'+
+    '</style>';
+  return FOLD_CSS+evCss+'<details class="card ev-card" data-fk="usr-events"'+(FOLD_OPEN['usr-events']===false?'':' open')+' style="margin:12px 0">'+
     '<summary class="ev-sum"><div><b>آخر الأحداث</b><small>'+all.length+' عملية'+(sel?' للمستخدم المختار':'')+'</small></div></summary>'+
     '<div class="dash-filters" style="margin:10px 0">'+chips+'</div>'+
-    '<div style="overflow-x:auto"><table class="ev-tbl"><thead><tr><th>الوقت</th><th>المستخدم</th><th>العملية</th><th>الصنف</th><th>الدفعة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<ul class="ev-list">'+rows+'</ul>'+
     '<div class="ev-foot">'+more+'<button class="btn primary sm" data-act="evPrint">طباعة '+(sel?'عمليات المستخدم':'كل العمليات')+'</button></div>'+
     '</details>';
 }
@@ -8587,7 +8600,7 @@ var CARDS_FILE_ID='1HooDudVdgdVoJNzG9A8n822KZgWhWj4l';
 var CARDS_API_KEY='AIzaSyA97tpmMo2oZjgmvUZY3_vDzdj_KAkIFJI';
 var DATA_URL=new URL('cards.json',location.href).href;
 var CARDS_SRC=(CARDS_FILE_ID&&CARDS_API_KEY)?'https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(CARDS_FILE_ID)+'?alt=media&key='+encodeURIComponent(CARDS_API_KEY):DATA_URL;
-var LOGO='<svg viewBox="0 0 1560 420" aria-hidden="true"><rect width="1560" height="420" fill="#172B91"/><g fill="#FFFFFF"><path d=" M120 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z"/><path d=" M250 252 H420 L590 350 H420 Z"/><path d=" M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z"/><path d=" M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"/></g></svg>';
+var LOGO='<svg viewBox="0 0 1560 420" aria-hidden="true"><g fill="#FFFFFF"><path d=" M120 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z"/><path d=" M250 252 H420 L590 350 H420 Z"/><path d=" M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z"/><path d=" M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"/></g></svg>';
 
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function norm(s){return String(s||'').trim().toUpperCase();}
