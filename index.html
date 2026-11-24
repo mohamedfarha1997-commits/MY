@@ -1257,10 +1257,14 @@ function isPieceU(u){return !u||['قطعة','صاج','كادر','تورته','ب
 function mmss(ms){var s=Math.max(0,Math.ceil(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function ymKey(t){var d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 function monthKey(ts){var d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+/* وقت ١٢ ساعة بـ ص/م */
+function fmt12(h,m){var ap=h<12?'ص':'م';var hh=h%12||12;return hh+':'+String(m).padStart(2,'0')+' '+ap;}
+/* بيحوّل أي "HH:MM" جوه النص لـ ١٢ ساعة */
+function fmt12str(s){return String(s||'').replace(/(\d{2}):(\d{2})/,function(_,h,m){return fmt12(+h,+m);});}
 function tstr(ts){
   if(!ts)return '';
   var d=new Date(ts);function z(n){return String(n).padStart(2,'0');}
-  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes());
+  return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+fmt12(d.getHours(),d.getMinutes());
 }
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function ago(ts){var m=Math.round((Date.now()-ts)/60000);if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' د';return 'منذ '+Math.floor(m/60)+' س';}
@@ -3585,7 +3589,7 @@ function wasteView(){
     var isOpen=FOLD_OPEN[key]!==undefined?FOLD_OPEN[key]===true:cur;
     var label=new Date(arr[0].at).toLocaleString('ar-EG',{month:'long',year:'numeric'});
     var rows=arr.map(function(w){
-      var t=new Date(w.at).toLocaleString('ar-EG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      var t=new Date(w.at).toLocaleString('ar-EG',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});
       return '<div class="card" style="--c:var(--waste)"><div class="mtop"><div><b>'+esc(w.name||'')+'</b><small>'+t+'</small></div><span class="pill low">- '+f(w.qty)+'</span></div></div>';
     }).join('');
     return '<details class="card ordfold" data-fk="'+key+'" style="--c:var(--waste)"'+(isOpen?' open':'')+'>'+
@@ -5396,7 +5400,7 @@ function orderCard(o){
   }
   return '<article class="card" style="--c:var(--orders)">'+hd+(open?detail+body:'')+'<button class="btn ghost sm block" data-act="oToggle" data-id="'+o.id+'" aria-expanded="'+(open?'true':'false')+'">'+(open?'إخفاء التفاصيل':'عرض التفاصيل')+'</button><button class="btn ghost sm block" data-act="oEdit" data-id="'+o.id+'">تعديل الطلبية</button></article>';
 }
-function dueStr(s){return String(s||'').replace('T',' ');}
+function dueStr(s){return fmt12str(String(s||'').replace('T',' '));}
 function okind(o){return o.kind||'cust';}
 function custName(o){return o.cust||'أوردر بدون اسم';}
 
@@ -5642,7 +5646,7 @@ function reservedCard(o){
 function reservedView(){
   var list=reservedList(),today=reservedToday();
   var banner=today.length?'<div class="note" style="background:color-mix(in srgb,var(--warn) 14%,var(--surface))"><b>حفلات هتتسلم النهارده ('+today.length+')</b><div class="meta" style="margin-top:4px">'+
-    today.map(function(o){return esc(custName(o))+' · '+o.due.slice(11,16);}).join(' — ')+'</div></div>':'';
+    today.map(function(o){return esc(custName(o))+' · '+fmt12str(o.due.slice(11,16));}).join(' — ')+'</div></div>':'';
   var body=list.length?'<div class="list">'+list.map(reservedCard).join('')+'</div>':
     '<div class="empty"><b>مفيش أوردرات تحت التشغيل</b><span>الأوردرات اللي لسه ما اتسلمتش هتظهر هنا.</span></div>';
   return head('تحت التشغيل','عرض فقط · المتأخر فوق، وبعده الأقرب معاد. الأوردر بيختفي لما يتسلم.','')+banner+body;
@@ -5704,7 +5708,7 @@ function calDayHTML(){
   var title=new Date(k+'T12:00:00Z').toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
   var canEd=!limited()||permLevel('orders')==='edit';
   var rows=list.map(function(o){
-    var time=String(o.due).slice(11,16);
+    var time=fmt12str(String(o.due).slice(11,16));
     var st=o.deliveredAt?'<span class="cal-st done">متسلّم</span>':(ordComplete(o)?'<span class="cal-st ready">جاهز</span>':'<span class="cal-st open">قيد التحضير</span>');
     return '<article class="cal-ord">'+
       '<div class="cal-ord-h"><span class="cal-time">'+(time||'--:--')+'</span>'+
@@ -6542,11 +6546,32 @@ function onlineTableHTML(list){
   var rows=Object.keys(S.seen||{}).filter(function(k){return isOnline(k);}).map(function(k){
     var u=byCode[k];return {name:u?u.name:(k==='CHEF MYF'?'المالك':k),code:k,a:(S.seen[k].a||'—'),t:S.seen[k].t};
   }).sort(function(x,y){return y.t-x.t;});
-  var body=rows.length?rows.map(function(r){var d=new Date(r.t);var hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+  var body=rows.length?rows.map(function(r){var d=new Date(r.t);var hm=fmt12(d.getHours(),d.getMinutes());
     return '<tr><td>'+esc(r.name)+'</td><td class="ltr">'+esc(r.code)+'</td><td>'+esc(r.a)+'</td><td class="ltr">'+hm+'</td></tr>';}).join('')
     :'<tr><td colspan="4" class="dash-empty">مفيش حد متصل دلوقتي</td></tr>';
   return '<section class="card" style="margin:12px 0"><h3 style="margin:0 0 8px">المتصلين الآن ('+rows.length+')</h3>'+
     '<div style="overflow-x:auto"><table class="online-tbl" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:right">الاسم</th><th>الكود</th><th style="text-align:right">آخر عملية</th><th>الوقت</th></tr></thead><tbody>'+body+'</tbody></table></div></section>';
+}
+/* آخر الأحداث: بنجمع أحداث الدفعات (المتزامنة) ونرتبها بالأحدث */
+var EVENT_LABEL={toProd:'حوّل الدفعة للإنتاج',approve:'اعتمد دفعة',skipTimer:'تخطّى مؤقت دفعة',startRun:'بدأ تشغيل دفعة',toggleCheck:'علّم خطوة في دفعة',withdraw:'سحب خامات',toggleMat:'علّم خامة في دفعة'};
+function recentEventsHTML(list){
+  var byCode={};list.forEach(function(u){byCode[u.code]=u;});
+  var evs=[];
+  Object.keys(S.plog||{}).forEach(function(id){
+    var e=S.plog[id]||{};
+    (e.ev||[]).forEach(function(x){evs.push({c:x.c,a:x.a,t:x.t||0});});
+  });
+  evs.sort(function(x,y){return y.t-x.t;});
+  evs=evs.slice(0,12);
+  var body=evs.length?evs.map(function(x){
+    var u=byCode[x.c];var name=u?u.name:(x.c==='CHEF MYF'?'المالك':x.c);
+    var d=new Date(x.t);var hm=fmt12(d.getHours(),d.getMinutes());
+    return '<li class="ev-row"><span class="uava sm">'+esc((name||'?').charAt(0))+'</span>'+
+      '<div class="ev-txt"><b>'+esc(name)+'</b> '+esc(EVENT_LABEL[x.a]||'عمل على الدفعة')+'</div>'+
+      '<time class="ltr">'+hm+'</time></li>';
+  }).join(''):'<li class="dash-empty">مفيش أحداث لسه</li>';
+  return '<section class="card" style="margin:12px 0"><h3 style="margin:0 0 8px">آخر الأحداث</h3>'+
+    '<ul class="ev-list" style="list-style:none;margin:0;padding:0">'+body+'</ul></section>';
 }
 function userDonutHTML(list,todayK){
   var n=list.length, c={active:0,inactive:0,leave:0,off:0}, R=52, C=2*Math.PI*R, acc=0, segs='';
@@ -6587,7 +6612,7 @@ function userDashHTML(list,todayK){
   var nowMs=trustedNow(), dateStr='';
   if(nowMs!==null){try{dateStr=new Date(nowMs).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',timeZone:TZ_CAIRO});}catch(e){}}
   return '<div class="dash-head"><div><b>لوحة المستخدمين</b><small>'+esc(dateStr||'')+'</small></div><span class="dash-badge ok">'+list.length+' مستخدم</span></div>'+
-    userKpiHTML(list,todayK)+onlineTableHTML(list)+userDonutHTML(list,todayK)+
+    userKpiHTML(list,todayK)+onlineTableHTML(list)+recentEventsHTML(list)+userDonutHTML(list,todayK)+
     '<div class="dash-tools"><div class="dash-search"><input id="uSearch" type="search" autocomplete="off" placeholder="ابحث بالاسم أو الكود أو الوظيفة" value="'+esc(U.uSearch||'')+'"></div>'+
     '<div class="dash-sorts">'+userSortHTML()+'</div><div class="dash-filters">'+userFilterHTML(list,todayK)+'</div></div>'+
     userRowsHTML(list,todayK);
