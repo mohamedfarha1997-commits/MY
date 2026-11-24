@@ -1067,6 +1067,19 @@ body::before{ /* subtle dot texture */
 html body .login.rst .fld input{border-radius:0 !important}
 .login .bioFp{border-radius:0 !important;background:linear-gradient(120deg,#F6E7B0 0%,#E2B25A 100%) !important;color:#070A20 !important;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
 .login .note{border-radius:0 !important}
+.fx-login-wm{display:flex;justify-content:center}
+.fx-login-wm svg{filter:drop-shadow(0 0 12px rgba(120,140,255,.6))}
+.fx-login-sub{margin-top:10px;text-align:center;font:500 10px/1 var(--mono,monospace);letter-spacing:2.4px;color:rgba(160,176,255,.8)}
+.fx-login-foot{margin-top:6px;text-align:center;font:500 10px/1 var(--mono,monospace);letter-spacing:1.2px;color:rgba(232,236,255,.45)}
+.login:not(.rst) .lcard{background:none!important;border:0!important;box-shadow:none!important;clip-path:none!important;padding:0!important}
+.login:not(.rst) .lcard>p.meta{font:800 22px/1.3 Cairo,var(--ar),system-ui,sans-serif!important;color:#fff!important;text-align:center;margin:18px 0 0!important}
+.login.rst .lcard::before{content:"RESET // PIN";font:500 10px/1 var(--mono,monospace);letter-spacing:1.6px;color:rgba(232,236,255,.55)}
+.login.rst .lcard::after{content:"الطلب بيتراجع من المسئول لو الكود مش صح";font:500 10px/1.4 var(--mono,monospace);letter-spacing:.4px;color:rgba(232,236,255,.45);text-align:center}
+.ld26{position:relative;width:200px;height:200px;display:grid;place-items:center;margin:0 auto}
+.ld26-orb{position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(160,176,255,.35)}
+.ld26::after{content:"";position:absolute;inset:14px;border-radius:50%;border:2px solid transparent;border-top-color:#F6E7B0;border-right-color:rgba(246,231,176,.35);animation:psbSpin 1.6s linear infinite}
+.ld26-mark{position:relative;width:96px;height:auto;filter:drop-shadow(0 0 14px rgba(120,140,255,.7))}
+@media (prefers-reduced-motion:reduce){.ld26::after{animation:none!important}}
 .fx{position:relative;overflow:hidden;color:#E8ECFF;padding:24px 22px 20px;background:linear-gradient(170deg,rgba(18,24,64,.96) 0%,rgba(7,10,32,.98) 100%);border:1px solid rgba(160,176,255,.25);clip-path:polygon(27px 0,100% 0,100% calc(100% - 27px),calc(100% - 27px) 100%,0 100%,0 27px);box-shadow:0 30px 80px -20px rgba(0,0,0,.6);-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fx-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
 .fx-wm svg{display:block;width:138px;height:auto;filter:drop-shadow(0 0 10px rgba(120,140,255,.55))}
@@ -4184,7 +4197,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.7.0';
+var APP_VERSION='1.8.0';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -4657,15 +4670,33 @@ function updCheck(){
 }
 function updOverlay(){
   if(!window.UPD_NEEDED)return '';
-  return '<div class="updsys" role="alertdialog" aria-modal="true" aria-label="Update System"><style>'+
-    '.updsys{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:rgb(5 7 26 / .9);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}'+
-    '.updsys .updcard{width:min(92vw,340px);background:linear-gradient(170deg,rgba(18,24,64,.97),rgba(7,10,32,.99));color:#E8ECFF;border:1px solid rgba(160,176,255,.25);border-radius:0;clip-path:polygon(27px 0,100% 0,100% calc(100% - 27px),calc(100% - 27px) 100%,0 100%,0 27px);padding:26px 22px;text-align:center;display:flex;flex-direction:column;gap:12px;box-shadow:0 30px 80px -20px rgb(79 93 255 / .5)}'+
-    '.updsys h3{margin:0;font-size:22px;font-weight:800;letter-spacing:.3px;color:#fff}'+
-    '.updsys p{margin:0;font-size:14px;line-height:1.6;color:rgba(232,236,255,.7)}'+
-    '.updsys .btn.upbtn{height:54px;min-height:54px;border:0;border-radius:0;font-size:16px;font-weight:800;background:linear-gradient(120deg,#F6E7B0 0%,#E2B25A 100%)!important;background-image:none!important;color:#070A20!important;box-shadow:none!important;margin-top:6px;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}'+
-    '</style><div class="updcard"><h3>فيه تحديث جديد للتطبيق</h3>'+
-    '<p>لازم تحدّث عشان تكمل بأحدث التحسينات والإصلاحات. البيانات محفوظة.</p>'+
-    '<button class="btn upbtn" data-act="deepRefresh">تحديث الآن</button></div></div>';
+  return '<div class="updsys" role="alertdialog" aria-modal="true" aria-label="تحديث التطبيق"><style>'+
+    '.updsys{position:fixed;inset:0;z-index:300;display:grid;place-items:center;padding:20px;background:rgb(3 5 15 / .92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-family:Cairo,system-ui,sans-serif;color:#E8ECFF}'+
+    '.updsys .updcard{width:min(92vw,340px);box-sizing:border-box;padding:1px;background:linear-gradient(135deg,#8FA2FF 0%,#4F5DFF 35%,rgba(246,231,176,.7) 70%,#4F5DFF 100%);clip-path:polygon(28px 0,100% 0,100% calc(100% - 28px),calc(100% - 28px) 100%,0 100%,0 28px)}'+
+    '.updsys .updin{padding:24px 22px 20px;background:linear-gradient(170deg,rgba(18,24,64,.97),rgba(7,10,32,.99));clip-path:polygon(27px 0,100% 0,100% calc(100% - 27px),calc(100% - 27px) 100%,0 100%,0 27px);display:flex;flex-direction:column;gap:12px;text-align:center}'+
+    '.updsys .upk{font-family:"JetBrains Mono",monospace;font-size:9.5px;letter-spacing:1.6px;color:rgba(160,176,255,.8);text-transform:uppercase}'+
+    '.updsys .uprow{display:flex;align-items:center;justify-content:space-between}'+
+    '.updsys .upnew{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.4px;color:#F6E7B0;border:1px solid rgba(246,231,176,.5);padding:4px 8px}'+
+    '.updsys h3{margin:14px 0 0;font-size:22px;font-weight:800;color:#fff}'+
+    '.updsys p{margin:0;font-size:14px;line-height:1.7;color:rgba(232,236,255,.7)}'+
+    '.updsys .upcmp{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:14px;border:1px solid rgba(160,176,255,.2);background:rgba(79,93,255,.07);text-align:start}'+
+    '.updsys .upv{margin-top:6px;font-family:"JetBrains Mono",monospace;font-size:18px;font-weight:700;color:#E8ECFF}'+
+    '.updsys .upv.new{color:#F6E7B0}'+
+    '.updsys .uparr{color:#F6E7B0;font-size:18px}'+
+    '.updsys .upbar{height:6px;background:rgba(160,176,255,.16);clip-path:polygon(4px 0,100% 0,calc(100% - 4px) 100%,0 100%)}'+
+    '.updsys .btn.upbtn{height:54px;min-height:54px;border:0;border-radius:0;font-size:16px;font-weight:800;background:linear-gradient(120deg,#F6E7B0 0%,#E2B25A 100%)!important;background-image:none!important;color:#070A20!important;box-shadow:none!important;margin-top:4px;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}'+
+    '.updsys .upfoot{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:1.2px;color:rgba(232,236,255,.45)}'+
+    '</style><div class="updcard"><div class="updin">'+
+    '<div class="uprow"><span class="upk">SYSTEM UPDATE</span><span class="upnew">NEW ◆</span></div>'+
+    '<h3>فيه تحديث جديد للتطبيق</h3>'+
+    '<p>لازم تحدّث عشان تكمل بأحدث التحسينات والإصلاحات.</p>'+
+    '<div class="upcmp"><div><div class="upk">CURRENT</div><div class="upv" dir="ltr">'+esc(typeof APP_VERSION!=="undefined"?APP_VERSION:"")+'</div></div>'+
+    '<span class="uparr" aria-hidden="true">←</span>'+
+    '<div style="text-align:end"><div class="upk">LATEST</div><div class="upv new">أحدث</div></div></div>'+
+    '<div class="upbar" aria-hidden="true"></div>'+
+    '<button class="btn upbtn" data-act="deepRefresh">تحديث الآن</button>'+
+    '<p class="upfoot">DATA IS SAFE · SYNCED TO DRIVE</p>'+
+    '</div></div></div>';
 }
 function deepBtn(){return '<button class="btn ghost sm themebtn" data-act="deepRefresh" aria-label="تحديث عميق للصفحة" title="تحديث عميق للصفحة"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>';}
 /* زرار الدخول + زرار البصمة جنبه (بيظهر بس لو البصمة متفعلة على الجهاز ده) */
@@ -4716,7 +4747,7 @@ document.addEventListener('keydown',function(e){
 function loginHTML(){
   if(U.reset)return resetHTML();
   var err=U.loginErr?'<div class="note">'+U.loginErr+'</div>':'';
-  var logo='<svg class="login-mark" viewBox="150 135 415 500" aria-hidden="true" focusable="false"><defs><linearGradient id="loginMarkG" x1="0" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF0FF"/></linearGradient></defs><g fill="url(#loginMarkG)" fill-rule="evenodd"><path d="M378 144 L354 154 335 162 314 171 298 178 275 189 255 196 192 223 182 229 338 301 355 316 362 327 371 346 377 365 380 388 382 422 380 427 379 439 373 455 365 466 356 475 341 484 326 487 329 503 344 540 350 556 362 586 368 602 380 627 413 615 415 389 421 390 427 414 431 436 437 461 443 483 449 508 455 532 460 547 467 579 474 592 486 586 509 577 516 528 522 493 524 478 530 449 533 427 536 402 542 375 545 345 549 330 553 331 554 349 554 559 573 551 581 548 582 253 581 229 563 222 548 216 537 211 509 199 497 194 481 187 465 180 453 175 428 163 419 160 387 145Z M293 212 L305 207 319 208 330 218 345 224 368 235 389 242 400 247 419 256 436 263 451 268 469 283 473 294 479 348 485 376 485 275 476 264 429 244 411 235 387 223 365 214 351 211 337 201 338 195 356 187 369 191 381 202 398 208 447 230 465 238 482 247 497 253 508 270 505 369 500 421 497 458 496 495 492 505 488 503 482 474 479 458 470 412 467 397 455 335 452 319 450 307 444 293 436 286 404 273 391 267 361 253 341 244 320 235 301 232 289 223 290 216Z"/><path d="M217 321 L216 396 239 407 267 418 289 422 304 418 312 405 312 385 305 367 293 354 284 349 267 342 230 325Z"/><path d="M217 457 L216 560 239 571 267 581 291 592 299 595 287 560 279 542 267 511 254 474 243 468 235 463Z"/></g></svg>';
+  var logo='<div class="fx-login-wm"><svg viewBox="40 50 1540 320" role="img" aria-label="RMY" style="display:block;width:150px;height:auto"><g fill="#FFFFFF"><path d="M120 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z"/><path d="M250 252 H420 L590 350 H420 Z"/><path d="M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z"/><path d="M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"/></g></svg></div><div class="fx-login-sub">SECURE ACCESS · v2.050</div>';
   /* الربط بدرايف بقى شرط للدخول (بوابة في render)، فهنا بس نعرض حالة التحميل لو البيانات لسه بتتجاب */
   if(!S.auth){
     var msg=(GD.on&&!GD.ok)?'استنى لحد ما البيانات تتحمّل':'مافيش بيانات على الجهاز حالياً';
@@ -4727,7 +4758,7 @@ function loginHTML(){
     '<div class="fld"><label for="lpin">الرقم السري</label><div style="position:relative"><input id="lpin" type="text" '+(U.lpadNative?'inputmode="text"':'readonly inputmode="none"')+' autocomplete="off" value="'+esc(U.lpinVal||'')+'" style="opacity:0;caret-color:transparent" autofocus><div class="pdots" id="pdots">'+pinDotsInner((U.lpinVal||'').length)+'</div></div></div>'+
     padHTML()+
     loginBtnsHTML()+
-    '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
+    '<button class="btn ghost sm block" data-act="resetOpen">نسيت كلمة السر؟</button><div class="fx-login-foot">ENCRYPTED · SYNCED TO DRIVE</div></div></main>'+(U.cardOffPop?cardOffPopupHTML('data-act="cardOffClose"'):'');
 }
 /* صفحة إعادة تعيين الـ PIN: بتتأكد من الكود وآخر ٤ أرقام من الواتساب، ولو صح بيتغير الـ PIN فوراً */
 function waDigits(s){return String(s||'').replace(/[٠-٩]/g,function(c){return String(c.charCodeAt(0)-1632);}).replace(/\D/g,'');}
@@ -5044,7 +5075,8 @@ function loaderHTML(dark){
     '<defs><linearGradient id="'+uid+'g" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="'+C.g0+'"/><stop offset="1" stop-color="'+C.g1+'"/></linearGradient>'+
     '<clipPath id="'+uid+'c"><path id="ldWave" d=""/></clipPath></defs>'+ghost+lit+'</svg>';
   return '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:16px">'+
-    svg+
+    '<div class="ld26"><div class="ld26-orb"></div>'+'<svg class="ld26-mark" viewBox="150 135 415 500" aria-hidden="true" focusable="false"><g fill="#FFFFFF" fill-rule="evenodd"><path d="M378 144 L354 154 335 162 314 171 298 178 275 189 255 196 192 223 182 229 338 301 355 316 362 327 371 346 377 365 380 388 382 422 380 427 379 439 373 455 365 466 356 475 341 484 326 487 329 503 344 540 350 556 362 586 368 602 380 627 413 615 415 389 421 390 427 414 431 436 437 461 443 483 449 508 455 532 460 547 467 579 474 592 486 586 509 577 516 528 522 493 524 478 530 449 533 427 536 402 542 375 545 345 549 330 553 331 554 349 554 559 573 551 581 548 582 253 581 229 563 222 548 216 537 211 509 199 497 194 481 187 465 180 453 175 428 163 419 160 387 145Z M293 212 L305 207 319 208 330 218 345 224 368 235 389 242 400 247 419 256 436 263 451 268 469 283 473 294 479 348 485 376 485 275 476 264 429 244 411 235 387 223 365 214 351 211 337 201 338 195 356 187 369 191 381 202 398 208 447 230 465 238 482 247 497 253 508 270 505 369 500 421 497 458 496 495 492 505 488 503 482 474 479 458 470 412 467 397 455 335 452 319 450 307 444 293 436 286 404 273 391 267 361 253 341 244 320 235 301 232 289 223 290 216Z"/><path d="M217 321 L216 396 239 407 267 418 289 422 304 418 312 405 312 385 305 367 293 354 284 349 267 342 230 325Z"/><path d="M217 457 L216 560 239 571 267 581 291 592 299 595 287 560 279 542 267 511 254 474 243 468 235 463Z"/></g></svg>'+'</div>'+
+    '<div style="display:none">'+svg+'</div>'+
     '<div id="ldPct" style="font-weight:800;color:'+C.pct+';font-size:18px;font-variant-numeric:tabular-nums">'+pct+'%</div>'+
     '<div id="ldMsg" style="color:'+C.msg+';font-size:14px;max-width:300px">'+esc(msg)+'</div>'+
     ((failed||GD.needTap)?'<button class="btn" data-act="loaderRetry">حاول تاني</button>':'')+
