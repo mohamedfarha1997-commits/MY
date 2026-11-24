@@ -257,11 +257,13 @@ button,input{font-family:inherit}
 .back{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:50;border:0;padding:0;cursor:default}
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;max-height:90%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));z-index:51;display:flex;flex-direction:column;gap:14px;border:1px solid var(--line);border-bottom:0}
 .sheet h3{margin:0;font-family:var(--f-disp);font-size:21px;color:var(--c)}
-.scards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:6px 0 10px}
-.scard{min-height:130px;border-radius:20px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-weight:700;font-size:16px;cursor:pointer;box-shadow:var(--shadow);transition:transform .18s var(--ease),border-color .2s}
-.scard:hover{border-color:var(--prep)}
-.scard:active{transform:scale(.97)}
-.scard .sico{font-size:38px;line-height:1}
+.scards{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:20px calc(50% - 62px) 24px;margin:0 -16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab;user-select:none}
+.scards::-webkit-scrollbar{display:none}
+.scards.dragging{scroll-snap-type:none;cursor:grabbing}
+.scard{flex:0 0 124px;height:172px;scroll-snap-align:center;border-radius:20px;border:0;padding:12px 8px;color:#fff;background:linear-gradient(160deg,var(--c1),var(--c2));display:flex;flex-direction:column;justify-content:space-between;align-items:center;cursor:pointer;opacity:.55;transform:scale(.92);transition:transform .3s var(--ease),opacity .3s,box-shadow .3s}
+.scard.on{opacity:1;transform:scale(1.1);box-shadow:0 0 0 3px #fff,0 0 30px 8px var(--c1),0 18px 36px -10px rgba(0,0,0,.6)}
+.scard .sico{font-size:46px;line-height:1;margin-top:18px}
+.scard .sname{font-weight:800;font-size:14px;line-height:1.2;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.45)}
 .pgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pk{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;text-align:start;background:var(--surface);color:var(--ink);cursor:pointer;font-size:14px;font-weight:600}
 .pk small{display:block;color:var(--muted);font-weight:400;font-size:12px}
@@ -3674,8 +3676,28 @@ function fgStockView(){
 }
 
 var SEASON_ICO={normal:'🍞',ramadan:'🌙',mawlid:'🕌',christmas:'🎄',halloween:'🎃',boxes:'📦'};
-/* اختيار الموسم: بطاقات كبيرة جنب بعض */
-function seasonCardsHTML(act){return '<div class="scards">'+SEASONS.map(function(x){return '<button class="scard" data-act="'+act+'" data-v="'+x[0]+'"><span class="sico" aria-hidden="true">'+(SEASON_ICO[x[0]]||'📅')+'</span><span>'+esc(x[1])+'</span></button>';}).join('')+'</div>';}
+/* اختيار الموسم: صف أفقي من البلاطات الكبيرة زي شاشة الألعاب */
+var SEASON_CLR={normal:['#0E8A8C','#0B3B3D'],ramadan:['#6D28D9','#1E1B4B'],mawlid:['#B45309','#5C2A0A'],christmas:['#15803D','#7F1D1D'],halloween:['#EA580C','#1C1917'],boxes:['#475569','#1E293B']};
+function seasonCardsHTML(act){
+  var first=SEASONS[0];
+  return '<div class="scards" data-carousel="1">'+SEASONS.map(function(x,i){var c=SEASON_CLR[x[0]]||['#475569','#1E293B'];return '<div class="scard'+(i?'':' on')+'" style="--c1:'+c[0]+';--c2:'+c[1]+'" data-k="'+x[0]+'"><span class="sico" aria-hidden="true">'+(SEASON_ICO[x[0]]||'📅')+'</span><span class="sname">'+esc(x[1])+'</span></div>';}).join('')+'</div>'+
+  '<button class="btn block" data-act="'+act+'" data-v="'+first[0]+'" data-pick="1">اختار '+esc(first[1])+'</button>';
+}
+/* الشريحة اللي في النص بتتعلّم وتتوهّج، وزرار الاختيار بيتحدّث معاها */
+function scardsFocus(box){
+  var br=box.getBoundingClientRect(),mid=br.left+br.width/2,best=null,bd=Infinity;
+  [].forEach.call(box.querySelectorAll('.scard'),function(c){var r=c.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-mid);if(d<bd){bd=d;best=c;}});
+  if(!best)return;
+  [].forEach.call(box.querySelectorAll('.scard'),function(c){c.classList.toggle('on',c===best);});
+  var btn=box.parentNode&&box.parentNode.querySelector('[data-pick]');
+  if(btn){var k=best.getAttribute('data-k'),nm=best.querySelector('.sname');btn.setAttribute('data-v',k);btn.textContent='اختار '+(nm?nm.textContent:'');}
+}
+document.addEventListener('scroll',function(e){var t=e.target;if(t&&t.classList&&t.classList.contains('scards'))scardsFocus(t);},true);
+/* سحب بالماوس (الموبايل بيتسحب بالصباع أصلاً) */
+var SC_DRAG=null;
+document.addEventListener('pointerdown',function(e){var box=e.target.closest&&e.target.closest('.scards');if(!box||e.pointerType!=='mouse')return;SC_DRAG={box:box,x:e.clientX,sl:box.scrollLeft,moved:false};},true);
+document.addEventListener('pointermove',function(e){if(!SC_DRAG)return;var dx=e.clientX-SC_DRAG.x;if(!SC_DRAG.moved&&Math.abs(dx)>4){SC_DRAG.moved=true;SC_DRAG.box.classList.add('dragging');}if(SC_DRAG.moved)SC_DRAG.box.scrollLeft=SC_DRAG.sl-dx;},true);
+document.addEventListener('pointerup',function(){if(!SC_DRAG)return;var b=SC_DRAG.box;b.classList.remove('dragging');SC_DRAG=null;},true);
 function sheetHTML(){
   if(!U.sheet)return '';
   var s=U.sheet,n={},sh=[];
@@ -4057,7 +4079,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.2.6';
+var APP_VERSION='1.2.7';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -4477,7 +4499,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261118-1633';
+var APP_BUILD='20261124-1116';
 function deepRefresh(){
   var go=function(){location.replace(location.pathname+'?v='+Date.now()+(location.hash||''));};
   try{
