@@ -4204,7 +4204,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.13.0';
+var APP_VERSION='1.13.2';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -4741,9 +4741,9 @@ function padHTML(){
   var css='<style>.lpad{width:100%;max-width:360px;margin:28px auto 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.lpad button{height:58px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(255 255 255 / .08);color:#fff;font:700 22px/1 var(--mono,monospace),system-ui,sans-serif;cursor:pointer;transition:transform .12s ease,background .2s ease;-webkit-tap-highlight-color:transparent}.lpad button[aria-label="مسح"]{font-size:20px}.lpad button:active{transform:scale(.94);background:rgb(255 255 255 / .2)}.lpad .lp-sm{font-size:15px}.pdots{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:16px;pointer-events:none}.pd{width:14px;height:14px;border-radius:50%;border:2px solid rgb(255 255 255 / .45);transition:background .15s,transform .15s,box-shadow .15s}.pd.on{background:#fff;border-color:#fff;transform:scale(1.1);box-shadow:0 0 10px rgb(255 255 255 / .7)}</style>';
   if(U.lpadNative)return css+'<div class="lpad" style="grid-template-columns:1fr"><button type="button" class="lp-sm" data-act="padMode">لوحة الأرقام</button></div>';
   var k=function(n){return '<button type="button" data-act="padKey" data-k="'+n+'">'+n+'</button>';};
-  return css+'<div class="lpad" dir="ltr">'+k(3)+k(2)+k(1)+k(6)+k(5)+k(4)+k(9)+k(8)+k(7)+
-    '<button type="button" data-act="padKey" data-k="del" aria-label="مسح">&#9003;</button>'+k(0)+
-    '<span></span></div>';
+  return css+'<div class="lpad" dir="ltr">'+k(1)+k(2)+k(3)+k(4)+k(5)+k(6)+k(7)+k(8)+k(9)+
+    '<span></span>'+k(0)+
+    '<button type="button" data-act="padKey" data-k="del" aria-label="مسح">&#9003;</button></div>';
 }
 /* كيبورد الكمبيوتر: الأرقام والـ Backspace بيشتغلوا في اللوحة وهي شغالة */
 document.addEventListener('keydown',function(e){
@@ -4914,7 +4914,7 @@ function resetHTML(){
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
   return '<main class="login rst" dir="rtl" lang="ar"><style>'+
     '.login{position:relative;overflow:hidden}.login::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(120,140,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,255,.07) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(80% 55% at 50% 20%,#000 30%,transparent 100%);mask-image:radial-gradient(80% 55% at 50% 20%,#000 30%,transparent 100%)}'+
-    '.login.rst{display:block!important;justify-content:flex-start!important;padding:52px 22px 22px!important;box-sizing:border-box}'+
+    '.login.rst{display:block!important;height:auto!important;min-height:100vh;min-height:100dvh;justify-content:flex-start!important;padding:52px 22px 22px!important;box-sizing:border-box}'+
     '.login.rst .lcard{background:none!important;border:0!important;clip-path:none!important;padding:0!important;max-width:none!important;width:100%!important;gap:18px!important;justify-content:flex-start!important;align-items:stretch!important;text-align:start!important;z-index:1}'+
     '.login.rst .lcard h2{font-size:24px;margin:0;color:#fff}'+
     '.login.rst .lcard .meta{font-size:13px!important;margin:8px 0 0!important;line-height:1.6;text-align:start!important}'+
@@ -4945,7 +4945,7 @@ function resetHTML(){
     '</div></div>'+
     '<div id="rPinBtn" style="display:'+(vd?'block':'none')+'"><button class="btn block" data-act="resetSend">تغيير الـ PIN</button></div>'+
     '<button class="btn ghost sm block" data-act="resetBack" style="margin-top:0">رجوع لتسجيل الدخول</button>'+
-    '<p style="margin:6px 0 0;text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:1.2px;color:rgba(232,236,255,.45)">الطلب بيتراجع من المسئول لو الكود مش صح</p></div></main>';
+    '<p style="margin:6px 0 0;text-align:center;text-align-last:center;font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:1.2px;color:rgba(232,236,255,.45)">الطلب بيتراجع من المسئول لو الكود مش صح</p></div></main>';
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
 var FX=(function(){
@@ -5074,7 +5074,7 @@ function loaderHTML(dark){
   var msg=failed?String(GD.err):(GD.needTap?'محتاج تأكيد من جوجل':(GD.stage||'جاري تحميل البيانات من جوجل درايف…'));
   var pct=Math.round(GD.pct||0);
   var showMsg=failed||GD.needTap;
-  return '<div dir="rtl" style="position:relative;width:100%;min-height:100vh;box-sizing:border-box;padding:0 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(90% 55% at 50% 42%,rgba(79,93,255,.42) 0%,rgba(79,93,255,0) 70%),#0c1233;color:#E8ECFF;font-family:Cairo,system-ui,sans-serif;overflow:hidden">'+
+  return '<div dir="rtl" style="position:fixed;inset:0;width:100%;height:100%;box-sizing:border-box;padding:0 28px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(90% 55% at 50% 42%,rgba(79,93,255,.42) 0%,rgba(79,93,255,0) 70%),#0c1233;color:#E8ECFF;font-family:Cairo,system-ui,sans-serif;overflow:hidden">'+
     '<div aria-hidden="true" style="position:absolute;inset:0;background-image:linear-gradient(rgba(120,140,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,255,.07) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(70% 50% at 50% 45%,#000 30%,transparent 100%);mask-image:radial-gradient(70% 50% at 50% 45%,#000 30%,transparent 100%)"></div>'+
     '<div style="position:relative;width:200px;height:200px;display:grid;place-items:center">'+
       '<div aria-hidden="true" style="position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(160,176,255,.35)"></div>'+
