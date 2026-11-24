@@ -257,7 +257,11 @@ button,input{font-family:inherit}
 .back{position:fixed;inset:0;background:rgb(0 0 0 / .5);z-index:50;border:0;padding:0;cursor:default}
 .sheet{position:fixed;left:0;right:0;bottom:0;margin:0 auto;max-width:560px;max-height:90%;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px));z-index:51;display:flex;flex-direction:column;gap:14px;border:1px solid var(--line);border-bottom:0}
 .sheet h3{margin:0;font-family:var(--f-disp);font-size:21px;color:var(--c)}
-.scards{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:20px calc(50% - 62px) 24px;margin:0 -16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab;user-select:none}
+.scards{display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:44px calc(50% - 62px);margin:0 -16px;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;cursor:grab;user-select:none}
+.sbig{text-align:center;font-weight:900;font-size:22px;color:var(--ink);margin-top:2px;min-height:30px}
+.sdots{display:flex;justify-content:center;gap:7px;margin:4px 0 12px}
+.sdots i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:background .25s,transform .25s}
+.sdots i.on{background:var(--prep);transform:scale(1.35)}
 .scards::-webkit-scrollbar{display:none}
 .scards.dragging{scroll-snap-type:none;cursor:grabbing}
 .scard{flex:0 0 124px;height:172px;scroll-snap-align:center;border-radius:20px;border:0;padding:12px 8px;color:#fff;background:linear-gradient(160deg,var(--c1),var(--c2));display:flex;flex-direction:column;justify-content:space-between;align-items:center;cursor:pointer;opacity:.55;transform:scale(.92);transition:transform .3s var(--ease),opacity .3s,box-shadow .3s}
@@ -3417,16 +3421,16 @@ function fillingView(){
     '<div class="meta" style="margin-top:8px">وحدة الصنف الجديد</div>'+unitBtns+'<div class="meta" style="margin-top:12px">3. يتحط في</div>'+kindBtns+'<div class="meta" style="margin-top:8px">الموسم</div>'+seasonBtns+
     '<div class="meta" style="margin-top:8px">الكود الجديد: <b>'+nextCode+'</b> · بيتسجل في مخزن الإنتاج بنفس المسارات القديمة</div>'+
     '<div class="btns"><button class="btn" id="fillMakeBtn" data-act="fillMake"'+(fillDupName(F.name)?' disabled':'')+'>اعمل الصنف</button></div></section>';
-  var opts=[['short','نواقص الأوردرات','اضغط على الصنف عشان تتملي بياناته في الفورم'],['new','صنف محشو جديد','اعمل صنف محشو بكود جديد']];
+  var opts=[['short','نواقص الأوردرات','اضغط على الصنف عشان تبدأ إنتاجه']];
   if(!tabHidden('fillrun'))opts.push(['run','تسجيل إنتاج جديد','شغّل صنف محشو موجود من مخزن الإنتاج']);
-  var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:'new';
+  var ft=(U.fillTab&&opts.some(function(x){return x[0]===U.fillTab;}))?U.fillTab:'short';
   var tiles='<div class="fgcards" style="margin-bottom:12px">'+opts.map(function(x){
       var on=ft===x[0];
       return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
     }).join('')+'</div>';
   if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+runFillHTML()+prodLogHTML('fill');
   var nShort=shortByProduct(fgShortRows()).length;
-  var body=ft==='short'?fillShortHTML():form;
+  var body=fillShortHTML();
   return head('تحضير حشو',ft==='short'?'نواقص الأوردرات من مخزن الإنتاج':'إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles.replace('نواقص الأوردرات</b>','نواقص الأوردرات ('+nShort+')</b>')+body;
 }
 /* نواقص الأوردرات (نفس اللي كانت في مخزن الإنتاج): الضغط على الصنف بيملّي الفورم */
@@ -3664,7 +3668,7 @@ function fgStockView(){
   var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
   PRODUCTS.forEach(function(p){if(fgUserHidden(p))return;inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
-  var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','الكل'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
+  var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','مخزن التحضيرات'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
     return '<button class="'+(F===x[0]?'on':'')+'" data-act="fgFilter" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>'+fgSeasonRow();
   var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.filter(function(p){return !fgUserHidden(p);}).length+'</b><span>صنف</span></div>'+
@@ -3691,6 +3695,7 @@ var SEASON_CLR={normal:['#0E8A8C','#0B3B3D'],ramadan:['#6D28D9','#1E1B4B'],mawli
 function seasonCardsHTML(act){
   var first=SEASONS[0];
   return '<div class="scards" data-carousel="1">'+SEASONS.map(function(x,i){var c=SEASON_CLR[x[0]]||['#475569','#1E293B'];return '<div class="scard'+(i?'':' on')+'" style="--c1:'+c[0]+';--c2:'+c[1]+'" data-k="'+x[0]+'"><span class="sico" aria-hidden="true">'+(SEASON_ICO[x[0]]||'📅')+'</span><span class="sname">'+esc(x[1])+'</span></div>';}).join('')+'</div>'+
+  '<div class="sbig">'+esc(first[1])+'</div><div class="sdots">'+SEASONS.map(function(x,i){return '<i'+(i?'':' class="on"')+' data-dot="'+x[0]+'"></i>';}).join('')+'</div>'+
   '<button class="btn block" data-act="'+act+'" data-v="'+first[0]+'" data-pick="1">اختار '+esc(first[1])+'</button>';
 }
 /* الشريحة اللي في النص بتتعلّم وتتوهّج، وزرار الاختيار بيتحدّث معاها */
@@ -3699,8 +3704,11 @@ function scardsFocus(box){
   [].forEach.call(box.querySelectorAll('.scard'),function(c){var r=c.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-mid);if(d<bd){bd=d;best=c;}});
   if(!best)return;
   [].forEach.call(box.querySelectorAll('.scard'),function(c){c.classList.toggle('on',c===best);});
-  var btn=box.parentNode&&box.parentNode.querySelector('[data-pick]');
-  if(btn){var k=best.getAttribute('data-k'),nm=best.querySelector('.sname');btn.setAttribute('data-v',k);btn.textContent='اختار '+(nm?nm.textContent:'');}
+  var wrap=box.parentNode;if(!wrap)return;
+  var k=best.getAttribute('data-k'),nm=best.querySelector('.sname'),name=nm?nm.textContent:'';
+  var btn=wrap.querySelector('[data-pick]');if(btn){btn.setAttribute('data-v',k);btn.textContent='اختار '+name;}
+  var big=wrap.querySelector('.sbig');if(big)big.textContent=name;
+  [].forEach.call(wrap.querySelectorAll('[data-dot]'),function(d){d.classList.toggle('on',d.getAttribute('data-dot')===k);});
 }
 document.addEventListener('scroll',function(e){var t=e.target;if(t&&t.classList&&t.classList.contains('scards'))scardsFocus(t);},true);
 /* سحب بالماوس (الموبايل بيتسحب بالصباع أصلاً) */
@@ -7652,7 +7660,7 @@ var ACT={
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
-  fillFromShort:function(d){var p=P(d.p);if(!p)return false;var a=shortByProduct(fgShortRows()).filter(function(x){return x.p===d.p;})[0];var F=U.fill||(U.fill={name:'',kind:'cust',q:{},out:'',unit:'قطعة',sel:[]});F.name=p.name;F.out=a?String(r3(a.short)):'';U.fillTab='new';},
+  fillFromShort:function(d){var p=P(d.p);if(!p)return false;var a=shortByProduct(fgShortRows()).filter(function(x){return x.p===d.p;})[0];if(!a)return false;var y=yieldOf(p.id)||1;U.form=null;U.sheet={sel:[p.id],q:{},shop:!!p.shop,season:seasonOf(p)};U.sheet.q[p.id]=Math.max(0.25,r3(a.short/y));},
   fillSel:function(d){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
     var k=U.fill.sel.indexOf(d.p);
