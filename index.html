@@ -7660,7 +7660,9 @@ var ACT={
   },
   grpOpen:function(d){U.oGrp=U.oGrp||{};U.oGrp[d.g]=!U.oGrp[d.g];},
   fgGrpOpen:function(d){U.fGrpOpen=U.fGrpOpen||{};U.fGrpOpen[d.g]=!U.fGrpOpen[d.g];},
-  fillFromShort:function(d){var p=P(d.p);if(!p)return false;var a=shortByProduct(fgShortRows()).filter(function(x){return x.p===d.p;})[0];if(!a)return false;var y=yieldOf(p.id)||1;U.form=null;U.sheet={sel:[p.id],q:{},shop:!!p.shop,season:seasonOf(p)};U.sheet.q[p.id]=Math.max(0.25,r3(a.short/y));},
+  fillFromShort:function(d){var p=P(d.p);if(!p)return false;var a=shortByProduct(fgShortRows()).filter(function(x){return x.p===d.p;})[0];if(!a)return false;
+    /* صنف نهائي: بيتفتح في صفحة تسجيل الإنتاج نفسها، بالاسم والكمية الناقصة */
+    ACT.runPick({id:p.id});U.run.out=String(r3(a.short));U.fillTab='run';},
   fillSel:function(d){
     U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.sel=U.fill.sel||[];
     var k=U.fill.sel.indexOf(d.p);
