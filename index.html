@@ -3681,10 +3681,17 @@ function sheetHTML(){
     return '<div class="rq"><div><b>'+esc(cp.name)+'</b><small>من مخزن الإنتاج · المتاح '+f(have)+' '+esc(cp.unit)+'</small></div><span class="qv">'+f(cn[k])+' '+esc(cp.unit)+'</span>'+(have+1e-9<cn[k]?'<span class="pill bad">ينقص '+f(r3(cn[k]-have))+'</span>':'<span class="pill ok">متوفر</span>')+'</div>';
   }).join('');
   
+  /* الأصناف بتظهر بعد ما تختار الموسم بس */
+  var seasonList=s.season?PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived&&!!x.shop===!!s.shop&&!fgUserHidden(x)&&seasonOf(x)===s.season;}):[];
+  var seasonName=(SEASONS.filter(function(x){return x[0]===s.season;})[0]||[])[1]||'';
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
-    '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
-    '<div class="pgrid">'+PRODUCTS.filter(function(x){return !isFill(x)&&!x.archived&&!!x.shop===!!s.shop&&!fgUserHidden(x);}).map(function(x){return pkTileHTML(x,s);}).join('')+'</div>'+
+    (!s.season?
+      '<div class="meta">اختار الموسم الأول</div>'+seasonSeg(null,'sheetSeason',visibleSeasons())
+    :
+      '<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">الموسم: <b>'+esc(seasonName)+'</b><button class="btn ghost sm" data-act="sheetSeason" data-v="">غيّر الموسم</button></div>'+
+      '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
+      (seasonList.length?'<div class="pgrid">'+seasonList.map(function(x){return pkTileHTML(x,s);}).join('')+'</div>':'<div class="empty"><b>مفيش أصناف في الموسم ده</b><span>ضيف أصناف للموسم ده من الأصناف الأول.</span></div>'))+
     ''+
     (rows?'<div><div class="meta" style="margin-bottom:6px">المواد المطلوبة</div>'+rows+'</div>':'')+
     (sh.length||cshort.length?'<div class="note">في نقص في '+(sh.length+cshort.length)+((sh.length+cshort.length)>2?' أصناف':' صنف')+(cshort.length?' (منها وصفات من مخزن الإنتاج)':'')+'. تقدر تنشئ الدفعة وتكمّل النقص قبل السحب.</div>':'')+
@@ -6279,7 +6286,7 @@ var ACT_CAT={
   goStock:['prep','فتح المخزن','r'],exportBatchMats:['prep','تصدير الخامات PDF','r'],prepTabSet:['prep','تبويب التحضير','r'],
   startRun:['prod','بدء التشغيل','w'],skipTimer:['prod','إنهاء المؤقت الآن','w'],sheetCreate:['prod','إنشاء دفعة إنتاج','w'],
   lotZero:['prod','تصفير الدفعات','w'],testAlarm:['prod','تجربة الصوت','r'],stopAlarm:['prod','إيقاف المنبه','r'],
-  sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
+  sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
@@ -6917,6 +6924,7 @@ var ACT={
     bind(S);U.form=null;toast('تم الحذف');
   },
   sheetClose:function(){U.sheet=null;},
+  sheetSeason:function(d){var sh=U.sheet;if(!sh)return false;sh.season=d.v||null;sh.sel=[];sh.q={};},
   sheetProd:function(d){
     var sh=U.sheet,i=sh.sel.indexOf(d.p);
     if(i>-1){sh.sel.splice(i,1);}else{sh.sel.push(d.p);if(!sh.q[d.p])sh.q[d.p]=1;}
