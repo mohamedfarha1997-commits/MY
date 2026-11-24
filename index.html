@@ -3428,7 +3428,7 @@ function fillingView(){
       var on=ft===x[0];
       return '<div class="fgc'+(on?' sel':'')+'" style="--c:var(--filling)" role="button" aria-pressed="'+on+'" data-act="fillTab" data-v="'+x[0]+'"><b style="font-size:16px">'+x[1]+'</b><span class="meta">'+x[2]+'</span></div>';
     }).join('')+'</div>';
-  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+runFillHTML()+prodLogHTML('fill');
+  if(ft==='run')return head('تحضير حشو','تشغيل صنف محشو موجود من خامات مخزن الإنتاج','')+tiles+runFillHTML()+prodLogHTML('fill');
   var nShort=shortByProduct(fgShortRows()).length;
   var body=fillShortHTML();
   return head('تحضير حشو',ft==='short'?'نواقص الأوردرات من مخزن الإنتاج':'إضافة صنف محشو جديد بكود جديد من خامات مخزن الإنتاج','')+tiles.replace('نواقص الأوردرات</b>','نواقص الأوردرات ('+nShort+')</b>')+body;
