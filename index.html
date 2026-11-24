@@ -1052,6 +1052,34 @@ body::before{ /* subtle dot texture */
 #scanOv .btn{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);width:auto;padding:12px 32px}
 .bcwrap{background:#fff;border-radius:12px;padding:12px 14px;margin-top:12px}
 .bcwrap svg{width:100%;height:56px;display:block}
+.fx{position:relative;overflow:hidden;color:#E8ECFF;padding:24px 22px 20px;background:linear-gradient(170deg,rgba(18,24,64,.96) 0%,rgba(7,10,32,.98) 100%);border:1px solid rgba(160,176,255,.25);clip-path:polygon(27px 0,100% 0,100% calc(100% - 27px),calc(100% - 27px) 100%,0 100%,0 27px);box-shadow:0 30px 80px -20px rgba(0,0,0,.6);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fx-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.fx-wm svg{display:block;width:138px;height:auto;filter:drop-shadow(0 0 10px rgba(120,140,255,.55))}
+.fx-sub{margin-top:8px;font:500 9.5px/1 var(--mono);letter-spacing:2.4px;text-transform:uppercase;color:rgba(160,176,255,.8)}
+.fx-tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border:1px solid rgba(246,231,176,.5);color:#F6E7B0;font:600 10px/1 var(--mono);letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap}
+.fx-tag::before{content:"";width:6px;height:6px;background:#F6E7B0;transform:rotate(45deg)}
+.fx-person{display:flex;align-items:center;gap:16px;margin-top:24px}
+.fx-ring{flex:none;width:84px;height:84px;border-radius:50%;background:conic-gradient(#F6E7B0 0 74%,rgba(160,176,255,.18) 74% 100%);display:grid;place-items:center}
+.fx-ini{width:74px;height:74px;border-radius:50%;background:#0A1030;display:grid;place-items:center;font:800 34px/1 var(--ar);color:#F6E7B0}
+.fx-who{min-width:0;flex:1}
+.fx-name{margin:0;font:800 25px/1.15 var(--ar);word-break:break-word}
+.fx-role{margin-top:8px;font:500 11px/1 var(--mono);letter-spacing:1.6px;color:rgba(232,236,255,.6)}
+.fx-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px;margin-top:22px}
+.fx-f{padding-top:10px;border-top:1px solid rgba(160,176,255,.18);min-width:0}
+.fx-f.full{grid-column:1/-1}
+.fx-k{display:block;font:500 9.5px/1.2 var(--mono);letter-spacing:1.6px;text-transform:uppercase;color:rgba(160,176,255,.75)}
+.fx-v{display:block;margin-top:4px;font:600 15px/1.35 var(--ar);word-break:break-word}
+.fx-v.en{font-family:var(--mono);font-weight:700;letter-spacing:1px;direction:ltr;text-align:right}
+.fx-strip{margin-top:22px;padding:14px;border:1px solid rgba(160,176,255,.2);background:rgba(79,93,255,.07)}
+.fx-row{display:flex;justify-content:space-between;align-items:center}
+.fx-st{display:inline-flex;align-items:center;gap:6px;font:500 10px/1 var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:#7CF2C4}
+.fx-st::before{content:"";width:6px;height:6px;border-radius:50%;background:#7CF2C4;box-shadow:0 0 8px #7CF2C4}
+.fx-st.off{color:#fca5a5}
+.fx-st.off::before{background:#ef4444;box-shadow:0 0 8px #ef4444}
+.fx-num{margin-top:6px;font:700 24px/1 var(--mono);letter-spacing:3px;direction:ltr;text-align:right}
+.fx-bc{margin-top:12px;background:#E8ECFF;padding:8px 12px}
+.fx-bc svg{width:100%;height:56px;display:block}
+.fx-foot{margin-top:14px;display:flex;justify-content:space-between;gap:8px;font:500 9.5px/1 var(--mono);letter-spacing:1.4px;text-transform:uppercase;color:rgba(232,236,255,.5)}
 @media print{
   body{background:#fff;padding:0}
   body::before{display:none}
@@ -4141,7 +4169,7 @@ var SET_IC={
 /* التحديثات المنشورة بتتخزن في بيانات التطبيق (بتتزامن مع درايف) وبيكتبها المالك من تبويب التحديثات */
 function updList(){var l=pref('appUpdates',[]);return Array.isArray(l)?l:[];}
 /* إصدار الكود اللي شغال دلوقتي. لازم يتغيّر في الكود مع كل نشر جديد على GitHub Pages */
-var APP_VERSION='1.3.0';
+var APP_VERSION='1.4.0';
 function verCmp(a,b){
   var pa=String(a||'0').split('.').map(Number),pb=String(b||'0').split('.').map(Number);
   for(var i=0;i<3;i++){var x=pa[i]||0,y=pb[i]||0;if(x!==y)return x<y?-1:1;}
@@ -8617,11 +8645,9 @@ function showCard(c){
   var initial=String(c.name||c.code||'?').trim().charAt(0).toUpperCase();
   var upd=DATA.updated?new Date(DATA.updated).toLocaleDateString('ar-EG'):'';
   var fields='';
-  if(c.name)fields+='<div class="field full"><div class="k">Full name · الاسم</div><div class="v">'+esc(c.name)+'</div></div>';
-  if(c.job)fields+='<div class="field"><div class="k">Position · الوظيفة</div><div class="v">'+esc(c.job)+'</div></div>';
-  if(c.joinDate)fields+='<div class="field"><div class="k">Joined · الانضمام</div><div class="v">'+esc(fmtDate(c.joinDate))+'</div></div>';
-  if(c.wa)fields+='<div class="field full"><div class="k">WhatsApp · واتساب</div><div class="v en">'+esc(c.wa)+'</div></div>';
-
+  if(c.job)fields+='<div class="fx-f"><span class="fx-k">Position · الوظيفة</span><span class="fx-v">'+esc(c.job)+'</span></div>';
+  if(c.joinDate)fields+='<div class="fx-f"><span class="fx-k">Joined · الانضمام</span><span class="fx-v">'+esc(fmtDate(c.joinDate))+'</span></div>';
+  if(c.wa)fields+='<div class="fx-f full"><span class="fx-k">WhatsApp · واتساب</span><span class="fx-v en">'+esc(c.wa)+'</span></div>';
   var act=c.active!==false;
   if(!act){
     var waStop='https://wa.me/201508999341?text='+encodeURIComponent('السلام عليكم، الكارت بتاعي (ID: '+c.code+') اتوقف، ممكن أستفسر؟');
@@ -8636,21 +8662,17 @@ function showCard(c){
     if(anotherStop)anotherStop.onclick=function(e){e.preventDefault();askId();};
     return;
   }
-  out.innerHTML='<div class="idc" id="card">'+
-    '<div class="head">'+
-      '<div class="mark">'+LOGO+'<div><b>RMY</b><small>Identification</small></div></div>'+
-      '<span class="tag">Verified</span>'+
-    '</div>'+
-    '<div class="person"><div class="avatar">'+esc(initial)+'</div>'+
-      '<div><p class="pname">'+esc(c.name||c.code)+'</p><div class="plabel">Member · عضو</div></div>'+
-    '</div>'+
-    (fields?'<div class="fields">'+fields+'</div>':'')+
-    '<div class="idrow"><div class="k"><span>Employee ID · رقم الـ ID</span><span class="st '+(act?'':'off')+'">'+(act?'Active':'Inactive')+'</span></div>'+
-      '<div class="scratch"><span class="num">'+esc(c.code)+'</span><canvas id="scratchC" aria-label="اخربش لكشف الـ ID"></canvas></div>'+
-      '<div class="bcwrap"><svg id="bcSvg" role="img" aria-label="باركود الكارت"></svg></div>'+
-    '</div>'+
-    '<div class="foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
-  '</div>'+
+  out.innerHTML='<section class="fx" id="card">'+
+    '<div class="fx-top"><div><div class="fx-wm">'+LOGO+'</div><div class="fx-sub">Identity module · RMY</div></div>'+
+      '<span class="fx-tag">Verified</span></div>'+
+    '<div class="fx-person"><div class="fx-ring" aria-hidden="true"><div class="fx-ini">'+esc(initial)+'</div></div>'+
+      '<div class="fx-who"><p class="fx-name">'+esc(c.name||c.code)+'</p><div class="fx-role">MEMBER · عضو</div></div></div>'+
+    (fields?'<div class="fx-grid">'+fields+'</div>':'')+
+    '<div class="fx-strip"><div class="fx-row"><span class="fx-k">ID NUMBER · رقم الـ ID</span><span class="fx-st '+(act?'':'off')+'">'+(act?'Active':'Inactive')+'</span></div>'+
+      '<div class="fx-num">'+esc(c.code)+'</div>'+
+      '<div class="fx-bc"><svg id="bcSvg" role="img" aria-label="باركود الكارت"></svg></div></div>'+
+    '<div class="fx-foot"><span>RMY Pro</span>'+(upd?'<span>Updated · '+esc(upd)+'</span>':'')+'</div>'+
+  '</section>'+
   '<div class="noprint actions"><button class="btn" id="shareBtn">مشاركة</button><button class="btn ghost" id="pdfBtn">تصدير PDF</button></div>'+
   '<div class="noprint actions" style="margin-top:10px"><button class="btn ghost" id="bigBcBtn">باركود كبير للمسح</button></div>'+
   (OWN_MODE?'':'<a class="linkline noprint" href="#" id="anotherLink">تحقق من ID تاني</a>');
