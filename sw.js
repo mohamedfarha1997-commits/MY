@@ -1,3 +1,4 @@
+// build 20261124-2250: تحديث الأيقونة الجديدة (يغيّر الملف عشان المتصفح يحدّث الـ service worker)
 // Service worker for RMY Pro: lets notifications show even when the app is closed or the phone is locked.
 // No caching here on purpose, so the app always loads the latest index.html.
 
