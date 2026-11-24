@@ -4570,8 +4570,8 @@ function updStart(id){
     setTimeout(function(){
       if(!$('updOv'))return;
       bar.className='';bar.style.width='100%';
-      setMsg('تم التحديث بنجاح','الإصدار '+up.ver+' اتثبّت');
-      $('updAct').innerHTML='<button class="updov-btn" data-act="updFinish" data-id="'+esc(id)+'">تم</button>';
+      UPD.pct=100;
+      ov.innerHTML=updInstallDoneHTML(up,id);
     },1500);
   };
   var attempt=function(){
@@ -4599,6 +4599,20 @@ function updStart(id){
     });
   };
   attempt();
+}
+/* كارت نجاح التثبيت: بيظهر داخل شاشة التحديث بعد ما التثبيت يخلص، وزرار تمام بيعيد تشغيل التطبيق */
+function updInstallDoneHTML(up,id){
+  return '<div class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>'+
+    '<div class="updframe"><div class="updcard">'+
+    '<div class="updrow" style="justify-content:center"><span class="updtag">UPDATE COMPLETE</span></div>'+
+    '<h3>تم تثبيت التحديث بنجاح</h3>'+
+    '<p class="updov-msg">الإصدار <span style="color:#F6E7B0">'+esc(up.ver)+'</span> اتثبّت على جهازك.</p>'+
+    '<div class="updvbox"><div><span class="updl">PREVIOUS</span><b class="updvv">'+esc(APP_VERSION)+'</b></div><span class="upda">←</span>'+
+    '<div style="text-align:left"><span class="updl">NOW</span><b class="updvv" style="color:#F6E7B0">'+esc(up.ver)+'</b></div></div>'+
+    '<div class="updov-list" style="text-align:center"><b>'+esc(up.title)+'</b></div>'+
+    '<p class="updov-msg" style="font-size:13px">التحسينات الجديدة هتشتغل بعد إعادة تشغيل التطبيق.</p>'+
+    '<div id="updAct"><button class="updov-btn" data-act="updFinish" data-id="'+esc(id)+'">تمام</button></div>'+
+    '<div class="updfoot">DATA IS SAFE · SYNCED TO DRIVE</div></div></div>';
 }
 /* ضغطة تم: بنعلّم إن المحاولة اتعملت، وبعدين بنعمل تحديث حقيقي للصفحة (مسح الكاش وتحميل الكود من GitHub).
    التسجيل على الحساب بيحصل تلقائي بعد ما الكود الجديد يشتغل فعلاً */
@@ -4926,19 +4940,23 @@ function resetHTML(){
   var pinAttrs='type="password" inputmode="numeric" maxlength="6" pattern="[0-9]*" autocomplete="new-password"';
   return '<main class="login rst" dir="rtl" lang="ar"><style>'+
     '.login{position:relative;overflow:hidden}.login::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(120,140,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,255,.07) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(80% 55% at 50% 20%,#000 30%,transparent 100%);mask-image:radial-gradient(80% 55% at 50% 20%,#000 30%,transparent 100%)}'+
-    '.login.rst{display:block!important;height:auto!important;min-height:100vh;min-height:100dvh;justify-content:flex-start!important;padding:52px 22px 22px!important;box-sizing:border-box}'+
+    '.login.rst{position:fixed!important;inset:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;display:block!important;height:auto!important;min-height:100vh;min-height:100dvh;justify-content:flex-start!important;padding:calc(env(safe-area-inset-top,0px) + 52px) 22px calc(env(safe-area-inset-bottom,0px) + 22px)!important;box-sizing:border-box;background:radial-gradient(120% 60% at 50% 0%,#121a4a 0%,#070a1f 55%,#03040c 100%)!important;z-index:300}'+
+    '.login.rst .lcard>*{position:relative;z-index:1}'+
     '.login.rst .lcard{background:none!important;border:0!important;clip-path:none!important;padding:0!important;max-width:none!important;width:100%!important;gap:18px!important;justify-content:flex-start!important;align-items:stretch!important;text-align:start!important;z-index:1}'+
     '.login.rst .lcard h2{font-size:24px;margin:0;color:#fff}'+
     '.login.rst .lcard .meta{font-size:13px!important;margin:8px 0 0!important;line-height:1.6;text-align:start!important}'+
     '.rfrm{position:relative;padding:18px;border:1px solid rgba(160,176,255,.22);background:linear-gradient(170deg,rgba(18,24,64,.92),rgba(7,10,32,.96));clip-path:polygon(22px 0,100% 0,100% calc(100% - 22px),calc(100% - 22px) 100%,0 100%,0 22px);display:flex;flex-direction:column;gap:16px}'+
     '#rIdSec,#rPinSec{display:flex;flex-direction:column;gap:16px}'+
     '.login.rst .fld{gap:6px;width:100%;box-sizing:border-box;align-self:stretch;margin:0}'+
-    '.login.rst .fld label{font-size:10px;margin:0;letter-spacing:1.6px}'+
+    '.login.rst .fld label{font-family:Tajawal,sans-serif!important;font-size:14px!important;font-weight:700;margin:0;letter-spacing:.3px;color:#9fb0ff!important}'+
     '.login.rst .fld input{height:46px!important;width:100%!important;box-sizing:border-box!important;margin:0!important;border-radius:0!important;font-size:16px}'+
     '.login.rst .fx-rtop{display:flex;justify-content:space-between;align-items:center;width:100%}'+
+    '.login.rst .fx-back{font-family:Tajawal,sans-serif;font-size:16px;font-weight:700;color:#E8ECFF;background:transparent;border:1px solid rgba(160,176,255,.45);padding:8px 18px;cursor:pointer;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}'+
+    '.login.rst .fx-rtop>span{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:2.5px;color:#8FA0FF}'+
     '.login.rst .btn.ghost,.login .btn.ghost{background:transparent!important;border:1px solid rgba(160,176,255,.3)!important;color:#E8ECFF!important;clip-path:none!important}'+
     '.login.rst .btn{min-height:46px!important;height:46px!important;padding-top:0!important;padding-bottom:0!important;line-height:normal!important;font-size:16px!important;border-radius:0!important}'+
-    '.login.rst .btn.block{height:56px!important;min-height:56px!important}'+
+    '.login.rst .btn.block{height:56px!important;min-height:56px!important;font-size:17px!important;font-weight:800}'+
+    '.login.rst .btn.ghost.block{color:#E8ECFF!important;font-size:16px!important}'+
     '.login.rst .btn+.btn{margin-top:10px!important}'+
     '.login.rst .lcard .note{font-size:12px;padding:6px 10px!important;margin:0!important}'+
     '.rslot::placeholder{color:rgba(232,236,255,.4);opacity:1}'+
@@ -4957,7 +4975,7 @@ function resetHTML(){
     '</div></div>'+
     '<div id="rPinBtn" style="display:'+(vd?'block':'none')+'"><button class="btn block" data-act="resetSend">تغيير الـ PIN</button></div>'+
     '<button class="btn ghost sm block" data-act="resetBack" style="margin-top:0">رجوع لتسجيل الدخول</button>'+
-    '<p style="margin:6px 0 0;text-align:center;text-align-last:center;font-family:\'JetBrains Mono\',monospace;font-size:10px;letter-spacing:1.2px;color:rgba(232,236,255,.45)">الطلب بيتراجع من المسئول لو الكود مش صح</p></div></main>';
+    '<p style="margin:6px 0 0;text-align:center;text-align-last:center;font-family:Tajawal,sans-serif;font-size:14px;line-height:1.6;color:rgba(232,236,255,.72)">الطلب بيتراجع من المسئول لو الكود مش صح</p></div></main>';
 }
 /* ---------- FX: حركة الدخول، عدّاد الأرقام، إضاءة المؤشر ---------- */
 var FX=(function(){
@@ -5060,7 +5078,7 @@ function bioPromptHTML(){
 function gdStage(t,pct){
   GD.stage=t;if(pct!=null)GD.pct=Math.max(GD.pct||0,Math.min(100,pct));
   var el=document.getElementById('ldMsg');if(el)el.textContent=t;
-  var p=document.getElementById('ldPct');if(p)p.textContent=Math.round(GD.pct||0)+'%';var bf=document.getElementById('ldBarFill');if(bf)bf.style.width=Math.round(GD.pct||0)+'%';var pl=document.getElementById('ldPctLbl');if(pl)pl.textContent=Math.round(GD.pct||0)+'%';
+  var p=document.getElementById('ldPct');if(p)p.textContent=Math.round(GD.pct||0)+'%';var bf=document.getElementById('ldBarFill');if(bf)bf.style.width=Math.round(GD.pct||0)+'%';ldRingSet(GD.pct||0);var pl=document.getElementById('ldPctLbl');if(pl)pl.textContent=Math.round(GD.pct||0)+'%';
 }
 /* شاشة التحميل: موجة السائل داخل حروف الشعار، والنسبة بتتحكم في مستوى الموجة */
 var LD_LETTERS=["M65 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z","M250 252 H420 L590 350 H420 Z","M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z","M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"];
@@ -5081,6 +5099,23 @@ function ldFrame(){
   requestAnimationFrame(ldFrame);
 }
 function ldStart(){if(!LD_RUN){LD_RUN=true;requestAnimationFrame(ldFrame);}}
+/* الحلقة الذهبية حوالين الشعار: طولها وطرفها المضيء بيتحكموا بنسبة التحميل نفسها */
+function ldRingHTML(p){
+  var R=85,C=2*Math.PI*R;p=Math.max(0,Math.min(100,p));
+  var t=2*Math.PI*p/100,dx=100+R*Math.cos(t),dy=100+R*Math.sin(t);
+  return '<svg aria-hidden="true" viewBox="0 0 200 200" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible">'+
+    '<defs><linearGradient id="ldRg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F6E7B0"/><stop offset="1" stop-color="#E6B964"/></linearGradient></defs>'+
+    '<circle cx="100" cy="100" r="'+R+'" fill="none" stroke="rgba(246,231,176,.14)" stroke-width="3"/>'+
+    '<circle id="ldArc" cx="100" cy="100" r="'+R+'" fill="none" stroke="url(#ldRg)" stroke-width="3" stroke-linecap="round" stroke-dasharray="'+C.toFixed(2)+'" stroke-dashoffset="'+(C*(1-p/100)).toFixed(2)+'" style="filter:drop-shadow(0 0 6px rgba(246,231,176,.7));transition:stroke-dashoffset .3s linear"/>'+
+    '<circle id="ldDot" cx="'+dx.toFixed(2)+'" cy="'+dy.toFixed(2)+'" r="4" fill="#F6E7B0" style="display:'+(p<=0.5?'none':'block')+';filter:drop-shadow(0 0 6px #F6E7B0)"/>'+
+    '</svg>';
+}
+function ldRingSet(p){
+  var R=85,C=2*Math.PI*R;p=Math.max(0,Math.min(100,p));
+  var a=document.getElementById('ldArc'),d=document.getElementById('ldDot');
+  if(a)a.setAttribute('stroke-dashoffset',(C*(1-p/100)).toFixed(2));
+  if(d){var t=2*Math.PI*p/100;d.setAttribute('cx',(100+R*Math.cos(t)).toFixed(2));d.setAttribute('cy',(100+R*Math.sin(t)).toFixed(2));d.style.display=p<=0.5?'none':'block';}
+}
 function loaderHTML(dark){
   var failed=!!GD.err&&!GD.busy;
   var msg=failed?String(GD.err):(GD.needTap?'محتاج تأكيد من جوجل':(GD.stage||'جاري تحميل البيانات من جوجل درايف…'));
@@ -5090,7 +5125,7 @@ function loaderHTML(dark){
     '<div aria-hidden="true" style="position:absolute;inset:0;background-image:linear-gradient(rgba(120,140,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,140,255,.07) 1px,transparent 1px);background-size:34px 34px;-webkit-mask-image:radial-gradient(70% 50% at 50% 45%,#000 30%,transparent 100%);mask-image:radial-gradient(70% 50% at 50% 45%,#000 30%,transparent 100%)"></div>'+
     '<div style="position:relative;width:200px;height:200px;display:grid;place-items:center">'+
       '<div aria-hidden="true" style="position:absolute;inset:0;border-radius:50%;border:1px dashed rgba(160,176,255,.35)"></div>'+
-      '<div aria-hidden="true" style="position:absolute;inset:14px;border-radius:50%;border:2px solid transparent;border-top-color:#F6E7B0;border-right-color:rgba(246,231,176,.35)"></div>'+
+      ldRingHTML(GD.pct||0)+
       '<div aria-hidden="true" style="position:absolute;inset:34px;border-radius:50%;background:radial-gradient(circle,rgba(79,93,255,.55),rgba(79,93,255,0) 70%)"></div>'+
       '<svg viewBox="150 135 415 500" role="img" aria-label="RM" style="position:relative;width:96px;height:auto;filter:drop-shadow(0 0 14px rgba(120,140,255,.7))"><defs><linearGradient id="ldgM" x1="0" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#EAF0FF"/></linearGradient></defs><g fill="url(#ldgM)" fill-rule="evenodd"><path d="M378 144 L354 154 335 162 314 171 298 178 275 189 255 196 192 223 182 229 338 301 355 316 362 327 371 346 377 365 380 388 382 422 380 427 379 439 373 455 365 466 356 475 341 484 326 487 329 503 344 540 350 556 362 586 368 602 380 627 413 615 415 389 421 390 427 414 431 436 437 461 443 483 449 508 455 532 460 547 467 579 474 592 486 586 509 577 516 528 522 493 524 478 530 449 533 427 536 402 542 375 545 345 549 330 553 331 554 349 554 559 573 551 581 548 582 253 581 229 563 222 548 216 537 211 509 199 497 194 481 187 465 180 453 175 428 163 419 160 387 145Z M293 212 L305 207 319 208 330 218 345 224 368 235 389 242 400 247 419 256 436 263 451 268 469 283 473 294 479 348 485 376 485 275 476 264 429 244 411 235 387 223 365 214 351 211 337 201 338 195 356 187 369 191 381 202 398 208 447 230 465 238 482 247 497 253 508 270 505 369 500 421 497 458 496 495 492 505 488 503 482 474 479 458 470 412 467 397 455 335 452 319 450 307 444 293 436 286 404 273 391 267 361 253 341 244 320 235 301 232 289 223 290 216Z"/><path d="M217 321 L216 396 239 407 267 418 289 422 304 418 312 405 312 385 305 367 293 354 284 349 267 342 230 325Z"/><path d="M217 457 L216 560 239 571 267 581 291 592 299 595 287 560 279 542 267 511 254 474 243 468 235 463Z"/></g></svg>'+
     '</div>'+
