@@ -3687,7 +3687,7 @@ function sheetHTML(){
   return '<button class="back" data-act="sheetClose" aria-label="إغلاق"></button><section class="sheet" style="--c:var(--prep)" role="dialog" aria-label="دفعة جديدة">'+
     '<h3>دفعة جديدة</h3>'+
     (!s.season?
-      '<div class="meta">اختار الموسم الأول</div>'+seasonSeg(null,'sheetSeason',visibleSeasons())
+      '<div class="meta">اختار الموسم الأول</div>'+seasonSeg(null,'sheetSeason',SEASONS)
     :
       '<div class="meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">الموسم: <b>'+esc(seasonName)+'</b><button class="btn ghost sm" data-act="sheetSeason" data-v="">غيّر الموسم</button></div>'+
       '<div class="meta">اختار صنف أو أكتر، وتحدد كمية كل صنف</div>'+
