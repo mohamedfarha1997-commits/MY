@@ -1700,7 +1700,10 @@ function gdLoadCfg(){
   try{var t=JSON.parse(localStorage.getItem('khat-gd-tok')||'null');if(t&&t.e>Date.now()){GD.tok=t.t;GD.exp=t.e;}}catch(e){}
 }
 function gdTokOk(){return !!GD.tok&&Date.now()<GD.exp;}
-function renderIdle(){if(!(U.sheet||U.form||U.osheet||U.recv||isTyping()))render();}
+function renderIdle(){
+  if(!(U.sheet||U.form||U.osheet||U.recv||isTyping())){render();return;}
+  if(!U.remoteNote){U.remoteNote=1;toast('فيه تحديث من جهاز تاني، هيظهر أول ما تقفل النافذة');}
+}
 function gdPaint(){
   var pill=document.querySelector('.fbar .dstat');
   if(pill)pill.outerHTML=driveHTML();
@@ -1932,7 +1935,7 @@ function gdFail(e){
 function devId(){try{var v=localStorage.getItem('khat-dev');if(!v){v=randHex().slice(0,16);localStorage.setItem('khat-dev',v);}return v;}catch(e){return 'nolocal';}}
 function gdSync(){
   if(!GD.on||!LOCAL_READY)return Promise.resolve();
-  if(GD.busy&&Date.now()-GD.busyAt<30000){GD.again=true;return Promise.resolve();}
+  if(GD.busy&&Date.now()-GD.busyAt<12000){GD.again=true;return Promise.resolve();}
   GD.again=false;
   GD.busy=true;GD.busyAt=Date.now();gdPaint();
   if(!GD.seeded)GD.pct=0;gdStage('جاري الاتصال بجوجل درايف…',5);
@@ -4991,6 +4994,7 @@ function linkGateRender(){
     '<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
 }
 function render(){
+  U.remoteNote=0;
   if(typingBusy()&&document.querySelector('#app main, #app .sheet')){
     window.RENDER_PENDING=true;setTimeout(flushPendingRender,600);return;
   }
