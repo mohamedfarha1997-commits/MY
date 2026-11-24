@@ -1221,6 +1221,7 @@ function mergeStates(a,b,base){
     M[m]=v;M[m+'T']=t;M.tomb[m]=tb;
   });
   M.clk=Math.max(a.clk||0,b.clk||0,maxStamp(a),maxStamp(b));
+  M.seen={};[a,b].forEach(function(s){var m=s.seen||{};Object.keys(m).forEach(function(k){if(!M.seen[k]||(m[k].t||0)>(M.seen[k].t||0))M.seen[k]=m[k];});});
   M.devs={};[a,b].forEach(function(s){var d=s.devs||{};Object.keys(d).forEach(function(k){M.devs[k]=Math.max(M.devs[k]||0,d[k]||0);});});
   M.seq=Math.max(a.seq||0,b.seq||0);
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
@@ -1832,7 +1833,7 @@ function gdApi(url,opt){
   });
 }
 /* ترتيب الأقسام في الملف اللي على درايف: الأهم الأول، وباقي الأقسام أبجدي */
-var DRIVE_ORDER=['users','prefs','hours','materials','products','orders','batches','done','ready','readyT','stock','stockT','locks','plog','plogTomb','tomb','seq','oseq','fseq','savedAt','prefsK','prefsT','demo'];
+var DRIVE_ORDER=['users','prefs','hours','materials','products','orders','batches','done','ready','readyT','stock','stockT','locks','plog','plogTomb','tomb','seq','oseq','fseq','seen','savedAt','prefsK','prefsT','demo'];
 function stateForDrive(s){
   var o={};
   DRIVE_ORDER.forEach(function(k){if(s[k]!==undefined)o[k]=s[k];});
@@ -6474,13 +6475,21 @@ function permActsHTML(sel){
 }
 
 /* ===== إدارة المستخدمين ===== */
+/* الحساب بيتعتبر متصل لو عمل حاجة أو نبض خلال آخر 150 ثانية (النبض كل دقيقة) */
+var SEEN_LABEL={sheetProd:'بيختار صنف للدفعة',sheetSeason:'بيختار موسم',sheetCreate:'أنشأ دفعة',runPick:'بيحضّر صنف حشو',runDo:'سجّل إنتاج حشو',fillFromShort:'فتح صنف ناقص للإنتاج',toggleOwnerOnly:'غيّر إخفاء وصفة',syncEvery:'غيّر إعداد المزامنة',gdNow:'زامن الآن',gdConnect:'ربط درايف',gdOff:'فصل درايف',userEditOpen:'بيعدّل مستخدم',userCardToggle:'بيغيّر حالة كارت',userLeave:'بيعدّل إجازة',userDel:'بيحذف مستخدم',uSort:'بيتصفح المستخدمين',uFilter:'بيتصفح المستخدمين'};
+function markSeen(act){
+  if(!authed())return;
+  S.seen=S.seen||{};var k=actorCode(),prev=S.seen[k]||{};
+  S.seen[k]={t:Date.now(),a:act?(SEEN_LABEL[act]||'بيشتغل على التطبيق'):(prev.a||'')};
+}
+function isOnline(code){var s=S.seen&&S.seen[code];return !!s&&Date.now()-(s.t||0)<150000;}
 function userFlags(u,todayK){
   var p=permsOf(u.code);
-  return {leave:userLeaveActive(u,todayK),cardOff:u.cardActive===false,noPerm:!Object.keys(p).some(function(k){return p[k]!=='none';})};
+  return {leave:userLeaveActive(u,todayK),cardOff:u.cardActive===false,online:isOnline(u.code),noPerm:!Object.keys(p).some(function(k){return p[k]!=='none';})};
 }
 function userCounts(list,todayK){
-  var c={all:list.length,active:0,leave:0,cardOff:0,noPerm:0};
-  list.forEach(function(u){var f=userFlags(u,todayK);if(!f.leave&&!f.cardOff)c.active++;if(f.leave)c.leave++;if(f.cardOff)c.cardOff++;if(f.noPerm)c.noPerm++;});
+  var c={all:list.length,active:0,inactive:0,leave:0,cardOff:0,noPerm:0};
+  list.forEach(function(u){var f=userFlags(u,todayK);if(!f.leave&&!f.cardOff)(f.online?c.active++:c.inactive++);if(f.leave)c.leave++;if(f.cardOff)c.cardOff++;if(f.noPerm)c.noPerm++;});
   return c;
 }
 function userStatsHTML(list,todayK){
@@ -6497,16 +6506,17 @@ function userMatches(u,todayK){
   var q=String(U.uSearch||'').trim().toLowerCase();
   if(q&&[u.name,u.code,u.job].join(' ').toLowerCase().indexOf(q)<0)return false;
   var f=userFlags(u,todayK), cur=U.uFilter||'all';
-  if(cur==='active')return !f.leave&&!f.cardOff;
+  if(cur==='active')return f.online&&!f.leave&&!f.cardOff;
+  if(cur==='inactive')return !f.online&&!f.leave&&!f.cardOff;
   if(cur==='leave')return f.leave;
   if(cur==='cardOff')return f.cardOff;
   if(cur==='noPerm')return f.noPerm;
   return true;
 }
 var USER_SORTS=[['name','الاسم'],['status','الحالة'],['code','الكود'],['recent','الأحدث']];
-function userStatusOf(u,todayK){var f=userFlags(u,todayK);return f.cardOff?'off':(f.leave?'leave':'active');}
+function userStatusOf(u,todayK){var f=userFlags(u,todayK);return f.cardOff?'off':(f.leave?'leave':(f.online?'active':'inactive'));}
 function userSortList(list,todayK){
-  var cur=U.uSort||'name', rank={off:0,leave:1,active:2}, arr=list.slice();
+  var cur=U.uSort||'name', rank={off:0,leave:1,inactive:2,active:3}, arr=list.slice();
   if(cur==='status')arr.sort(function(a,b){return rank[userStatusOf(a,todayK)]-rank[userStatusOf(b,todayK)]||String(a.name||'').localeCompare(String(b.name||''),'ar');});
   else if(cur==='code')arr.sort(function(a,b){return String(a.code).localeCompare(String(b.code));});
   else if(cur==='recent')arr.reverse();
@@ -6526,10 +6536,22 @@ function userKpiHTML(list,todayK){
       '<span class="dash-kpi-t">'+x[1]+'</span><b>'+x[2]+'</b><span class="dash-bar"><i style="width:'+x[3]+'%"></i></span></button>';
   }).join('')+'</div>';
 }
+/* جدول الحسابات المتصلة دلوقتي: الاسم والكود وآخر عملية */
+function onlineTableHTML(list){
+  var byCode={};list.forEach(function(u){byCode[u.code]=u;});
+  var rows=Object.keys(S.seen||{}).filter(function(k){return isOnline(k);}).map(function(k){
+    var u=byCode[k];return {name:u?u.name:(k==='CHEF MYF'?'المالك':k),code:k,a:(S.seen[k].a||'—'),t:S.seen[k].t};
+  }).sort(function(x,y){return y.t-x.t;});
+  var body=rows.length?rows.map(function(r){var d=new Date(r.t);var hm=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    return '<tr><td>'+esc(r.name)+'</td><td class="ltr">'+esc(r.code)+'</td><td>'+esc(r.a)+'</td><td class="ltr">'+hm+'</td></tr>';}).join('')
+    :'<tr><td colspan="4" class="dash-empty">مفيش حد متصل دلوقتي</td></tr>';
+  return '<section class="card" style="margin:12px 0"><h3 style="margin:0 0 8px">المتصلين الآن ('+rows.length+')</h3>'+
+    '<div style="overflow-x:auto"><table class="online-tbl" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr><th style="text-align:right">الاسم</th><th>الكود</th><th style="text-align:right">آخر عملية</th><th>الوقت</th></tr></thead><tbody>'+body+'</tbody></table></div></section>';
+}
 function userDonutHTML(list,todayK){
-  var n=list.length, c={active:0,leave:0,off:0}, R=52, C=2*Math.PI*R, acc=0, segs='';
+  var n=list.length, c={active:0,inactive:0,leave:0,off:0}, R=52, C=2*Math.PI*R, acc=0, segs='';
   list.forEach(function(u){c[userStatusOf(u,todayK)]++;});
-  var parts=[['active','#16a34a','نشط'],['leave','#3b82f6','في إجازة'],['off','#ef4444','كارت موقوف']];
+  var parts=[['active','#16a34a','نشط'],['inactive','#94a3b8','غير نشط'],['leave','#3b82f6','في إجازة'],['off','#ef4444','كارت موقوف']];
   parts.forEach(function(x){
     var len=(n?c[x[0]]/n:0)*C;
     if(len>0)segs+='<circle cx="70" cy="70" r="'+R+'" fill="none" stroke="'+x[1]+'" stroke-width="16" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-acc).toFixed(2)+'" transform="rotate(-90 70 70)"/>';
@@ -6546,7 +6568,7 @@ function userRowsHTML(list,todayK){
   if(!shown.length)return '<div class="dash-empty">مفيش مستخدمين مطابقين للبحث أو الفلتر.</div>';
   return '<div class="dash-grid">'+shown.map(function(u){
     var f=userFlags(u,todayK), conf=U.confirm==='udel:'+u.id, st=userStatusOf(u,todayK);
-    var badge=st==='off'?'<span class="dash-badge off">كارت موقوف</span>':(st==='leave'?'<span class="dash-badge leave">في إجازة</span>':'<span class="dash-badge ok">نشط</span>');
+    var badge=st==='off'?'<span class="dash-badge off">كارت موقوف</span>':(st==='leave'?'<span class="dash-badge leave">في إجازة</span>':(st==='inactive'?'<span class="dash-badge">غير نشط</span>':'<span class="dash-badge ok">نشط</span>'));
     var tags=f.noPerm?'<div class="dash-u-tags"><span class="dash-badge warn">بدون صلاحيات</span></div>':'';
     var leaveLbl=(u.leave===todayK)?'ألغِ إجازة النهاردة':'إجازة النهاردة';
     return '<article class="dash-user st-'+st+'">'+
@@ -6565,7 +6587,7 @@ function userDashHTML(list,todayK){
   var nowMs=trustedNow(), dateStr='';
   if(nowMs!==null){try{dateStr=new Date(nowMs).toLocaleDateString('ar-EG',{weekday:'long',day:'numeric',month:'long',timeZone:TZ_CAIRO});}catch(e){}}
   return '<div class="dash-head"><div><b>لوحة المستخدمين</b><small>'+esc(dateStr||'')+'</small></div><span class="dash-badge ok">'+list.length+' مستخدم</span></div>'+
-    userKpiHTML(list,todayK)+userDonutHTML(list,todayK)+
+    userKpiHTML(list,todayK)+onlineTableHTML(list)+userDonutHTML(list,todayK)+
     '<div class="dash-tools"><div class="dash-search"><input id="uSearch" type="search" autocomplete="off" placeholder="ابحث بالاسم أو الكود أو الوظيفة" value="'+esc(U.uSearch||'')+'"></div>'+
     '<div class="dash-sorts">'+userSortHTML()+'</div><div class="dash-filters">'+userFilterHTML(list,todayK)+'</div></div>'+
     userRowsHTML(list,todayK);
@@ -8098,6 +8120,7 @@ document.addEventListener('click',function(e){
   if(!t||t.disabled)return;
   var fn=ACT[t.dataset.act];if(!fn)return;
   if(!actBypass(t.dataset.act)&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
+  markSeen(t.dataset.act);
   if(fn(t.dataset)===false)return;
   save();render();
 });
@@ -8239,6 +8262,7 @@ window.addEventListener('hashchange',function(){
 var lastSyncAt=0;
 function tick(){
   updateConn();
+  if(authed()&&!document.hidden){var me=(S.seen||{})[actorCode()];if(!me||Date.now()-(me.t||0)>60000){markSeen(null);save();}}
   var changed=false;
   S.batches.forEach(function(b){
     if(b.stage==='prod'&&b.startedAt&&!b.notified&&timerDone(b)){b.notified=true;b.ringing=true;changed=true;notifyDone(b);}
