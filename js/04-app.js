@@ -3280,7 +3280,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261125-1200';
+var APP_BUILD='20261125-1330';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -3858,10 +3858,60 @@ document.addEventListener('focusout',function(){setTimeout(flushPendingRender,40
 function linkGateRender(){
   gdLoadGis();
   var app=document.getElementById('app');if(!app)return;
-  app.innerHTML='<main class="login" dir="rtl" lang="ar"><div class="lcard"><h2 style="margin:0 0 8px">لازم تربط جوجل درايف</h2>'+
-    '<p class="meta">البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك. من غير الربط التطبيق مش هيحفظ أي تعديل.</p>'+
-    (GD.err?'<div class="note" role="status">'+esc(GD.err)+'</div>':'')+
-    '<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
+  app.innerHTML=welcomeHTML();
+}
+/* صفحة الترحيب قبل الربط: خلفية متحركة ودوائر وجزيئات، وزرار "ابدأ" بيعمل نفس ربط جوجل درايف */
+function welcomeHTML(){
+  var css=[
+    '.wl{position:fixed;inset:0;z-index:60;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;',
+    'background:linear-gradient(160deg,#060a1f 0%,#0d1440 45%,#050714 100%);background-size:200% 200%;animation:wlBg 14s ease-in-out infinite;color:#fff;font-family:Cairo,Tajawal,sans-serif}',
+    '@keyframes wlBg{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}',
+    '.wl-orb{position:absolute;border-radius:50%;filter:blur(40px);opacity:.55;animation:wlFloat 12s ease-in-out infinite}',
+    '.wl-o1{width:260px;height:260px;background:#4f46e5;top:-60px;right:-60px}',
+    '.wl-o2{width:220px;height:220px;background:#0ea5e9;bottom:-40px;left:-50px;animation-duration:15s;animation-delay:-4s}',
+    '.wl-o3{width:160px;height:160px;background:#F6E7B0;top:40%;left:55%;opacity:.25;animation-duration:10s;animation-delay:-7s}',
+    '@keyframes wlFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(1.08)}66%{transform:translate(-25px,25px) scale(.95)}}',
+    '.wl-ring{position:absolute;left:50%;top:50%;border-radius:50%;border:1px solid rgba(160,176,255,.25);animation:wlSpin 30s linear infinite}',
+    '.wl-r1{width:420px;height:420px;border-style:dashed}',
+    '.wl-r2{width:600px;height:600px;border-color:rgba(246,231,176,.15);animation-duration:45s;animation-direction:reverse}',
+    '@keyframes wlSpin{from{transform:translate(-50%,-50%) rotate(0)}to{transform:translate(-50%,-50%) rotate(360deg)}}',
+    '.wl-p{position:absolute;bottom:-40px;display:block;opacity:0;animation:wlRise linear infinite}',
+    '.wl-sq{border:1.5px solid rgba(160,176,255,.6);border-radius:4px}',
+    '.wl-dot{background:rgba(246,231,176,.7);border-radius:50%}',
+    '.wl-ring-s{border:1.5px solid rgba(124,140,255,.7);border-radius:50%}',
+    '@keyframes wlRise{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:.9}90%{opacity:.6}100%{transform:translateY(-110vh) rotate(180deg);opacity:0}}',
+    '.wl-card{position:relative;z-index:2;max-width:420px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}',
+    '.wl-kicker{font-family:monospace;font-size:11px;letter-spacing:3px;color:rgba(232,236,255,.6);animation:wlUp .8s ease both}',
+    '.wl-h{margin:0;font-size:40px;font-weight:800;line-height:1.3;background:linear-gradient(90deg,#fff,#F6E7B0,#a0b0ff,#fff);background-size:300% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wlUp .9s .15s ease both,wlShine 6s linear infinite}',
+    '@keyframes wlShine{to{background-position:300% center}}',
+    '.wl-sub{margin:0;font-size:16px;line-height:1.8;color:rgba(232,236,255,.78);animation:wlUp .9s .35s ease both}',
+    '@keyframes wlUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}',
+    '.wl-btn{margin-top:18px;min-width:200px;height:56px;padding:0 40px;border:0;border-radius:999px;background:#fff;color:#0a0f2c;font:inherit;font-size:20px;font-weight:800;cursor:pointer;animation:wlUp .9s .55s ease both,wlPulse 2.4s 1.5s ease-out infinite}',
+    '.wl-btn:active{transform:scale(.97)}',
+    '.wl-btn:focus-visible{outline:2px solid #F6E7B0;outline-offset:4px}',
+    '@keyframes wlPulse{0%{box-shadow:0 0 0 0 rgba(160,176,255,.55)}70%{box-shadow:0 0 0 18px rgba(160,176,255,0)}100%{box-shadow:0 0 0 0 rgba(160,176,255,0)}}',
+    '.wl-foot{margin:18px 0 0;font-family:monospace;font-size:11px;letter-spacing:1.6px;color:rgba(232,236,255,.45);animation:wlUp 1s .8s ease both}',
+    '@media (prefers-reduced-motion:reduce){.wl *,.wl{animation:none!important}.wl-p{display:none}}'
+  ].join('');
+  var parts='';
+  var kinds=['wl-sq','wl-dot','wl-ring-s'];
+  for(var i=0;i<14;i++){
+    var l=(i*7.3)%100, d=(i*1.7)%9, t=9+(i%5)*2.5, sz=10+(i%4)*7;
+    parts+='<i class="wl-p '+kinds[i%3]+'" style="left:'+l.toFixed(1)+'%;width:'+sz+'px;height:'+sz+'px;animation-duration:'+t+'s;animation-delay:-'+d.toFixed(1)+'s"></i>';
+  }
+  var err=GD.err?'<div class="note" role="status">'+esc(GD.err)+'</div>':'';
+  return '<main class="wl" dir="rtl" lang="ar"><style>'+css+'</style>'+
+    '<div class="wl-orb wl-o1"></div><div class="wl-orb wl-o2"></div><div class="wl-orb wl-o3"></div>'+
+    '<div class="wl-ring wl-r1"></div><div class="wl-ring wl-r2"></div>'+
+    parts+
+    '<div class="wl-card">'+
+      '<div class="wl-kicker">RMY</div>'+
+      '<h1 class="wl-h">أهلاً بيك</h1>'+
+      '<p class="wl-sub">نورت خط الإنتاج. البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك.</p>'+
+      err+
+      '<button class="wl-btn" data-act="gdConnect">ابدأ</button>'+
+      '<p class="wl-foot">DATA IS SAFE · SYNCED TO DRIVE</p>'+
+    '</div></main>';
 }
 function render(){
   U.remoteNote=0;
