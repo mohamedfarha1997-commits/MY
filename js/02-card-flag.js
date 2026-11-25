@@ -1,0 +1,1 @@
+var RMY_CARD=(function(){var p=new URLSearchParams(location.search);return p.has('id')||p.has('card');})();if(!RMY_CARD)document.getElementById('cardCss').disabled=true;
