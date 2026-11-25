@@ -1112,7 +1112,7 @@ function smartNoteInfo(){
   if(canOrd||canShop)return {pr:9,v:'',t:'مفيش أوردرات مفتوحة، يوم هادي'};
   return {pr:9,v:'',t:'يوم هادي، ابدأ شغلك'};
 }
-function smartNoteHTML(){return smartNoteInfo().t;}
+
 /* سطر الشريط الذكي على أي تبويب: بيتغير حسب الصلاحيات والمواعيد، واللمس بيفتح القسم المرتبط */
 function stripLineHTML(){
   var f=smartNoteInfo();
@@ -1294,26 +1294,8 @@ function prodCountdown(){
 }
 function cdText(){var b=prodCountdown();return b?mmss(dur(b)-elapsed(b)):'0:00';}
 function pctOf(b){return b?Math.min(100,Math.round(elapsed(b)/dur(b)*100)):0;}
-function navTab(s){
-  var on=U.view===s.k, cd=!!(s.live&&U.view==='home'&&s.k==='prod');
-  var c=(s.k==='shopOrders'||s.k==='reserved')?'orders':s.k==='shopProducts'?'recipes':s.k==='fgstock'?'stock':s.k;
-  return '<button class="tab'+(on?' on':'')+(s.k==='recipes'?' noarr':'')+'" style="--c:var(--'+c+')" data-act="tab" data-v="'+s.k+'"'+(on?' aria-current="page"':'')+'>'+
-    (cd?'<i class="pbar" style="--p:'+pctOf(prodCountdown())+'"></i>':(s.live?'<i class="live" title="قيد التشغيل"></i>':''))+
-    '<span class="main">'+svg(s.k)+'<span class="lbl"><span class="tl">'+s.l+'</span><small>'+s.u+'</small></span></span>'+
-    '<span class="stub">'+(cd?'<span class="cnt hcdt">'+cdText()+'</span>':'<span class="cnt'+(s.warn?' warn':'')+'">'+s.n+'</span>')+'</span></button>';
-}
-function navHTML(){
-  var st=navItems().filter(function(x){return !tabHidden(x.k)&&['verify','refresh','theme'].indexOf(x.k)<0;});
-  var out='',i=0;
-  while(i<st.length){
-    var g=st[i].g;
-    if(!g){out+=navTab(st[i]);i++;continue;}
-    var inner='';
-    while(i<st.length&&st[i].g===g){inner+=navTab(st[i]);i++;}
-    out+='<div class="ngrp"><span class="glab">'+GROUP_LABEL[g]+'</span><div class="gin">'+inner+'</div></div>';
-  }
-  return '<nav class="nav" aria-label="مراحل الإنتاج">'+out+'</nav>';
-}
+
+
 function demoHTML(){
   return '<div class="demo"><span>الأصناف والأرقام الحالية تجريبية. امسحها وضيف أصنافك بتفاصيلها.</span><button class="btn ghost sm" data-act="cleanStart">'+(U.confirm==='clean'?'اضغط تاني للتأكيد':'امسح وابدأ بأصنافي')+'</button></div>';
 }
@@ -1693,12 +1675,7 @@ function plRows(mode){
 function plInfo(d){var p=P(d.p);return {code:d.fill?(d.code||'—'):(sid(d.id)||'—'),pcode:d.fill?'':(d.code||(p&&p.code)||''),name:d.name||(p&&p.name)||'صنف محذوف',unit:d.unit||(p&&p.unit)||'',qty:d.good!=null?d.good:d.qty};}
 /* اسم الشخص من الكود لو متاح، وإلا الاسم المحفوظ، ولو المحفوظ كود بيترجم لاسم */
 /* للمالك: الكود + الاسم. لغير المالك: الاسم بس (الكود سرّي) */
-function personLbl(c){
-  var u=userByCode(c);
-  if(!limited())return c+(u?' '+u.name:'');
-  if(u)return u.name;
-  return c==='CHEF MYF'?'المالك':'—';
-}
+
 function whoOf(n,c){
   if(c==='CHEF MYF'||n==='CHEF MYF')return 'المالك';
   if(c){var u=userByCode(c);if(u&&u.name)return u.name;}
@@ -1825,25 +1802,7 @@ function fgSeasonRow(){
   return '<div class="seg" style="margin-top:6px" role="group" aria-label="المواسم">'+
     [['all','كل المواسم']].concat(visibleSeasons()).map(function(x){return '<button class="'+(cur===x[0]?'on':'')+'" data-act="fgSeason" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>';
 }
-function fgShortHTML(rows,raw){
-  var h='';
-  if(rows.length){
-    var grouped=shortByProduct(rows);
-    h+='<div class="grp">نواقص الأوردرات ('+grouped.length+' صنف)</div><div class="list">'+grouped.map(function(a){
-      var p=P(a.p)||{name:'صنف محذوف',unit:''};
-      return '<article class="card" style="--c:var(--orders)"><div class="mtop"><div><b>'+esc(p.name)+'</b>'+
-        '<small>في '+a.ords.length+' '+(a.ords.length>1?'أوردرات':'أوردر')+' · مطلوب '+f(a.qty)+' · متاح '+f(a.have)+(a.pend?' · في التحضير '+f(a.pend):'')+'</small></div>'+
-        '<div class="mq"><b>'+f(a.short)+'</b> <span>'+esc(p.unit)+'</span></div></div>'+
-        '<div class="meta">هيتخصم تلقائي من أول دفعة إنتاج عادية تتعمل للصنف ده</div></article>';
-    }).join('')+'</div>';
-  }
-  if(raw.length){
-    h+='<div class="grp">خامات ناقصة للدفعات ('+raw.length+')</div><div class="card">'+raw.map(function(x){
-      return '<div class="rq"><div><b>'+esc(x.m.name)+'</b><small>المتاح '+f(x.have)+' '+esc(x.m.unit)+'</small></div><span class="qv">'+f(x.short)+' '+esc(x.m.unit)+'</span><span class="pill bad">ينقص</span></div>';
-    }).join('')+'<button class="btn ghost sm block" data-act="goStock">افتح مخزن الخامات</button></div>';
-  }
-  return h||'<div class="empty"><b>مفيش نواقص</b><span>كل الأوردرات متغطية من المخزن أو من الإنتاج الجاري.</span></div>';
-}
+
 /* which production batches (meals) the stock of a product came from, and how many pieces are left from each (oldest consumed first) */
 function fgLots(pid){
   var pp=PRODUCTS.filter(function(x){return x.id===pid;})[0];
@@ -2879,11 +2838,7 @@ function updFind(id){return updList().filter(function(x){return x.id===id;})[0]|
    مش بنكتبها جوه بيانات المستخدم نفسه، لأن المستخدم بيتم استرجاع بياناته من آخر نسخة عند كل مزامنة */
 function updKey(){return 'updDone:'+(sessionCode()||'owner');}
 function updDoneList(){var l=pref(updKey(),[]);return Array.isArray(l)?l:[];}
-function updMarkDone(id){
-  var list=updDoneList().slice();
-  if(list.indexOf(id)<0)list.push(id);
-  setPref(updKey(),list);
-}
+
 /* كل الحسابات (المالك + كل المستخدمين) وحالة كل تحديث عندهم */
 function updAccounts(){return [{key:'owner',name:'المالك'}].concat(usersList().map(function(u){return {key:u.code,name:u.name||u.code};}));}
 function updStatus(id){
@@ -3072,20 +3027,7 @@ function updPendingItems(list){
 var UPD_GRACE=5*60*1000;
 /* المهلة بتبدأ من أول مرة يظهر فيها التحديث في الجلسة دي (فتحة التطبيق)، مش من آخر مرة اتفتح فيها */
 window.UPD_GRACE_T=window.UPD_GRACE_T||{};
-function updGraceEnd(id){
-  var m=window.UPD_GRACE_T,k='khat-upd-first-'+id;
-  if(!m[id]){
-    var t=0;try{t=+sessionStorage.getItem(k)||0;}catch(e){}
-    if(!t){
-      t=Date.now();
-      /* لو التحديث ظهر أول دقيقة بعد الدخول، بيتفرض على طول. لو كان ظاهر وإنت شغال، بتاخد المهلة */
-      if(window.UPD_AUTH_T&&Date.now()-window.UPD_AUTH_T<60000)t=Date.now()-UPD_GRACE;
-    }
-    m[id]=t;
-    try{sessionStorage.setItem(k,String(m[id]));}catch(e){}
-  }
-  return m[id]+UPD_GRACE;
-}
+
 function updTopCss(){
   if(document.getElementById('updTopCss'))return;
   var st=document.createElement('style');st.id='updTopCss';
@@ -5402,10 +5344,7 @@ function userCounts(list,todayK){
   list.forEach(function(u){var f=userFlags(u,todayK);if(!f.leave&&!f.cardOff)(f.online?c.active++:c.inactive++);if(f.leave)c.leave++;if(f.cardOff)c.cardOff++;if(f.noPerm)c.noPerm++;});
   return c;
 }
-function userStatsHTML(list,todayK){
-  var c=userCounts(list,todayK);
-  return '<div class="pstats" style="grid-template-columns:repeat(4,1fr)"><div><b>'+c.all+'</b><small>الكل</small></div><div><b>'+c.active+'</b><small>نشط</small></div><div><b>'+c.leave+'</b><small>في إجازة</small></div><div><b>'+c.cardOff+'</b><small>كارت موقوف</small></div></div>';
-}
+
 function userFilterHTML(list,todayK){
   var c=userCounts(list,todayK), cur=U.uFilter||'all';
   return [['all','الكل'],['active','نشط'],['leave','في إجازة'],['cardOff','كارت موقوف'],['noPerm','بدون صلاحيات']].map(function(x){
@@ -5682,43 +5621,8 @@ function prodRunsAll(){
   out.sort(function(x,y){return y.at-x.at;});
   return out.slice(0,300);
 }
-function prodSummaryHTML(runs){
-  var m={};
-  runs.forEach(function(r){
-    r.by.forEach(function(c){m[c]=m[c]||{c:c,batches:0,acts:0};m[c].batches++;});
-  });
-  var people=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.batches-a.batches;});
-  if(!people.length)return '';
-  var nm=function(c){var u=userByCode(c);return u?u.name:'';};
-  var pills=people.map(function(x){
-    return '<span class="pill c">'+esc(personLbl(x.c))+' · '+x.batches+' دفعة</span>';
-  }).join(' ');
-  return '<div class="fld" style="margin-top:10px"><span class="sec-l">ملخص الشغل</span><div style="display:flex;gap:6px;flex-wrap:wrap">'+pills+'</div></div>';
-}
-function prodLogCardHTML(){
-  var runs=prodRunsAll();
-  if(!runs.length)return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">أول ما دفعة تتحرك في التحضير أو الإنتاج، أو يتعمل تحضير حشو، هيظهر هنا مع كود كل اللي شاركوا فيه.</p></section>';
-  var allIds=runs.map(function(r){return r.id;});
-  var sel=(U.plSel||[]).filter(function(id){return allIds.indexOf(id)>-1;});
-  var allOn=allIds.length>0&&sel.length===allIds.length;
-  var bar=allIds.length?'<div class="btns" style="margin-top:8px"><button class="btn ghost sm" data-act="plAll">'+(allOn?'إلغاء التحديد':'حدّد الكل')+'</button>'+
-    '<button class="btn quiet sm" data-act="plDel"'+(sel.length?'':' disabled')+'>'+(U.confirm==='pldel'?'اضغط تاني للتأكيد':'امسح المحدد ('+sel.length+')')+'</button></div>':'';
-  var rows=runs.map(function(r){
-    var p=P(r.p),isFill=r.type==='fill',on=sel.indexOf(r.id)>-1;
-    var lbl=isFill?'تحضير حشو':'إنتاج';
-    var names=r.by.map(function(c){return personLbl(c);}).join(' ');
-    var qtxt=isFill?f(r.qty)+' '+(p?p.unit:''):mealQ(r.qty||0,p);
-    var q=[r.code,lbl,p?p.name:'',String(r.qty||''),tstr(r.at),names].join(' ').toLowerCase();
-    var tog='<button class="btn '+(on?'':'ghost ')+'sm" data-act="plToggle" data-id="'+esc(r.id)+'" style="min-width:64px">'+(on?'✓ محدد':'تحديد')+'</button>';
-    var who=r.by.length?r.by.map(function(c){return '<span class="pill ltr">'+esc(limited()?personLbl(c):c)+'</span>';}).join(' '):'<span class="meta">—</span>';
-    return '<tr class="plrow'+(on?' on':'')+'" data-q="'+esc(q)+'"><td>'+tog+'</td><td><span class="bid ltr">'+esc(r.code)+'</span></td><td>'+esc(p?p.name:'')+'<br><small>'+esc(qtxt)+' · '+esc(tstr(r.at))+'</small></td><td><span class="pill '+(isFill?'warn':'c')+'">'+lbl+'</span></td><td>'+who+'</td></tr>';
-  }).join('');
-  return '<section class="card" style="--c:var(--prod)"><h3>مين عمل الإنتاج</h3><p class="meta" style="margin:0">كل دفعة إنتاج وتحضير حشو، وكود كل واحد شارك فيهم. تقدر تحدد دفعات الإنتاج وتمسحها من السجل. السجل بيتمسح تلقائي بعد ٣٠ يوم من آخر حركة.</p>'+
-    prodSummaryHTML(runs)+
-    '<div class="fld" style="margin-top:8px"><input id="plq" type="search" autocomplete="off" placeholder="ابحث: رقم الدفعة، الصنف، الكود، الاسم، التاريخ..."></div>'+bar+
-    '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اختيار</th><th>الدفعة</th><th>الصنف والتفاصيل</th><th>النوع</th><th>الكود</th></tr></thead><tbody id="plBody">'+rows+'</tbody></table></div>'+
-    '<div class="meta" id="plEmpty" hidden style="text-align:center;padding:8px 0">مفيش نتايج للبحث ده.</div></section>';
-}
+
+
 document.addEventListener('input',function(e){
   var t=e.target;if(!t||t.id!=='plq')return;
   var q=(t.value||'').trim().toLowerCase(),shown=0;

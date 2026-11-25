@@ -144,31 +144,8 @@ function initScratch(){
 }
 
 /* تجهيز الكارت للتصدير: الطبقة الفضية بتتخفى عشان الرقم يبان، والباركود (SVG) بيتحوّل لصورة عشان يتصور زي ما هو */
-function cardPdfPrep(el){
-  var swaps=[],jobs=[];
-  /* الطبقة الفضية (scratchC) بتفضل زي ما هي على الشاشة: الـ ID بيفضل مخفي لحد ما يتخربش */
-  [].forEach.call(el.querySelectorAll('svg'),function(svg){
-    var r=svg.getBoundingClientRect();
-    var str=new XMLSerializer().serializeToString(svg);
-    if(str.indexOf('xmlns=')<0)str=str.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
-    var img=new Image();
-    img.style.cssText=svg.getAttribute('style')||'';
-    img.style.width=r.width+'px';img.style.height=r.height+'px';
-    jobs.push(new Promise(function(res){img.onload=res;img.onerror=res;}));
-    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(str);
-    swaps.push({el:svg,img:img});
-    svg.parentNode.replaceChild(img,svg);
-  });
-  return Promise.all(jobs)
-    .then(function(){return document.fonts&&document.fonts.ready?document.fonts.ready:null;})
-    .then(function(){return swaps;});
-}
-function cardPdfRestore(swaps){
-  (swaps||[]).forEach(function(x){
-    if(x.img){if(x.img.parentNode)x.img.parentNode.replaceChild(x.el,x.img);}
-    else if(x.el){x.el.style.display=x.disp||'';}
-  });
-}
+
+
 function downloadPdf(){
   var el=document.getElementById('card');
   var btn=document.getElementById('pdfBtn');
