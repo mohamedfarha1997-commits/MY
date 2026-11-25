@@ -3881,7 +3881,8 @@ function welcomeHTML(){
     '.wl-ring-s{border:1.5px solid rgba(124,140,255,.7);border-radius:50%}',
     '@keyframes wlRise{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:.9}90%{opacity:.6}100%{transform:translateY(-110vh) rotate(180deg);opacity:0}}',
     '.wl-card{position:relative;z-index:2;max-width:420px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}',
-    '.wl-kicker{font-family:monospace;font-size:11px;letter-spacing:3px;color:rgba(232,236,255,.6);animation:wlUp .8s ease both}',
+    '.wl-logo{display:block;width:118px;height:auto;margin:0 auto 4px;filter:drop-shadow(0 0 18px rgba(160,176,255,.55)) drop-shadow(0 0 2px rgba(246,231,176,.35));animation:wlUp .9s ease both,wlFloatY 6s ease-in-out 1s infinite}',
+    '@keyframes wlFloatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}',
     '.wl-h{margin:0;font-size:40px;font-weight:800;line-height:1.3;background:linear-gradient(90deg,#fff,#F6E7B0,#a0b0ff,#fff);background-size:300% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:wlUp .9s .15s ease both,wlShine 6s linear infinite}',
     '@keyframes wlShine{to{background-position:300% center}}',
     '.wl-sub{margin:0;font-size:16px;line-height:1.8;color:rgba(232,236,255,.78);animation:wlUp .9s .35s ease both}',
@@ -3905,7 +3906,7 @@ function welcomeHTML(){
     '<div class="wl-ring wl-r1"></div><div class="wl-ring wl-r2"></div>'+
     parts+
     '<div class="wl-card">'+
-      '<div class="wl-kicker">RMY</div>'+
+      '<img class="wl-logo" src="assets/logo-mark.png" alt="RMY">'+
       '<h1 class="wl-h">أهلاً بيك</h1>'+
       '<p class="wl-sub">نورت خط الإنتاج. البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك.</p>'+
       err+
