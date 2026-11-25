@@ -4463,7 +4463,7 @@ function updPrompt(){
   var tried='';try{tried=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
   var stale=!!tried&&pend.some(function(u){return u.id===tried;});
   var msgHTML=stale?'<p class="updov-msg">النسخة الجديدة لسه مش متاحة على السيرفر، استنى دقيقة واضغط تاني</p>':'<p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p>';
-  ov.innerHTML=updLogo(100)+'<div class="updframe"><div class="updcard">'+'<div class="updrow"><span class="updtag">NEW ◆</span><span class="updkick">SYSTEM UPDATE REQUIRED</span></div>'+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updvbox"><div><span class="updl">CURRENT</span><b class="updvv">'+esc(updPrevVer(pend[0]))+'</b></div><span class="upda">←</span>'+'<div style="text-align:left"><span class="updl">LATEST</span><b class="updvv" style="color:#F6E7B0">'+esc(pend[0].ver)+'</b></div></div>'+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+'<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+'<div class="updfoot">DATA IS SAFE · SYNCED TO DRIVE</div></div></div>';
+  ov.innerHTML=updLogo(100)+'<div class="updframe"><div class="updcard">'+'<div class="updrow"><span class="updtag">NEW ◆</span><span class="updkick">SYSTEM UPDATE REQUIRED</span></div>'+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updvbox"><div><span class="updl">CURRENT</span><b class="updvv">'+esc(updPrevVer(pend[0]))+'</b></div><span class="upda">→</span>'+'<div style="text-align:left"><span class="updl">LATEST</span><b class="updvv" style="color:#F6E7B0">'+esc(pend[0].ver)+'</b></div></div>'+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+'<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+'<div class="updfoot">DATA IS SAFE · SYNCED TO DRIVE</div></div></div>';
   document.body.appendChild(ov);
 }
 /* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
@@ -4619,7 +4619,7 @@ function updInstallDoneHTML(up,id){
     '<div class="updrow" style="justify-content:center"><span class="updtag">UPDATE COMPLETE</span></div>'+
     '<h3>تم تثبيت التحديث بنجاح</h3>'+
     '<p class="updov-msg">الإصدار <span style="color:#F6E7B0">'+esc(up.ver)+'</span> اتثبّت على جهازك.</p>'+
-    '<div class="updvbox"><div><span class="updl">PREVIOUS</span><b class="updvv">'+esc(updPrevVer(up))+'</b></div><span class="upda">←</span>'+
+    '<div class="updvbox"><div><span class="updl">PREVIOUS</span><b class="updvv">'+esc(updPrevVer(up))+'</b></div><span class="upda">→</span>'+
     '<div style="text-align:left"><span class="updl">NOW</span><b class="updvv" style="color:#F6E7B0">'+esc(up.ver)+'</b></div></div>'+
     '<div class="updov-list" style="text-align:center"><b>'+esc(up.title)+'</b></div>'+
     '<p class="updov-msg" style="font-size:13px">التحسينات الجديدة هتشتغل بعد إعادة تشغيل التطبيق.</p>'+
