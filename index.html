@@ -4285,6 +4285,7 @@ function updatesCardHTML(){
     '<div class="fld"><label for="updVer">رقم الإصدار (بيتجاب من GitHub تلقائي)</label><input id="updVer" type="text" placeholder="مثال: 1.1.1" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updTitle">عنوان التحديث</label><input id="updTitle" type="text" placeholder="مثال: تحسينات الفواتير" style="'+inp+'"></div>'+
     '<div class="fld"><label for="updDur">مدة التحديث المتوقعة</label><div style="display:flex;gap:8px"><input id="updDur" type="number" min="1" max="7200" value="30" placeholder="مثلاً 30" style="'+inp+';flex:1"><select id="updDurU" style="'+inp+';width:auto;flex:0 0 110px"><option value="s" selected>ثانية</option><option value="m">دقيقة</option></select></div></div>'+
+    '<div class="fld"><label for="updPrev">الإصدار اللي على الأجهزة قبل التحديث</label><input id="updPrev" type="text" value="'+esc(APP_VERSION)+'" placeholder="مثال: 2.0" style="'+inp+'"></div>'+
     '<button class="btn block" data-act="updAdd">نشر التحديث</button></div>':'';
   var rows=list.map(function(up){
     var st=updStatus(up.id),total=acc.length,dn=st.done.length,pct=total?Math.round(dn/total*100):0;
@@ -4462,7 +4463,7 @@ function updPrompt(){
   var tried='';try{tried=sessionStorage.getItem('khat-upd-try')||'';}catch(e){}
   var stale=!!tried&&pend.some(function(u){return u.id===tried;});
   var msgHTML=stale?'<p class="updov-msg">النسخة الجديدة لسه مش متاحة على السيرفر، استنى دقيقة واضغط تاني</p>':'<p class="updov-msg">فيه تحديث إجباري، مش هتقدر تكمل الشغل قبل ما تحدّثه</p>';
-  ov.innerHTML=updLogo(100)+'<div class="updframe"><div class="updcard">'+'<div class="updrow"><span class="updtag">NEW ◆</span><span class="updkick">SYSTEM UPDATE REQUIRED</span></div>'+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updvbox"><div><span class="updl">CURRENT</span><b class="updvv">'+esc(APP_VERSION)+'</b></div><span class="upda">←</span>'+'<div style="text-align:left"><span class="updl">LATEST</span><b class="updvv" style="color:#F6E7B0">'+esc(pend[0].ver)+'</b></div></div>'+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+'<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+'<div class="updfoot">DATA IS SAFE · SYNCED TO DRIVE</div></div></div>';
+  ov.innerHTML=updLogo(100)+'<div class="updframe"><div class="updcard">'+'<div class="updrow"><span class="updtag">NEW ◆</span><span class="updkick">SYSTEM UPDATE REQUIRED</span></div>'+'<h3>لازم تحدّث التطبيق</h3>'+msgHTML+'<div class="updvbox"><div><span class="updl">CURRENT</span><b class="updvv">'+esc(updPrevVer(pend[0]))+'</b></div><span class="upda">←</span>'+'<div style="text-align:left"><span class="updl">LATEST</span><b class="updvv" style="color:#F6E7B0">'+esc(pend[0].ver)+'</b></div></div>'+'<div class="updov-list">'+updPendingItems(pend)+'</div>'+'<button class="updov-btn" data-act="updGo" data-id="'+esc(pend[0].id)+'">تحديث الآن</button>'+'<div class="updfoot">DATA IS SAFE · SYNCED TO DRIVE</div></div></div>';
   document.body.appendChild(ov);
 }
 /* التحديث الإجباري: لو فيه تحديث ماتنفذش على الحساب، الشاشة دايماً بتقفل عليه (حتى لو اتنشر وإنت فاتح التطبيق) */
@@ -4605,6 +4606,7 @@ function updStart(id){
 }
 /* الإصدار السابق: الإصدار اللي الجهاز كان شغال عليه قبل ما يبدأ التحديث، ولو مش متسجل بناخد أقرب إصدار أقدم منشور */
 function updPrevVer(up){
+  if(up.prev&&/^\d+(\.\d+){0,2}$/.test(String(up.prev)))return String(up.prev);
   var f='';try{f=localStorage.getItem('khat-upd-from:'+up.id)||'';}catch(e){}
   if(f&&verCmp(f,up.ver)!==0)return f;
   var older=updList().filter(function(u){return verCmp(u.ver,up.ver)<0;}).sort(function(a,b){return verCmp(b.ver,a.ver);});
@@ -7193,7 +7195,12 @@ var ACT={
     var du=((document.getElementById('updDurU')||{}).value)||'s';
     var dur=dv>0?Math.round(du==='s'?dv:dv*60):30;
     dur=Math.max(5,Math.min(7200,dur));
-    list.unshift({id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items,dur:dur});
+    var pv=((document.getElementById('updPrev')||{}).value||'').trim();
+    if(pv&&!/^\d+(\.\d+){0,2}$/.test(pv)){toast('اكتب الإصدار السابق زي 2.0');return false;}
+    if(pv&&verCmp(pv,v)>=0){toast('الإصدار السابق لازم يكون أقل من الإصدار الجديد');return false;}
+    var rec={id:'upd-'+Date.now().toString(36),ver:v||'-',date:stamp(),title:t,items:items,dur:dur};
+    if(pv)rec.prev=pv;
+    list.unshift(rec);
     setPref('appUpdates',list);
     toast('تم نشر التحديث');
     return true;
