@@ -4355,6 +4355,8 @@ function updCss(){
     '.updcard .updov-list{max-width:none;max-height:none;font-size:13px;color:#c9d1ff}'+
     '.updcard .updov-bar{width:100%}'+
     '.updcard .updov-msg{max-width:none;text-align:right}'+
+    '.updcard #updAct{width:100%;display:flex;flex-direction:column;align-items:center}'+
+    '.updcard #updAct .updov-btn{width:100%}'+
     '.updcard .updov-pct{text-align:left;font-family:"JetBrains Mono",monospace;font-size:44px;font-weight:700}'+
     '.updrow{display:flex;justify-content:space-between;align-items:center;gap:10px}'+
     '.updtag{font-size:11px;letter-spacing:2px;color:#F6E7B0;border:1px solid rgba(246,231,176,.6);padding:4px 8px;white-space:nowrap;font-family:"JetBrains Mono",monospace}'+
@@ -4537,6 +4539,7 @@ function updLiveVer(){
 function updStart(id){
   var up=updFind(id);
   if(!up||document.getElementById('updOv'))return;
+  try{localStorage.setItem('khat-upd-from:'+id,APP_VERSION);}catch(e){}
   updCss();
   var tb0=document.getElementById('updTop');if(tb0)tb0.remove();
   var $=function(x){return document.getElementById(x);};
@@ -4600,6 +4603,13 @@ function updStart(id){
   };
   attempt();
 }
+/* الإصدار السابق: الإصدار اللي الجهاز كان شغال عليه قبل ما يبدأ التحديث، ولو مش متسجل بناخد أقرب إصدار أقدم منشور */
+function updPrevVer(up){
+  var f='';try{f=localStorage.getItem('khat-upd-from:'+up.id)||'';}catch(e){}
+  if(f&&verCmp(f,up.ver)!==0)return f;
+  var older=updList().filter(function(u){return verCmp(u.ver,up.ver)<0;}).sort(function(a,b){return verCmp(b.ver,a.ver);});
+  return older.length?String(older[0].ver):(f||up.ver);
+}
 /* كارت نجاح التثبيت: بيظهر داخل شاشة التحديث بعد ما التثبيت يخلص، وزرار تمام بيعيد تشغيل التطبيق */
 function updInstallDoneHTML(up,id){
   return '<div class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>'+
@@ -4607,7 +4617,7 @@ function updInstallDoneHTML(up,id){
     '<div class="updrow" style="justify-content:center"><span class="updtag">UPDATE COMPLETE</span></div>'+
     '<h3>تم تثبيت التحديث بنجاح</h3>'+
     '<p class="updov-msg">الإصدار <span style="color:#F6E7B0">'+esc(up.ver)+'</span> اتثبّت على جهازك.</p>'+
-    '<div class="updvbox"><div><span class="updl">PREVIOUS</span><b class="updvv">'+esc(APP_VERSION)+'</b></div><span class="upda">←</span>'+
+    '<div class="updvbox"><div><span class="updl">PREVIOUS</span><b class="updvv">'+esc(updPrevVer(up))+'</b></div><span class="upda">←</span>'+
     '<div style="text-align:left"><span class="updl">NOW</span><b class="updvv" style="color:#F6E7B0">'+esc(up.ver)+'</b></div></div>'+
     '<div class="updov-list" style="text-align:center"><b>'+esc(up.title)+'</b></div>'+
     '<p class="updov-msg" style="font-size:13px">التحسينات الجديدة هتشتغل بعد إعادة تشغيل التطبيق.</p>'+
