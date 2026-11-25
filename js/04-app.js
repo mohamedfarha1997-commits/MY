@@ -429,6 +429,7 @@ function fsStart(){baseline();gdStart();window.RMY_NEEDS_DATA=!!GD.on;}
 /* ---------- Google Drive sync (Drive API, drive.file scope) ----------
    The app keeps one file (khat-entaj.json) in the user's Drive and syncs with it every SYNC_MS.
    Each cycle asks Drive for the file's version first (a tiny call, never cached) and only downloads when it changed. */
+var GD_DEFAULT_HINT='rmyproadmin@gmail.com';
 var GD_CLIENT='563440359615-lg66i4v95vggeqrgpn1j9dkgharktg5f.apps.googleusercontent.com',GD_SCOPE='https://www.googleapis.com/auth/drive.file',GD_NAME='khat-entaj.json';
 var GD={on:false,id:null,tok:null,exp:0,ver:null,upAt:-1,ok:false,err:null,busy:false,busyAt:0,tc:null,pend:null,needTap:false,armed:false,loading:false,n:0,at:0,reqAt:0,shown:null};
 function gdSaveCfg(){try{if(GD.on)localStorage.setItem('khat-gd',JSON.stringify({id:GD.id,sh:GD_SHARD_IDS,cid:GD.cardsId,cl:GD.cardsLast}));else localStorage.removeItem('khat-gd');}catch(e){}}
@@ -464,7 +465,7 @@ function gdInitTc(){
 /* بريد حساب جوجل: بيتحفظ مرة واحدة على الجهاز، ويتبعت كتلميح للحساب في الطلب الصامت */
 function gdHint(){
   var el=document.getElementById('gdHint');if(el&&el.value.trim())return el.value.trim();
-  try{return localStorage.getItem('khat-gd-hint')||'';}catch(e){return '';}
+  try{return localStorage.getItem('khat-gd-hint')||GD_DEFAULT_HINT;}catch(e){return GD_DEFAULT_HINT;}
 }
 function gdHintHTML(){
   var v='';try{v=localStorage.getItem('khat-gd-hint')||'';}catch(e){}
@@ -3279,7 +3280,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261124-2305';
+var APP_BUILD='20261125-1200';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -3860,7 +3861,7 @@ function linkGateRender(){
   app.innerHTML='<main class="login" dir="rtl" lang="ar"><div class="lcard"><h2 style="margin:0 0 8px">لازم تربط جوجل درايف</h2>'+
     '<p class="meta">البيانات كلها محفوظة ومتزامنة على حساب جوجل درايف بتاعك. من غير الربط التطبيق مش هيحفظ أي تعديل.</p>'+
     (GD.err?'<div class="note" role="status">'+esc(GD.err)+'</div>':'')+
-    gdHintHTML()+'<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
+    '<div class="btns" style="justify-content:center;margin-top:16px"><button class="btn" data-act="gdConnect">ربط جوجل درايف</button></div></div></main>';
 }
 function render(){
   U.remoteNote=0;
