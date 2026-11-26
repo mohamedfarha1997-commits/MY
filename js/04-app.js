@@ -1855,7 +1855,11 @@ function fgCardHTML(p,q,res){
     '<div class="fgn">'+f(q)+' <span class="meta">'+esc(p.unit)+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
     '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+
-    '<button class="btn ghost sm" data-act="printFgLabel" data-p="'+esc(p.id)+'" style="margin-top:8px;width:100%">🖨️ طباعة ملصق الصنف</button></div>';
+    '<div style="display:flex;gap:6px;margin-top:8px">'+
+    '<button class="btn ghost sm" data-act="printFgLabel" data-p="'+esc(p.id)+'" style="flex:1">🖨️ متصفح</button>'+
+    '<button class="btn ghost sm" data-act="printFgBT" data-p="'+esc(p.id)+'" style="flex:1">🔵 بلوتوث</button>'+
+    '<button class="btn ghost sm" data-act="printFgRaw" data-p="'+esc(p.id)+'" style="flex:1">📲 RawBT</button>'+
+    '</div></div>';
 }
 function fgVisIds(F){
   if(F==='short')return fgShortRows().map(function(r){return r.x.p;}).filter(function(v,i,a){return a.indexOf(v)===i;});
@@ -2644,6 +2648,98 @@ function doPrintLabel(html){
     try{f.contentWindow.focus();f.contentWindow.print();}catch(e){toast('الطباعة مش متاحة هنا، افتح الصفحة من المتصفح');}
     setTimeout(function(){f.remove();},3000);
   },500);
+}
+
+/* ---------- طباعة مباشرة على الطابعة الحرارية (بلوتوث) ---------- */
+/* الطباعة بترسم الملصق صورة (عشان العربي يطلع صح على أي طابعة) وتبعتها بأوامر ESC/POS */
+var LBL_DOTS_W=384;  /* عرض الورق 58 مم = 384 نقطة */
+var LBL_DOTS_H=240;  /* ارتفاع الملصق 30 مم بكثافة 203 DPI */
+var BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
+function fgLabelCanvas(p){
+  var c=document.createElement('canvas');c.width=LBL_DOTS_W;c.height=LBL_DOTS_H;
+  var x=c.getContext('2d'),W=c.width,pad=8;
+  x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
+  function fit(t,max){if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…';}
+  var name=unesc(p.name||''),y=6;
+  x.font='bold 30px Tahoma, Arial, sans-serif';x.textAlign='right';
+  x.fillText(fit(name,W-2*pad),W-pad,y);y+=40;
+  x.fillRect(pad,y,W-2*pad,2);y+=10;
+  var rows=[['الكود',String(p.code||'-')],['المكان',fgStoreOf(p)],['الوحدة',p.unit||'-'],['الصلاحية',unesc(p.shelf||'')||'-'],['تاريخ الإنتاج',fgProdDate(p)||'-']];
+  x.font='24px Tahoma, Arial, sans-serif';
+  rows.forEach(function(r){
+    x.textAlign='right';x.fillText(r[0],W-pad,y);
+    x.textAlign='left';x.font='bold 24px Tahoma, Arial, sans-serif';x.fillText(fit(r[1],W-2*pad-x.measureText(r[0]).width-10),pad,y);
+    x.font='24px Tahoma, Arial, sans-serif';y+=32;
+  });
+  return x.getImageData(0,0,W,c.height);
+}
+/* أوامر ESC/POS: تهيئة + صورة raster (GS v 0) + تغذية ورق */
+function fgLabelEscpos(p){
+  var img=fgLabelCanvas(p),W=img.width,H=img.height,rb=Math.ceil(W/8),d=img.data;
+  var out=[0x1B,0x40,0x1D,0x76,0x30,0x00,rb&255,rb>>8,H&255,H>>8];
+  for(var y=0;y<H;y++){
+    for(var bx=0;bx<rb;bx++){
+      var v=0;
+      for(var b=0;b<8;b++){
+        var x=bx*8+b,bit=0;
+        if(x<W){var i=(y*W+x)*4;if(d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11<128)bit=1;}
+        v=(v<<1)|bit;
+      }
+      out.push(v);
+    }
+  }
+  out.push(0x1B,0x64,0x04);
+  return new Uint8Array(out);
+}
+function bytesToB64(u8){var s='';for(var i=0;i<u8.length;i+=8192)s+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));return btoa(s);}
+/* RawBT: تطبيق أندرويد بيطبع على الطابعات البلوتوث الكلاسيكية (أغلب الطابعات الرخيصة) */
+function printFgRaw(p){
+  var b64=bytesToB64(fgLabelEscpos(p));
+  window.location.href='rawbt:base64,'+b64;
+  toast('لو ماحصلش طباعة، ثبّت تطبيق RawBT وزوّد الطابعة في البلوتوث');
+}
+/* Web Bluetooth: للطابعات اللي بتشتغل BLE بس، ومتدعمة في Chrome على أندرويد */
+function btFindWritable(server){
+  return server.getPrimaryServices().then(function(services){
+    var found=null;
+    return services.reduce(function(chain,svc){
+      return chain.then(function(){
+        if(found)return;
+        return svc.getCharacteristics().then(function(chars){
+          chars.forEach(function(ch){if(!found&&(ch.properties.write||ch.properties.writeWithoutResponse))found=ch;});
+        });
+      });
+    },Promise.resolve()).then(function(){if(!found)throw new Error('no-writable');return found;});
+  });
+}
+function btWriteAll(ch,bytes){
+  var CH=180,i=0;
+  function next(){
+    if(i>=bytes.length)return Promise.resolve();
+    var part=bytes.slice(i,i+CH);i+=CH;
+    var pr=ch.properties.writeWithoutResponse?ch.writeValueWithoutResponse(part):ch.writeValue(part);
+    return pr.then(function(){return new Promise(function(r){setTimeout(r,25);});}).then(next);
+  }
+  return next();
+}
+function printFgBT(p){
+  if(!navigator.bluetooth){toast('المتصفح ده مش بيدعم البلوتوث، استخدم RawBT');return;}
+  var bytes=fgLabelEscpos(p);
+  /* requestDevice لازم تتنادى مباشرة من الضغطة */
+  navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BT_SERVICES})
+    .then(function(dev){
+      toast('جاري الاتصال بالطابعة...');
+      return dev.gatt.connect().then(function(server){
+        return btFindWritable(server).then(function(ch){
+          return btWriteAll(ch,bytes).then(function(){dev.gatt.disconnect();});
+        });
+      });
+    })
+    .then(function(){toast('اتبعت الملصق للطابعة');})
+    .catch(function(e){
+      if(e&&e.name==='NotFoundError')return;
+      toast('الطابعة دي مش BLE، جرب زرار RawBT');
+    });
 }
 function saveProd(F){
   var name=F.name.trim();
@@ -5714,7 +5810,7 @@ var ACT_CAT={
   lotZero:['prod','تصفير الدفعات','w'],testAlarm:['prod','تجربة الصوت','r'],stopAlarm:['prod','إيقاف المنبه','r'],
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
-  printFgLabel:['fgstock','طباعة ملصق الصنف','r'],
+  printFgLabel:['fgstock','طباعة ملصق الصنف','r'],printFgBT:['fgstock','طباعة بلوتوث','r'],printFgRaw:['fgstock','طباعة RawBT','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6360,6 +6456,8 @@ var ACT={
   stepDel:function(d){var g=U.form.stages[Number(d.gi)];g.steps.splice(Number(d.ti),1);if(!g.steps.length)g.steps.push('');},
   printOrder:function(d){var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(o)doPrint(printOrderHTML(o));return false;},
   printFgLabel:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}doPrintLabel(fgLabelHTML(p));return false;},
+  printFgBT:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}printFgBT(p);return false;},
+  printFgRaw:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}printFgRaw(p);return false;},
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
