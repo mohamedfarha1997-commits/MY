@@ -1851,7 +1851,7 @@ function fgCardHTML(p,q,res){
   var hidOwner=!limited()&&fgHiddenIds().indexOf(p.id)>-1;
   var st=q>0?'<span class="pill ok">متاح</span>':(res>0?'<span class="pill low">محجوز كله</span>':'<span class="pill bad">نافد</span>');
   var on=(U.fgSel||[]).indexOf(p.id)>-1;
-  return '<div class="fgc'+(on?' sel':'')+(hidOwner?' hid':'')+'"'+(limited()?'':' data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"')+'><div class="mtop"><b>'+esc(p.name)+'</b><span class="fgtop">'+st+(limited()?'':fgEyeHTML(p))+'</span></div>'+
+  return '<div class="fgc'+(on?' sel':'')+(hidOwner?' hid':'')+'"'+(limited()?'':' data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"')+'><div class="mtop"><b>'+esc(p.name)+'</b><span class="fgtop">'+fgStoreBadge(p)+st+(limited()?'':fgEyeHTML(p))+'</span></div>'+
     '<div class="fgn">'+f(q)+' <span class="meta">'+esc(p.unit)+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
     '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+'</div>';
@@ -2300,6 +2300,7 @@ function feSync(){
   if(nm)E.name=nm.value;
   if(yl)E.yield=yl.value;
   if(gr)E.grp=gr.value;
+  var stEl=document.getElementById('feStore');if(stEl)E.store=stEl.value;
   (E.rows||[]).forEach(function(r){var el=document.getElementById('feq'+r.p);if(el)r.q=el.value;});
 }
 function feDupCheck(){
@@ -2381,6 +2382,7 @@ function feHTML(){
     '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">١</span><h4>بيانات الصنف</h4></div>'+
       '<div class="fe-grid">'+
         '<label class="fe-f"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه"></label>'+
+        '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="0"></label>'+
         '<label class="fe-f fe-full"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب اسم المجموعة أو اختارها"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
       '</div>'+
@@ -2542,6 +2544,7 @@ function prodFormHTML(){
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
+    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'</div>'+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -2592,6 +2595,10 @@ function saveMat(F){
   U.form=null;
 
 }
+/* مكان التخزين لكل صنف في مخزن الإنتاج: عادي / ثلاجة / فريزر */
+var FG_STORES=['عادي','ثلاجة','فريزر'];
+function fgStoreOf(p){return p&&FG_STORES.indexOf(p.fgStore)>-1?p.fgStore:'عادي';}
+function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge','فريزر':'freezer'}[fgStoreOf(p)]||'dry')+'">'+esc(fgStoreOf(p))+'</span>';}
 function saveProd(F){
   var name=F.name.trim();
   if(!name){toast('اكتب اسم المنتج');return false;}
@@ -2664,7 +2671,7 @@ function saveProd(F){
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
   var conv=null;
   if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var kk=convK(ou,nu);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
-  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',group:esc((F.group||'').trim()),comps:comps,noOrder:!!F.noOrder};
+  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',group:esc((F.group||'').trim()),comps:comps,noOrder:!!F.noOrder,fgStore:FG_STORES.indexOf(F.fgStore)>-1?F.fgStore:'عادي'};
   if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);o.code='P-'+String(nextProdNo()).padStart(3,'0');syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name+' بكود '+o.code);}
   U.form=null;
@@ -4833,7 +4840,7 @@ function calCellHTML(k,list,today){
     (n?'<span class="cal-cnt">'+n+'</span><span class="cal-dots">'+dots+'</span><span class="cal-names">'+names+'</span>':'')+
     '</button>';
 }
-function calendarView(){
+function calMonthView(){
   var today=calTodayKey(),ym=U.calMonth||calCur(),g=calGroup();
   var y=+ym.slice(0,4),m=+ym.slice(5,7);
   var label=new Date(Date.UTC(y,m-1,15)).toLocaleDateString('ar-EG',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -4846,7 +4853,7 @@ function calendarView(){
     cells+=calCellHTML(k,list,today);
   }
   var week=WEEK_DAYS_AR.map(function(n){return '<span>'+n+'</span>';}).join('');
-  return '<section class="cal-wrap">'+
+  return '<section class="cal-wrap">'+calModeBar()+
     '<div class="cal-top"><div><b>تقويم الأوردرات</b><small>'+monthN+' أوردر في '+label+'</small></div>'+
     '<div class="cal-nav"><button class="btn ghost sm" data-act="calNav" data-m="1">الشهر اللي بعده</button>'+
     '<button class="btn ghost sm" data-act="calToday">النهاردة</button>'+
@@ -4857,6 +4864,136 @@ function calendarView(){
     '<div class="cal-legend"><span><i class="cal-dot open"></i>قيد التحضير</span><span><i class="cal-dot ready"></i>جاهز للتسليم</span><span><i class="cal-dot done"></i>متسلّم</span></div>'+
     '</section>';
 }
+/* ===== التقويم: شهري / أسبوعي / يومي، وسحب الأوردر من يوم لتاني لتغيير ميعاد التسليم ===== */
+var CAL_MODES=[['month','شهري'],['week','أسبوعي'],['day','يومي']];
+function calMode(){return U.calMode||'month';}
+function calAnchorKey(){return U.calAnchor||calTodayKey()||new Date().toISOString().slice(0,10);}
+function calAddDays(k,n){var d=new Date(k+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
+function calWeekStart(k){return calAddDays(k,-new Date(k+'T12:00:00Z').getUTCDay());}
+function calCanEdit(){return !limited()||permLevel('orders')==='edit';}
+function calDayName(k,long){
+  var o=long?{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'}:{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'};
+  return new Date(k+'T12:00:00Z').toLocaleDateString('ar-EG',o);
+}
+function calModeBar(){
+  return '<div class="seg cal-modes" role="group" aria-label="طريقة العرض">'+CAL_MODES.map(function(m){
+    return '<button class="'+(calMode()===m[0]?'on':'')+'" data-act="calMode" data-m="'+m[0]+'">'+m[1]+'</button>';
+  }).join('')+'</div>';
+}
+function calNavBar(mode,from,to,tot){
+  var lbl=mode==='week'?calDayName(from,false)+' – '+calDayName(to,false):calDayName(from,true);
+  return '<div class="cal-top"><div><b>'+(mode==='week'?'الأسبوع':'اليوم')+'</b><small>'+tot+(tot===1?' أوردر':' أوردر')+' · '+lbl+'</small></div>'+
+    '<div class="cal-nav"><button class="btn ghost sm" data-act="calStep" data-n="1">'+(mode==='week'?'الأسبوع اللي بعده':'اليوم اللي بعده')+'</button>'+
+    '<button class="btn ghost sm" data-act="calToday">النهاردة</button>'+
+    '<button class="btn ghost sm" data-act="calStep" data-n="-1">'+(mode==='week'?'الأسبوع اللي قبله':'اليوم اللي قبله')+'</button></div></div>';
+}
+function calGripHTML(o,can){
+  return (can&&!o.deliveredAt)?'<span class="cal-grip" data-id="'+o.id+'" title="اسحب لتغيير اليوم" aria-label="اسحب لتغيير اليوم">⋮⋮</span>':'';
+}
+/* صف مختصر للأسبوع: ميعاد + اسم + حالة، والمسك بيحرّك الأوردر */
+function calChip(o,can){
+  var time=fmt12str(String(o.due).slice(11,16));
+  var g=calGripHTML(o,can)||'<span class="cal-grip off"></span>';
+  return '<div class="cal-chip '+calDotClass(o)+'">'+g+'<span class="cal-time">'+(time||'--:--')+'</span>'+
+    '<span class="cal-chip-n"><b>'+esc(custName(o))+'</b><small class="ltr">'+sid(o.id)+(okind(o)==='shop'?' · محل':'')+'</small></span>'+
+    '<i class="cal-dot '+calDotClass(o)+'"></i></div>';
+}
+function calDayBlock(k,list,today,can){
+  var n=list.length,body=list.map(function(o){return calChip(o,can);}).join('');
+  return '<section class="cal-day'+(k===today?' today':'')+'" data-drop="'+k+'">'+
+    '<div class="cal-day-h"><button class="cal-day-open" data-act="calDay" data-d="'+k+'">'+calDayName(k,true)+'</button>'+
+    '<small>'+(n?n+' أوردر':'فاضي')+'</small></div>'+
+    '<div class="cal-day-b">'+(body||'<span class="cal-empty">'+(can?'اسحب أوردر هنا عشان ينتقل لليوم ده':'مفيش أوردرات')+'</span>')+'</div></section>';
+}
+function calWeekHTML(){
+  var g=calGroup(),today=calTodayKey(),can=calCanEdit(),st=calWeekStart(calAnchorKey());
+  var days=[0,1,2,3,4,5,6].map(function(i){return calAddDays(st,i);});
+  var tot=days.reduce(function(a,k){return a+(g[k]||[]).length;},0);
+  return calNavBar('week',days[0],days[6],tot)+days.map(function(k){return calDayBlock(k,g[k]||[],today,can);}).join('');
+}
+function calOrdCard(o,can){
+  var time=fmt12str(String(o.due).slice(11,16));
+  var st=o.deliveredAt?'<span class="cal-st done">متسلّم</span>':(ordComplete(o)?'<span class="cal-st ready">جاهز</span>':'<span class="cal-st open">قيد التحضير</span>');
+  return '<article class="cal-ord"><div class="cal-ord-h">'+calGripHTML(o,can)+'<span class="cal-time">'+(time||'--:--')+'</span>'+
+    '<div class="cal-ord-id"><b>'+esc(custName(o))+'</b><small class="ltr">'+sid(o.id)+' · '+(okind(o)==='shop'?'أوردر محل':'أوردر عميل')+'</small></div>'+st+'</div>'+
+    '<div class="cal-ord-items">'+itemsText(o)+'</div>'+
+    (o.note?'<div class="cal-ord-note">ملاحظة: '+o.note+'</div>':'')+
+    '<div class="cal-ord-act"><button class="btn ghost sm" data-act="printOrder" data-id="'+o.id+'">طباعة</button>'+
+    (can&&!o.deliveredAt?'<button class="btn sm" data-act="calEditOrder" data-id="'+o.id+'">تعديل</button>':'')+'</div></article>';
+}
+function calDayViewHTML(){
+  var k=calAnchorKey(),today=calTodayKey(),g=calGroup(),can=calCanEdit(),st=calWeekStart(k);
+  var list=(g[k]||[]).slice().sort(function(a,b){return String(a.due).localeCompare(String(b.due));});
+  /* شريط الأيام اللي في الأسبوع: الصنف بيتسحب عليهم عشان يتنقل لأي يوم */
+  var strip=[0,1,2,3,4,5,6].map(function(i){
+    var d=calAddDays(st,i),n=(g[d]||[]).length;
+    return '<button class="cal-strip-d'+(d===k?' on':'')+(d===today?' today':'')+'" data-drop="'+d+'" data-act="calGoDay" data-d="'+d+'">'+
+      '<small>'+WEEK_DAYS_AR[new Date(d+'T12:00:00Z').getUTCDay()]+'</small><b>'+(+d.slice(8,10))+'</b><i>'+(n||'')+'</i></button>';
+  }).join('');
+  var rows=list.map(function(o){return calOrdCard(o,can);}).join('');
+  return calNavBar('day',k,k,list.length)+'<div class="cal-strip">'+strip+'</div>'+
+    '<div class="cal-dayrows">'+(rows||'<div class="empty"><b>مفيش أوردرات في اليوم ده</b><span>'+(can?'اسحب أوردر من الشريط اللي فوق عشان ينتقل ليوم تاني.':'')+'</span></div>')+'</div>';
+}
+function calendarView(){
+  var m=calMode();
+  if(m==='week')return '<section class="cal-wrap">'+calModeBar()+calWeekHTML()+'</section>';
+  if(m==='day')return '<section class="cal-wrap">'+calModeBar()+calDayViewHTML()+'</section>';
+  return calMonthView();
+}
+/* نقل الأوردر لتاني يوم: الميعاد (الساعة) بيفضل زي ما هو */
+function calMoveOrder(id,day){
+  var o=(S.orders||[]).filter(function(x){return String(x.id)===String(id);})[0];
+  if(!o||o.deliveredAt||!o.due||!calCanEdit())return false;
+  if(closedMonth(monthKey(o.created),okind(o))){toast('الشهر اتقفل، الأوردر ده مش هينتقل');return false;}
+  var cur=String(o.due);
+  if(cur.slice(0,10)===day)return false;
+  o.due=day+cur.slice(10);
+  return true;
+}
+/* السحب: بالماوس أو الصباع من الـ grip. الـ touch-action none على المسكة بيمنع الصفحة تتحرك وإحنا بنسحب */
+var CAL_DRAG=null,CAL_NOCLICK=0;
+document.addEventListener('pointerdown',function(e){
+  var g=e.target.closest&&e.target.closest('.cal-grip');
+  if(!g||!g.getAttribute('data-id')||U.view!=='calendar'||!calCanEdit()||e.button>0)return;
+  CAL_DRAG={id:g.getAttribute('data-id'),x:e.clientX,y:e.clientY,lx:e.clientY,on:false,src:g.closest('.cal-chip,.cal-ord'),
+    ghost:null,gx:0,gy:0,drop:null,dropEl:null,timer:null};
+},true);
+function calGhostStart(D,e){
+  var r=D.src.getBoundingClientRect();
+  D.gx=D.x-r.left;D.gy=D.y-r.top;
+  var gh=D.src.cloneNode(true);
+  gh.classList.add('cal-ghost');gh.style.width=r.width+'px';
+  gh.style.left=(e.clientX-D.gx)+'px';gh.style.top=(e.clientY-D.gy)+'px';
+  document.body.appendChild(gh);D.ghost=gh;
+  document.body.classList.add('cal-dragging');
+  /* لو الصباع قرب أعلى أو أسفل الشاشة، الصفحة بتنزل أو تطلع لوحدها */
+  D.timer=setInterval(function(){var y=D.lx,H=window.innerHeight;if(y<90)window.scrollBy(0,-12);else if(y>H-90)window.scrollBy(0,12);},16);
+}
+document.addEventListener('pointermove',function(e){
+  var D=CAL_DRAG;if(!D)return;
+  if(!D.on){var dx=e.clientX-D.x,dy=e.clientY-D.y;if(dx*dx+dy*dy<64)return;D.on=true;if(D.src)calGhostStart(D,e);}
+  D.lx=e.clientY;
+  if(D.ghost){D.ghost.style.left=(e.clientX-D.gx)+'px';D.ghost.style.top=(e.clientY-D.gy)+'px';}
+  var el=document.elementFromPoint(e.clientX,e.clientY),t=el&&el.closest?el.closest('[data-drop]'):null;
+  var nd=t?t.getAttribute('data-drop'):null;
+  if(nd!==D.drop){if(D.dropEl)D.dropEl.classList.remove('cal-over');D.drop=nd;D.dropEl=t;if(t)t.classList.add('cal-over');}
+},true);
+function calDragEnd(cancel){
+  var D=CAL_DRAG;if(!D)return;CAL_DRAG=null;
+  if(D.timer)clearInterval(D.timer);
+  if(D.ghost)D.ghost.remove();
+  document.body.classList.remove('cal-dragging');
+  if(D.dropEl)D.dropEl.classList.remove('cal-over');
+  if(!D.on)return;
+  CAL_NOCLICK=Date.now();
+  if(cancel||!D.drop)return;
+  if(calMoveOrder(D.id,D.drop)){save();toast('اتنقل الأوردر ليوم '+calDayName(D.drop,true));render();}
+}
+document.addEventListener('pointerup',function(){calDragEnd(false);},true);
+document.addEventListener('pointercancel',function(){calDragEnd(true);},true);
+/* بعد السحب ما تتفتحش شاشة اليوم بالغلط من الضغطة اللي بتيجي بعد الإفلات */
+document.addEventListener('click',function(e){if(Date.now()-CAL_NOCLICK<500){e.stopPropagation();e.preventDefault();}},true);
+
 function calDayHTML(){
   var k=U.calDay;if(!k)return '';
   var list=calGroup()[k]||[];
@@ -5561,7 +5698,7 @@ var ACT_CAT={
   lockMonth:['settings','قفل الشهر','w'],monthDelArchive:['settings','حذف أرشيف شهر','w'],monthPdf:['settings','تصدير الشهر PDF','r'],
   archDel:['settings','حذف الأرشيف','w'],toggleSeason:['settings','إظهار/إخفاء موسم','w'],
   plAll:['settings','تحديد سجل الإنتاج','w'],plToggle:['settings','تحديد سجل إنتاج','w'],plDel:['settings','حذف سجل الإنتاج','w'],
-  calDay:['calendar','فتح يوم في التقويم','r'],calNav:['calendar','تنقل بين الشهور','r'],calToday:['calendar','الرجوع لليوم الحالي','r'],calClose:['calendar','إغلاق نافذة اليوم','r'],
+  calDay:['calendar','فتح يوم في التقويم','r'],calMode:['calendar','تغيير عرض التقويم','r'],calStep:['calendar','تنقل في التقويم','r'],calGoDay:['calendar','فتح يوم في التقويم','r'],calNav:['calendar','تنقل بين الشهور','r'],calToday:['calendar','الرجوع لليوم الحالي','r'],calClose:['calendar','إغلاق نافذة اليوم','r'],
   cleanStart:['stock','بدء تفريغ المخزن','w'],
   uFilter:['settings','فلترة المستخدمين','r'],evUser:['settings','فلترة الأحداث','r'],evMore:['settings','عرض أحداث أكتر','r'],evPrint:['settings','طباعة الأحداث','r'],uSort:['settings','ترتيب المستخدمين','r'],userEditCancel:['settings','إلغاء تعديل المستخدم','r'],
   sChangeStart:['settings','تغيير الـ PIN','w'],sLock:['settings','قفل الإعدادات','w']
@@ -6144,7 +6281,7 @@ var ACT={
   },
   newProd:function(d){
     U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:null,noOrder:false,shop:!!(d&&d.shop),season:curSeason(),name:'',cat:'',unit:'قطعة',mins:'',temp:'',yield:'1',stages:[mkStage('prep','وزن الصنف')],comps:[],notes:''};
+    U.form={kind:'prod',edit:null,noOrder:false,fgStore:'عادي',shop:!!(d&&d.shop),season:curSeason(),name:'',cat:'',unit:'قطعة',mins:'',temp:'',yield:'1',stages:[mkStage('prep','وزن الصنف')],comps:[],notes:''};
   },
   copyProd:function(d){
     var p=P(d.id);if(!p)return false;
@@ -6153,7 +6290,7 @@ var ACT={
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:p.id,group:unesc(p.group||''),noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
+    U.form={kind:'prod',edit:p.id,fgStore:fgStoreOf(p),group:unesc(p.group||''),noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:String(p.mins),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
           ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.dq!=null?i.dq:i.q),u:i.du||(m?m.unit:'جرام')};}),
@@ -6767,7 +6904,10 @@ var ACT={
     m[u.code]=o;setPref('aperms',m);render();toast('اتطبق على القسم');return false;
   },
   calNav:function(d){U.calMonth=calShift(U.calMonth||calCur(),Number(d.m));U.calDay=null;render();return false;},
-  calToday:function(){U.calMonth=null;U.calDay=null;render();return false;},
+  calToday:function(){U.calMonth=null;U.calAnchor=null;U.calDay=null;render();return false;},
+  calMode:function(d){U.calMode=d.m;U.calDay=null;if(d.m==='month'){U.calAnchor=null;}else{U.calAnchor=U.calMonth?U.calMonth+'-01':(U.calAnchor||calTodayKey()||null);}return true;},
+  calStep:function(d){U.calAnchor=calAddDays(calAnchorKey(),Number(d.n)*(calMode()==='week'?7:1));return true;},
+  calGoDay:function(d){U.calAnchor=d.d;U.calDay=null;return true;},
   calDay:function(d){if(!(calGroup()[d.d]||[]).length){toast('مفيش أوردرات في اليوم ده');return false;}U.calDay=d.d;render();return false;},
   calClose:function(){U.calDay=null;render();return false;},
   calEditOrder:function(d){
@@ -6937,13 +7077,13 @@ var ACT={
   fillSeason:function(d){U.fill=U.fill||{name:'',kind:'cust',q:{}};U.fill.season=d.v;},
   fillEdit:function(d){
     var kind=(U.fgf||'fillcust').slice(4);
-    if(d.id==='new'){U.fedit={id:'new',kind:kind,name:'',yield:'',rows:[]};return;}
+    if(d.id==='new'){U.fedit={id:'new',kind:kind,name:'',store:'عادي',yield:'',rows:[]};return;}
     var p=PRODUCTS.filter(function(x){return String(x.id)===String(d.id);})[0];
     if(!p||!isFill(p))return false;
     var lr=p.runFrom?null:fillLastRun(p);
     var src=p.runFrom||(lr?lr.from:[]);
     var yv=p.runOut!=null?p.runOut:(lr?lr.out:'');
-    U.fedit={id:p.id,kind:p.fill,name:p.name,grp:p.grp||'',yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
+    U.fedit={id:p.id,kind:p.fill,name:p.name,grp:p.grp||'',store:fgStoreOf(p),yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
   },
   feAdd:function(){
     var E=U.fedit;if(!E)return false;
@@ -6979,12 +7119,12 @@ var ACT={
     var grp=String(E.grp||'').trim();
     var ex=E.id==='new'?null:PRODUCTS.filter(function(x){return String(x.id)===String(E.id);})[0];
     if(ex){
-      ex.name=name;ex.grp=grp;ex.runFrom=rows;ex.runOut=Y;
+      ex.name=name;ex.grp=grp;ex.runFrom=rows;ex.runOut=Y;ex.fgStore=FG_STORES.indexOf(E.store)>-1?E.store:'عادي';
       toast('اتحفظ '+name);
     }else{
       var codes=[];
       rows.forEach(function(r){var sp=P(r.p);if(sp&&sp.code!=null&&codes.indexOf(String(sp.code))<0)codes.push(String(sp.code));});
-      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:grp,unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y};
+      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:grp,unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y,fgStore:FG_STORES.indexOf(E.store)>-1?E.store:'عادي'};
       S.products.push(np);S.ready[np.id]=0;allocReady(np.id);
       toast('اتضاف '+name);
     }
