@@ -2643,8 +2643,8 @@ function lblSheetHTML(){
       '<div class="lblcopies"><button data-act="lblCopies" data-d="-1"'+(copies<=1?' disabled':'')+' aria-label="أنقص">−</button><b>'+copies+'</b><button data-act="lblCopies" data-d="1"'+(copies>=20?' disabled':'')+' aria-label="زوّد">+</button></div>'+
     '</div><div class="sfoot"><button class="btn main" data-act="lblPrint">🖨️ طباعة '+total+' ملصق</button><button class="btn ghost" data-act="lblClose">إغلاق</button></div></section>'+
     '<style>'+
-    '.lblprev{width:300px;height:180px;margin:6px auto 4px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff;position:relative;box-shadow:0 2px 10px rgba(0,0,0,.06)}'+
-    '.lblprev-in{transform-origin:0 0;width:'+(LBL_W_MM*96/25.4).toFixed(1)+'px}'+
+    '.lblprev{width:300px;height:180px;margin:6px auto 4px;overflow:hidden;direction:ltr;border:1px solid var(--line);border-radius:12px;background:#fff;position:relative;box-shadow:0 2px 10px rgba(0,0,0,.06)}'+
+    '.lblprev-in{position:absolute;left:0;top:0;direction:rtl;transform-origin:0 0;width:'+(LBL_W_MM*96/25.4).toFixed(1)+'px}'+
     '.lblchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.lblchips button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}.lblchips button.on{background:var(--stock,#2d3591);border-color:transparent;color:#fff}'+
     '.lblseg{display:flex;width:100%}.lblseg button{flex:1}'+
     '.lblcopies{display:inline-flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:999px;padding:4px;background:var(--surface)}'+
@@ -2657,8 +2657,7 @@ function fgLabelHTML(p){
   return '<div class="lbl">'+
     '<div class="lbl-name">'+esc(name)+'</div>'+
     '<div class="lbl-row"><span>الكود</span><b dir="ltr">'+esc(code)+'</b></div>'+
-    '<div class="lbl-row"><span>المكان</span><b>'+esc(store)+'</b></div>'+
-    '<div class="lbl-row"><span>الوحدة</span><b>'+esc(p.unit||'-')+'</b></div>'+
+    '<div class="lbl-row"><span>التخزين</span><b>'+esc(store)+'</b></div>'+
     '<div class="lbl-row"><span>الصلاحية</span><b>'+esc(unesc(p.shelf||'')||'-')+'</b></div>'+
     '<div class="lbl-row"><span>تاريخ الإنتاج</span><b dir="ltr">'+esc(date||'-')+'</b></div>'+
   '</div>';
@@ -2700,7 +2699,7 @@ function fgLabelCanvas(p){
   x.font='bold 30px Tahoma, Arial, sans-serif';x.textAlign='right';
   x.fillText(fit(name,W-2*pad),W-pad,y);y+=40;
   x.fillRect(pad,y,W-2*pad,2);y+=10;
-  var rows=[['الكود',String(p.code||'-')],['المكان',fgStoreOf(p)],['الوحدة',p.unit||'-'],['الصلاحية',unesc(p.shelf||'')||'-'],['تاريخ الإنتاج',fgProdDate(p)||'-']];
+  var rows=[['الكود',String(p.code||'-')],['التخزين',fgStoreOf(p)],['الصلاحية',unesc(p.shelf||'')||'-'],['تاريخ الإنتاج',fgProdDate(p)||'-']];
   x.font='24px Tahoma, Arial, sans-serif';
   rows.forEach(function(r){
     x.textAlign='right';x.fillText(r[0],W-pad,y);
