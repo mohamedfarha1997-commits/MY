@@ -1,4 +1,4 @@
-// build 20261124-2305 تحديث الأيقونة الجديدة (يغيّر الملف عشان المتصفح يحدّث الـ service worker)
+// build 20261126-1200 تحديث الأيقونة الجديدة (يغيّر الملف عشان المتصفح يحدّث الـ service worker)
 // Service worker for RMY Pro: lets notifications show even when the app is closed or the phone is locked.
 // No caching here on purpose, so the app always loads the latest index.html.
 
@@ -9,6 +9,20 @@ self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim(
 // service worker handles fetch events. This pass-through keeps everything network-only, so nothing is cached.
 self.addEventListener('fetch', function (e) {
   e.respondWith(fetch(e.request));
+});
+
+// Web Push: lets a server wake the phone and show the alert even when the app is fully closed.
+// The server sends JSON: { title, body, tag, view }. Vibration is set here; the sound is the phone's
+// default notification sound (web notifications can't play a custom sound file).
+self.addEventListener('push', function (e) {
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
+  var opt = {
+    body: d.body || '', tag: d.tag || ('rmy-' + Date.now()), renotify: true, requireInteraction: true,
+    vibrate: [800, 200, 800, 200, 800], silent: false, icon: 'assets/icon-192.png', badge: 'assets/icon-192.png',
+    data: { view: d.view || 'home' }, lang: 'ar', dir: 'rtl'
+  };
+  e.waitUntil(self.registration.showNotification(d.title || 'RMY Pro', opt));
 });
 
 // Tapping a notification focuses the app and opens the section it belongs to.
