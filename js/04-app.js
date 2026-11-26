@@ -1855,11 +1855,7 @@ function fgCardHTML(p,q,res){
     '<div class="fgn">'+f(q)+' <span class="meta">'+esc(p.unit)+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
     '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+
-    '<div style="display:flex;gap:6px;margin-top:8px">'+
-    '<button class="btn ghost sm" data-act="printFgLabel" data-p="'+esc(p.id)+'" style="flex:1">🖨️ متصفح</button>'+
-    '<button class="btn ghost sm" data-act="printFgBT" data-p="'+esc(p.id)+'" style="flex:1">🔵 بلوتوث</button>'+
-    '<button class="btn ghost sm" data-act="printFgRaw" data-p="'+esc(p.id)+'" style="flex:1">📲 RawBT</button>'+
-    '</div></div>';
+    '<button class="btn ghost sm lbl-open" data-act="lblOpen" data-p="'+esc(p.id)+'">🖨️ طباعة الملصق</button></div>';
 }
 function fgVisIds(F){
   if(F==='short')return fgShortRows().map(function(r){return r.x.p;}).filter(function(v,i,a){return a.indexOf(v)===i;});
@@ -1871,6 +1867,7 @@ function fgZeroBar(){
   var allIn=vis.length>0&&vis.every(function(id){return sel.indexOf(id)>-1;});
   var conf=U.confirm==='fgzero',conf2=U.confirm==='fgdel';
   return '<div class="fgzbar"><span class="meta">محدد '+n+' صنف</span><span class="acts">'+
+    (n&&!limited()?'<button class="btn sm" data-act="lblOpenSel">🖨️ طباعة المحدد ('+n+')</button>':'')+
     (vis.length&&!limited()?'<button class="btn ghost sm" data-act="fgSelAll">'+(allIn?'إلغاء تحديد الكل':'حدّد الكل')+'</button>':'')+
     (n&&!limited()?'<button class="btn ghost sm" data-act="fgClear">إلغاء التحديد</button><button class="btn '+(conf?'':'quiet ')+'sm" data-act="fgZero">'+(conf?'اضغط تاني للتأكيد':'صفّر المخزون')+'</button><button class="btn '+(conf2?'':'quiet ')+'sm" data-act="fgDel" style="color:var(--bad)">'+(conf2?'اضغط تاني للتأكيد':'حذف الصنف')+'</button>':'')+
     '</span></div>';
@@ -2616,6 +2613,45 @@ function fgProdDate(p){
   else{S.done.forEach(function(d){if(d.p===p.id&&(d.at||0)>ts)ts=d.at;});}
   return ts?new Date(ts).toLocaleDateString('en-GB'):'';
 }
+/* ---------- نافذة طباعة الملصقات: معاينة + طريقة الطباعة + عدد النسخ ---------- */
+function lblCss(){
+  return '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1.2mm 1.6mm;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;font-family:Tahoma,Arial,sans-serif;color:#000;background:#fff;page-break-after:always}'+
+    '.lbl-name{font-size:11pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #000;padding-bottom:.5mm;margin-bottom:.5mm}'+
+    '.lbl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:8.5pt;line-height:1.2;gap:2mm;white-space:nowrap}'+
+    '.lbl-row span{color:#333}';
+}
+function lblItems(){var L=U.lbl;return L&&L.ids?L.ids.map(function(id){return P(id);}).filter(Boolean):[];}
+function lblSheetHTML(){
+  var L=U.lbl;if(!L)return '';
+  var list=lblItems();if(!list.length)return '';
+  var idx=Math.min(L.i||0,list.length-1),cur=list[idx],copies=L.copies||1,total=list.length*copies;
+  var method=L.method||'bt';
+  var scale=300/(LBL_W_MM*96/25.4);
+  var preview='<style>'+lblCss()+'</style><div class="lblprev"><div class="lblprev-in" style="transform:scale('+scale.toFixed(3)+')">'+fgLabelHTML(cur)+'</div></div>';
+  var chips=list.length>1?'<div class="lblchips">'+list.map(function(p,i){return '<button class="'+(i===idx?'on':'')+'" data-act="lblPick" data-i="'+i+'">'+esc(unesc(p.name))+'</button>';}).join('')+'</div>':'';
+  var mSeg=[['bt','🔵 بلوتوث'],['raw','📲 RawBT'],['web','🖨️ المتصفح']].map(function(x){
+    return '<button class="'+(method===x[0]?'on':'')+'" data-act="lblMethod" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('');
+  return '<button class="back" data-act="lblClose" aria-label="إغلاق"></button>'+
+    '<section class="sheet f" style="--c:var(--stock)" role="dialog" aria-label="طباعة الملصقات"><div class="sbody">'+
+      '<h3>طباعة الملصقات</h3>'+
+      '<div class="meta">'+(list.length>1?list.length+' صنف':'صنف واحد')+' · راجع المعاينة قبل الطباعة</div>'+
+      '<div class="sec-l" style="margin-top:12px">المعاينة</div>'+preview+chips+
+      '<div class="sec-l" style="margin-top:14px">طريقة الطباعة</div>'+
+      '<div class="meta" style="font-size:12px;margin-bottom:6px">'+(printerInfo().id?'🔵 الطابعة: <b>'+esc(unesc(printerInfo().name||'طابعة'))+'</b>':'مفيش طابعة بلوتوث مربوطة، اربطها من الإعدادات')+'</div>'+
+      '<div class="seg lblseg" role="group" aria-label="طريقة الطباعة">'+mSeg+'</div>'+
+      '<div class="sec-l" style="margin-top:14px">عدد النسخ لكل صنف</div>'+
+      '<div class="lblcopies"><button data-act="lblCopies" data-d="-1"'+(copies<=1?' disabled':'')+' aria-label="أنقص">−</button><b>'+copies+'</b><button data-act="lblCopies" data-d="1"'+(copies>=20?' disabled':'')+' aria-label="زوّد">+</button></div>'+
+    '</div><div class="sfoot"><button class="btn main" data-act="lblPrint">🖨️ طباعة '+total+' ملصق</button><button class="btn ghost" data-act="lblClose">إغلاق</button></div></section>'+
+    '<style>'+
+    '.lblprev{width:300px;height:180px;margin:6px auto 4px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff;position:relative;box-shadow:0 2px 10px rgba(0,0,0,.06)}'+
+    '.lblprev-in{transform-origin:0 0;width:'+(LBL_W_MM*96/25.4).toFixed(1)+'px}'+
+    '.lblchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.lblchips button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}.lblchips button.on{background:var(--stock,#2d3591);border-color:transparent;color:#fff}'+
+    '.lblseg{display:flex;width:100%}.lblseg button{flex:1}'+
+    '.lblcopies{display:inline-flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:999px;padding:4px;background:var(--surface)}'+
+    '.lblcopies button{width:40px;height:40px;border-radius:50%;border:0;background:var(--surface-2,#f3f4f8);color:var(--ink);font:inherit;font-size:20px;cursor:pointer}.lblcopies button:disabled{opacity:.4}.lblcopies b{min-width:28px;text-align:center;font-size:18px}'+
+    '.lbl-open{width:100%;margin-top:8px}'+
+    '</style>';
+}
 function fgLabelHTML(p){
   var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p),date=fgProdDate(p);
   return '<div class="lbl">'+
@@ -2693,9 +2729,8 @@ function fgLabelEscpos(p){
 }
 function bytesToB64(u8){var s='';for(var i=0;i<u8.length;i+=8192)s+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));return btoa(s);}
 /* RawBT: تطبيق أندرويد بيطبع على الطابعات البلوتوث الكلاسيكية (أغلب الطابعات الرخيصة) */
-function printFgRaw(p){
-  var b64=bytesToB64(fgLabelEscpos(p));
-  window.location.href='rawbt:base64,'+b64;
+function printBytesRaw(bytes){
+  window.location.href='rawbt:base64,'+bytesToB64(bytes);
   toast('لو ماحصلش طباعة، ثبّت تطبيق RawBT وزوّد الطابعة في البلوتوث');
 }
 /* Web Bluetooth: للطابعات اللي بتشتغل BLE بس، ومتدعمة في Chrome على أندرويد */
@@ -2722,24 +2757,34 @@ function btWriteAll(ch,bytes){
   }
   return next();
 }
-function printFgBT(p){
+function printWithDevice(dev,bytes){
+  return dev.gatt.connect().then(function(server){
+    return btFindWritable(server).then(function(ch){
+      return btWriteAll(ch,bytes).then(function(){dev.gatt.disconnect();});
+    });
+  }).then(function(){toast('اتبعت الملصقات للطابعة');})
+    .catch(function(){toast('الطابعة مش بتستجيب، اتأكد إنها شغالة ومتربطة');});
+}
+function printBytesBT(bytes){
   if(!navigator.bluetooth){toast('المتصفح ده مش بيدعم البلوتوث، استخدم RawBT');return;}
-  var bytes=fgLabelEscpos(p);
-  /* requestDevice لازم تتنادى مباشرة من الضغطة */
+  var saved=printerInfo().id;
+  if(saved&&navigator.bluetooth.getDevices){
+    /* الطابعة اتربطت قبل كده: بنلاقيها من غير picker */
+    navigator.bluetooth.getDevices().then(function(list){
+      var dev=list.filter(function(d){return d.id===saved;})[0];
+      if(dev)return printWithDevice(dev,bytes);
+      toast('الطابعة محتاجة ربط تاني من الإعدادات');
+    }).catch(function(){toast('تعذّر الوصول للطابعة، اربطها من الإعدادات');});
+    return;
+  }
+  /* أول مرة: لازم picker من ضغطة المستخدم */
   navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BT_SERVICES})
     .then(function(dev){
-      toast('جاري الاتصال بالطابعة...');
-      return dev.gatt.connect().then(function(server){
-        return btFindWritable(server).then(function(ch){
-          return btWriteAll(ch,bytes).then(function(){dev.gatt.disconnect();});
-        });
-      });
+      S.printer=Object.assign({},printerInfo(),{id:dev.id,name:dev.name||'طابعة'});
+      save();
+      return printWithDevice(dev,bytes);
     })
-    .then(function(){toast('اتبعت الملصق للطابعة');})
-    .catch(function(e){
-      if(e&&e.name==='NotFoundError')return;
-      toast('الطابعة دي مش BLE، جرب زرار RawBT');
-    });
+    .catch(function(e){if(e&&e.name!=='NotFoundError')toast('الطابعة دي مش BLE، جرب RawBT');});
 }
 function saveProd(F){
   var name=F.name.trim();
@@ -2958,6 +3003,7 @@ function hoursCardHTML(){
     '<div style="overflow-x:auto"><table class="ttab"><thead><tr><th>اليوم</th><th>الحالة</th><th>المواعيد</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+uTable+'</section>';
 }
 var SET_IC={
+  printer:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
   boxtpl:'<path d="M4 9h16v11H4z"/><path d="M3 5h18v4H3zM12 5v15"/>',
   hours:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.2 3.3-5 6.5-5s5.7 1.8 6.5 5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 15c2.4.2 4.3 1.8 5 4.5"/>',
@@ -3406,7 +3452,7 @@ function settingsView(){
   var head0=head('إعدادات','النسخ الاحتياطي والتصدير وقفل الشهور','');
   var pairs=[
     [hoursCardHTML(),'hours'],[usersCardHTML(),'users'],[permsCardHTML(),'perms'],[seasonsCardHTML(),'seasons'],[boxTplFormHTML(),'boxtpl'],
-    [securityCardHTML(),'security'],[monthsHTML(),'months'],
+    [securityCardHTML(),'security'],[printerCardHTML(),'printer'],[monthsHTML(),'months'],
     [gdCardHTML()+backupCardHTML(),'gd'],[updatesCardHTML(),'updates'],[installHTML(),'install']
   ].filter(function(x){return x[0]&&String(x[0]).trim();});
   var secs=pairs.map(function(x){return x[0];});
@@ -4352,7 +4398,7 @@ function render(){
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,calendar:calendarView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
   app.classList.add('has-bbar');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+(U.view==='calendar'?calDayHTML():'');
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+lblSheetHTML()+(U.view==='calendar'?calDayHTML():'');
 applyActGuards();
 focusSearchKeep();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -5810,7 +5856,8 @@ var ACT_CAT={
   lotZero:['prod','تصفير الدفعات','w'],testAlarm:['prod','تجربة الصوت','r'],stopAlarm:['prod','إيقاف المنبه','r'],
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
-  printFgLabel:['fgstock','طباعة ملصق الصنف','r'],printFgBT:['fgstock','طباعة بلوتوث','r'],printFgRaw:['fgstock','طباعة RawBT','r'],
+  printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6228,6 +6275,28 @@ function seasonsCardHTML(){
   }).join('');
   return '<section class="card" style="--c:var(--settings)"><h3>المواسم في الأوردرات</h3><p class="meta" style="margin:0">التبويبات دي بتظهر في الأوردرات وأوردرات المحل بس. لو خفيت موسم، أوردراته مش هتظهر لحد ما ترجعه.</p><table class="ttab"><tbody>'+rows+'</tbody></table></section>';
 }
+/* ===== الطابعة الحرارية: الربط مرة واحدة، والاسم وطريقة الطباعة بيتحفظوا في درايف ===== */
+function printerInfo(){return S.printer||{};}
+function printerCardHTML(){
+  var pr=printerInfo(),on=pr.method||'bt';
+  var status=pr.id?'<b>'+esc(unesc(pr.name||'طابعة'))+'</b><small class="meta"> · متربطة</small>':'<span class="meta">مفيش طابعة مربوطة</span>';
+  var lim=limited();
+  return '<section class="card" style="--c:var(--settings)"><h3>الطابعة الحرارية</h3>'+
+    '<p class="meta" style="margin:0">اربطها مرة واحدة، والاسم وطريقة الطباعة بيتحفظوا في درايف.</p>'+
+    '<div class="pst" style="margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,#f7f8fc)">'+
+      '<div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:'+(pr.id?'#16a34a':'#9ca3af')+'"></span>'+status+'</div>'+
+    '</div>'+
+    '<div class="sec-l">طريقة الطباعة الافتراضية</div>'+
+    '<div class="seg" role="group" aria-label="طريقة الطباعة الافتراضية" style="width:100%;display:flex">'+
+      [['bt','🔵 بلوتوث'],['raw','📲 RawBT']].map(function(x){return '<button style="flex:1" class="'+(on===x[0]?'on':'')+'" data-act="printerMethod" data-v="'+x[0]+'"'+(lim?' disabled':'')+'>'+x[1]+'</button>';}).join('')+
+    '</div>'+
+    '<div class="dbtns" style="margin-top:12px">'+
+      (lim?'':'<button class="btn sm" data-act="printerPair">🔵 ربط طابعة بلوتوث</button>')+
+      (pr.id&&!lim?'<button class="btn ghost sm" data-act="printerForget">فك الربط</button>':'')+
+    '</div>'+
+    '<p class="meta" style="margin:10px 0 0;font-size:12px">طريقة RawBT بتستخدم الطابعة اللي متربطة في تطبيق RawBT نفسه، ومش محتاجة ربط هنا.</p>'+
+  '</section>';
+}
 function securityCardHTML(){
   return '<section class="card" style="--c:var(--settings)"><h3>حماية الإعدادات</h3><p class="meta" style="margin:0">الإعدادات بتتقفل تلقائيًا لما تقفل المتصفح أو تسجل خروج.</p><div class="dbtns"><button class="btn ghost sm" data-act="sChangeStart">تغيير الـ PIN</button><button class="btn ghost sm" data-act="sLock">قفل الإعدادات</button></div></section>';
 }
@@ -6455,9 +6524,36 @@ var ACT={
   stepAdd:function(d){var g=U.form.stages[Number(d.gi)];g.steps.push('');U.focus='[data-gi="'+d.gi+'"][data-ti="'+(g.steps.length-1)+'"]';},
   stepDel:function(d){var g=U.form.stages[Number(d.gi)];g.steps.splice(Number(d.ti),1);if(!g.steps.length)g.steps.push('');},
   printOrder:function(d){var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(o)doPrint(printOrderHTML(o));return false;},
-  printFgLabel:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}doPrintLabel(fgLabelHTML(p));return false;},
-  printFgBT:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}printFgBT(p);return false;},
-  printFgRaw:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}printFgRaw(p);return false;},
+  printerPair:function(){
+    if(!navigator.bluetooth){toast('المتصفح ده مش بيدعم البلوتوث');return false;}
+    navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BT_SERVICES}).then(function(dev){
+      S.printer=Object.assign({},printerInfo(),{id:dev.id,name:dev.name||'طابعة'});
+      save();render();toast('اتربطت '+(dev.name||'الطابعة')+' وهتتحفظ في درايف');
+    }).catch(function(e){if(e&&e.name!=='NotFoundError')toast('الطابعة دي مش BLE، استخدم RawBT');});
+    return false;
+  },
+  printerForget:function(){S.printer=Object.assign({},printerInfo(),{id:null,name:''});},
+  printerMethod:function(d){S.printer=Object.assign({},printerInfo(),{method:d.v});},
+  lblOpen:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}U.lbl={ids:[p.id],i:0,copies:1,method:printerInfo().method||'bt'};},
+  lblOpenSel:function(){var ids=(U.fgSel||[]).slice();if(!ids.length){toast('حدد صنف واحد على الأقل');return false;}U.lbl={ids:ids,i:0,copies:1,method:printerInfo().method||'bt'};},
+  lblClose:function(){U.lbl=null;},
+  lblPick:function(d){if(U.lbl)U.lbl.i=+d.i||0;},
+  lblMethod:function(d){if(U.lbl)U.lbl.method=d.v;},
+  lblCopies:function(d){if(U.lbl)U.lbl.copies=Math.max(1,Math.min(20,(U.lbl.copies||1)+(+d.d)));},
+  lblPrint:function(){
+    var list=lblItems(),L=U.lbl;if(!list.length||!L)return false;
+    var copies=L.copies||1;
+    if(L.method==='web'){
+      var html='';list.forEach(function(p){for(var c=0;c<copies;c++)html+=fgLabelHTML(p);});
+      doPrintLabel(html);
+    }else{
+      var parts=[];list.forEach(function(p){for(var c=0;c<copies;c++)parts.push(fgLabelEscpos(p));});
+      var total=parts.reduce(function(n,x){return n+x.length;},0),bytes=new Uint8Array(total),off=0;
+      parts.forEach(function(x){bytes.set(x,off);off+=x.length;});
+      if(L.method==='raw')printBytesRaw(bytes);else printBytesBT(bytes);
+    }
+    return false;
+  },
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
