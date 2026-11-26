@@ -853,3 +853,41 @@ html[data-theme="light"] .fx-bg{display:none!important}
 .tab .pbar{position:absolute;inset-inline-start:0;bottom:0;height:3px;width:calc(var(--p) * 1%);background:var(--prod);border-radius:0 0 0 14px;z-index:3;transition:width 1s linear}
 .hgrid .tab:has(.pbar) .main svg{background:var(--prod);stroke:#fff}
 @media (prefers-reduced-motion:reduce){.tab .pbar{transition:none}}
+
+/* ===== التقويم: أسبوعي / يومي + سحب الأوردر ===== */
+.cal-modes{display:flex;width:max-content;max-width:100%;margin:4px 0 10px}
+.cal-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:8px 0 12px}
+.cal-strip-d{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:1px solid var(--line);border-radius:12px;background:var(--surface);min-width:0;text-align:center}
+.cal-strip-d small{font-size:10px;color:var(--muted);font-weight:700}
+.cal-strip-d b{font-size:15px;font-variant-numeric:tabular-nums}
+.cal-strip-d i{font-style:normal;font-size:10px;font-weight:800;color:var(--calendar);min-height:12px}
+.cal-strip-d.today{box-shadow:0 0 0 2px var(--calendar) inset}
+.cal-strip-d.on{background:var(--calendar);border-color:var(--calendar)}
+.cal-strip-d.on small,.cal-strip-d.on b,.cal-strip-d.on i{color:#fff}
+.cal-day{border:1px solid var(--line);border-radius:16px;background:var(--surface);padding:10px;margin-bottom:10px;transition:background .15s,box-shadow .15s}
+.cal-day.today{box-shadow:0 0 0 2px var(--calendar) inset}
+.cal-day-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.cal-day-open{all:unset;cursor:pointer;font-weight:800;font-size:14px}
+.cal-day-h small{color:var(--muted);font-size:12px;font-weight:700}
+.cal-day-b{display:grid;gap:6px;min-height:34px}
+.cal-empty{font-size:12px;color:var(--muted)}
+.cal-chip{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);min-width:0}
+.cal-chip.done{opacity:.6}
+.cal-chip .cal-time{font-size:12px;padding:3px 8px;flex:none}
+.cal-chip-n{flex:1;min-width:0;display:flex;flex-direction:column}
+.cal-chip-n b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.cal-chip-n small{color:var(--muted);font-size:11px}
+.cal-chip .cal-dot{flex:none}
+.cal-grip{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;color:var(--muted);font-size:14px;letter-spacing:-3px;padding:6px 4px;border-radius:8px;flex:none;line-height:1}
+.cal-grip.off{visibility:hidden;padding:0;width:0}
+.cal-grip:active{cursor:grabbing}
+.cal-ord-h .cal-grip{padding:8px 6px}
+.cal-dayrows{display:grid;gap:10px}
+.cal-day.cal-over,.cal-strip-d.cal-over{background:color-mix(in srgb,var(--calendar) 18%,var(--surface));box-shadow:0 0 0 2px var(--calendar) inset}
+body.cal-dragging{user-select:none;-webkit-user-select:none}
+.cal-ghost{position:fixed;z-index:200;pointer-events:none;opacity:.92;box-shadow:0 12px 30px rgba(0,0,0,.25);transform:rotate(-1.5deg);margin:0}
+
+/* ===== مكان التخزين في مخزن الإنتاج ===== */
+.fgst{font-size:11px;font-weight:800;padding:3px 8px;border-radius:99px;white-space:nowrap;background:color-mix(in srgb,var(--stock,#0E8A8C) 14%,transparent);color:var(--stock,#0E8A8C)}
+.fgst-fridge{background:rgba(14,165,233,.14);color:#0284c7}
+.fgst-freezer{background:rgba(99,102,241,.14);color:#4f46e5}
