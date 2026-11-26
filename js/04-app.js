@@ -1464,6 +1464,8 @@ function hiddenSeasons(){return pref('seasonsHidden',[]);}
 /* أصناف مخفية عن المستخدمين في مخزن الإنتاج: المالك بس يشوفها */
 function fgHiddenIds(){return pref('fgHidden',[]);}
 function fgUserHidden(p){return !!p&&limited()&&fgHiddenIds().indexOf(p.id)>-1;}
+/* الصنف المخفي (بعينة الإخفاء) بيتشال من كل الإجماليات، لكل الحسابات */
+function fgIsHidden(p){return !!p&&fgHiddenIds().indexOf(p.id)>-1;}
 function seasonHidden(k){return k!=='normal'&&hiddenSeasons().indexOf(k)>-1;}
 function visibleSeasons(){return SEASONS.filter(function(x){return !seasonHidden(x[0]);});}
 function screenKind(){return U.view==='shopOrders'?'shop':'cust';}
@@ -2407,13 +2409,13 @@ function feHTML(){
   '</div>';
 }
 function fgStockView(){
-  var rows=fgShortRows(),raw=[],nS=shortByProduct(rows).length,F=U.fgf||'all';
+  var rows=fgShortRows(),raw=[],nS=shortByProduct(rows.filter(function(r){return !fgIsHidden(P(r.x.p));})).length,F=U.fgf||'all';
   var inStock=0,resAll=0;
-  PRODUCTS.forEach(function(p){if(fgUserHidden(p))return;inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
+  PRODUCTS.forEach(function(p){if(fgIsHidden(p))return;inStock+=(S.ready[p.id]||0);resAll+=fgReserved(p.id);});
   var seg='<div class="seg" role="group" aria-label="تصفية">'+[['all','مخزن التحضيرات'],['fillcust','أوردرات'],['fillshop','أوردرات المحل']].map(function(x){
     return '<button class="'+(F===x[0]?'on':'')+'" data-act="fgFilter" data-v="'+x[0]+'">'+x[1]+'</button>';
   }).join('')+'</div>'+fgSeasonRow();
-  var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.filter(function(p){return !fgUserHidden(p);}).length+'</b><span>صنف</span></div>'+
+  var sum='<div class="sum"><div class="tile"><b>'+PRODUCTS.filter(function(p){return !fgIsHidden(p);}).length+'</b><span>صنف</span></div>'+
     '<div class="tile"><b>'+f(inStock)+'</b><span>في المخزن</span></div>'+
     '<div class="tile"><b>'+f(resAll)+'</b><span>محجوز للأوردرات</span></div>'+
     '<div class="tile"><b style="color:'+(nS?'var(--warn)':'inherit')+'">'+nS+'</b><span>ناقص</span></div></div>';
