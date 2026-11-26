@@ -2330,29 +2330,35 @@ function feHTML(){
     '.fe-sh{display:flex;align-items:center;gap:10px;margin-bottom:12px}'+
     '.fe-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--navy,#2d3591);color:#fff;font-weight:800;font-size:13px;flex:none}'+
     '.fe-sh h4{margin:0;font-size:15px}'+
-    '.fe-grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}'+
+    '.fe-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}'+
     '.fe-f{display:flex;flex-direction:column;gap:6px}'+
     '.fe-f span{font-size:13px;color:var(--muted,#6b7090);font-weight:700}'+
-    '.fe-f input,.fe-q{border:1px solid var(--line,#e4e6f2);border-radius:10px;padding:10px 12px;font:inherit;background:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b);min-width:0}'+
-    '.fe-f input:focus,.fe-q:focus{outline:2px solid var(--navy,#2d3591);outline-offset:1px}'+
+    '.fe-f input,.fe-f select,.fe-q{border:1px solid var(--line,#e4e6f2);border-radius:12px;padding:0 12px;min-height:46px;font:inherit;font-size:15px;background:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b);min-width:0;width:100%;box-sizing:border-box}'+
+    '.fe-f select{appearance:none;-webkit-appearance:none;padding-inline-end:34px;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%228%22%20viewBox=%220%200%2012%208%22%3E%3Cpath%20d=%22M1%201l5%205%205-5%22%20fill=%22none%22%20stroke=%22%236b7090%22%20stroke-width=%221.8%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E);background-repeat:no-repeat;background-position:left 12px center;cursor:pointer}'+
+    '.fe-f small{font-size:12px;color:var(--muted,#6b7090)}'+
+    '.fe-f input:focus,.fe-f select:focus,.fe-q:focus,.fe-add select:focus{outline:2px solid var(--navy,#2d3591);outline-offset:1px}'+
     '.fe-grp{font-size:12px;color:var(--muted,#6b7090);font-weight:700;margin:12px 0 6px}'+
     '.fe-chips{display:flex;flex-wrap:wrap;gap:8px}'+
     '.fe-chip{border:1px solid var(--line,#e4e6f2);background:#fff;border-radius:999px;padding:7px 14px;font:inherit;font-size:14px;cursor:pointer;color:var(--ink,#1b1f3b)}'+
     '.fe-chip.on{background:var(--navy,#2d3591);border-color:var(--navy,#2d3591);color:#fff}'+
     '.fe-table{margin-top:14px;border:1px solid var(--line,#e4e6f2);border-radius:12px;overflow:hidden}'+
-    '.fe-row{display:grid;grid-template-columns:1fr 110px 56px 40px;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line,#e4e6f2)}'+
+    '.fe-row{display:grid;grid-template-columns:minmax(0,1fr) 104px 64px 40px;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--line,#e4e6f2)}'+
+    '.fe-row.h span:nth-child(2),.fe-row.h span:nth-child(3){text-align:center}'+
+    '.fe-row .fe-q{text-align:center;min-height:40px}'+
     '.fe-row.h{border-top:0;background:var(--surface-2,#f7f8fc);font-size:12px;color:var(--muted,#6b7090);font-weight:700}'+
     '.fe-name{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
     '.fe-u{font-size:13px;color:var(--muted,#6b7090)}'+
     '.fe-x{width:34px;height:34px;border-radius:50%;border:1px solid var(--line,#e4e6f2);background:#fff;cursor:pointer;font-size:16px;color:#a31450}'+
     '.fe-empty{padding:14px;text-align:center;color:var(--muted,#6b7090);font-size:14px}'+
-    '.fe-add{display:flex;gap:8px;align-items:center;margin-bottom:4px}'+
-    '.fe-add select{flex:1;min-width:0;border:1px solid var(--line,#e4e6f2);border-radius:10px;padding:10px 12px;font:inherit;background:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b)}'+
+    '.fe-add{display:flex;gap:8px;align-items:center;margin-bottom:12px}'+
+    '.fe-add select{flex:1;min-width:0;min-height:46px;border:1px solid var(--line,#e4e6f2);border-radius:12px;padding:0 12px;font:inherit;font-size:15px;background-color:var(--surface-2,#f7f8fc);color:var(--ink,#1b1f3b);appearance:none;-webkit-appearance:none;padding-inline-end:34px;background-image:url(data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2212%22%20height=%228%22%20viewBox=%220%200%2012%208%22%3E%3Cpath%20d=%22M1%201l5%205%205-5%22%20fill=%22none%22%20stroke=%22%236b7090%22%20stroke-width=%221.8%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E);background-repeat:no-repeat;background-position:left 12px center}'+
+    '.fe-add .btn{min-height:46px;padding-inline:18px;white-space:nowrap}'+
     '.fe-full{grid-column:1/-1}'+
     '.fe-warn{display:'+(dupNow?'block':'none')+';background:#fde3ec;color:#a31450;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700}'+
     '.fe-foot{position:sticky;bottom:0;display:flex;gap:10px;justify-content:flex-end;padding:12px 0;background:var(--bg,#f4f5fb);border-top:1px solid var(--line,#e4e6f2)}'+
     '.fe-foot .btn{min-width:120px}'+
-    '@media (max-width:520px){.fe-grid{grid-template-columns:1fr}.fe-row{grid-template-columns:1fr 92px 46px 36px}}'+
+    '@media (max-width:360px){.fe-grid{grid-template-columns:1fr}}'+
+    '@media (max-width:420px){.fe-row{grid-template-columns:minmax(0,1fr) 84px 52px 36px;gap:6px;padding:10px 8px}}'+
     '</style>';
 
   var groups={},order=[];
@@ -2376,7 +2382,7 @@ function feHTML(){
       '<input class="fe-q" id="feq'+r.p+'" inputmode="decimal" value="'+esc(r.q==null?'':String(r.q))+'" placeholder="0">'+
       '<span class="fe-u">'+esc(sp.unit||'')+'</span>'+
       '<button class="fe-x" data-act="feRemove" data-p="'+r.p+'" aria-label="شيل">×</button></div>';
-  }).join(''):'<div class="fe-empty">اختار خامة من فوق عشان تظهر هنا</div>';
+  }).join(''):'<div class="fe-empty">مفيش خامات لسه. اختار خامة من فوق واضغط "أضف".</div>';
 
   return css+'<div class="fe">'+
     '<div class="fe-head"><b>'+(isNew?'صنف محشو جديد':'تعديل: '+esc(E.name||''))+'</b>'+
@@ -2384,11 +2390,11 @@ function feHTML(){
 
     '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">١</span><h4>بيانات الصنف</h4></div>'+
       '<div class="fe-grid">'+
-        '<label class="fe-f"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه"></label>'+
+        '<label class="fe-f fe-full"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه" autocomplete="off"></label>'+
         '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
-        '<label class="fe-f"><span>الصلاحية</span><input id="feShelf" value="'+esc(E.shelf||'')+'" placeholder="مثال: 3 أيام"></label>'+
-        '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="0"></label>'+
-        '<label class="fe-f fe-full"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب اسم المجموعة أو اختارها"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
+        '<label class="fe-f"><span>الصلاحية</span><input id="feShelf" value="'+esc(E.shelf||'')+'" placeholder="مثال: 3 أيام"><small>بتتطبع على الملصق</small></label>'+
+        '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="مثال: 20"><small>كام صنف بيطلع من الدفعة الواحدة</small></label>'+
+        '<label class="fe-f"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب أو اختار"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
       '</div>'+
       '<div id="feWarn" class="fe-warn">الصنف ده موجود قبل كده، مينفعش يتكرر</div></section>'+
 
