@@ -1854,7 +1854,8 @@ function fgCardHTML(p,q,res){
   return '<div class="fgc'+(on?' sel':'')+(hidOwner?' hid':'')+'"'+(limited()?'':' data-act="fgSel" data-p="'+p.id+'" role="button" aria-pressed="'+on+'"')+'><div class="mtop"><b>'+esc(p.name)+'</b><span class="fgtop">'+fgStoreBadge(p)+st+(limited()?'':fgEyeHTML(p))+'</span></div>'+
     '<div class="fgn">'+f(q)+' <span class="meta">'+esc(p.unit)+'</span></div>'+
     '<div class="fgbar"><i class="f" style="width:'+pct+'%"></i><i class="r" style="width:'+(tot>0?100-pct:0)+'%"></i></div>'+
-    '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+'</div>';
+    '<div class="meta">'+(res>0?'محجوز للأوردرات '+f(res):'مفيش حجز')+'</div>'+lotsHTML(p)+
+    '<button class="btn ghost sm" data-act="printFgLabel" data-p="'+esc(p.id)+'" style="margin-top:8px;width:100%">🖨️ طباعة ملصق الصنف</button></div>';
 }
 function fgVisIds(F){
   if(F==='short')return fgShortRows().map(function(r){return r.x.p;}).filter(function(v,i,a){return a.indexOf(v)===i;});
@@ -2599,6 +2600,60 @@ function saveMat(F){
 var FG_STORES=['عادي','ثلاجة','فريزر'];
 function fgStoreOf(p){return p&&FG_STORES.indexOf(p.fgStore)>-1?p.fgStore:'عادي';}
 function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge','فريزر':'freezer'}[fgStoreOf(p)]||'dry')+'">'+esc(fgStoreOf(p))+'</span>';}
+
+/* ---------- ملصق الصنف للطابعة الحرارية ---------- */
+/* مقاس الاستيكر بالمليمتر: غيّره لو الاستيكر عندك مقاس تاني (مثلاً 40 × 30 أو 58 × 40) */
+var LBL_W_MM=50, LBL_H_MM=30;
+/* Code 128 (مجموعة B): أنماط الشرائط والمسافات، كل نمط مجموعه ١١ وحدة */
+var C128_PAT=["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
+/* بيرجّع SVG للباركود، أو سلسلة فاضية لو الكود فيه حاجة مش مدعومة */
+function code128SVG(text){
+  var s=String(text||''),vals=[104],sum=104,i,c;
+  for(i=0;i<s.length;i++){c=s.charCodeAt(i);if(c<32||c>126)return '';vals.push(c-32);sum+=(c-32)*(i+1);}
+  vals.push(sum%103,106);
+  var x=10,rects='';
+  vals.forEach(function(v){
+    var pat=C128_PAT[v];
+    for(var k=0;k<pat.length;k++){
+      var w=+pat.charAt(k);
+      if(k%2===0){rects+='<rect x="'+x+'" y="0" width="'+w+'" height="100"/>';}
+      x+=w;
+    }
+  });
+  var total=x+10;
+  return '<svg viewBox="0 0 '+total+' 100" preserveAspectRatio="none" style="display:block;width:100%;height:11mm" aria-hidden="true"><g fill="#000">'+rects+'</g></svg>';
+}
+function fgLabelHTML(p){
+  var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p);
+  var bc=code128SVG(code);
+  return '<div class="lbl">'+
+    '<div class="lbl-name">'+esc(name)+'</div>'+
+    '<div class="lbl-bc" dir="ltr">'+bc+'</div>'+
+    '<div class="lbl-ft"><span dir="ltr"><b>'+esc(code)+'</b></span><span>'+esc(store)+(p.unit?' · '+esc(p.unit):'')+'</span></div>'+
+  '</div>';
+}
+/* الطباعة في إطار مخفي بمقاس الاستيكر بالظبط (من غير CSS الصفحة عشان ميتأثرش) */
+function doPrintLabel(html){
+  var f=document.createElement('iframe');
+  f.setAttribute('aria-hidden','true');
+  f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document;
+  d.open();
+  d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+
+    '@page{size:'+LBL_W_MM+'mm '+LBL_H_MM+'mm;margin:0}'+
+    'html,body{margin:0;padding:0;background:#fff;color:#000}'+
+    '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1.2mm 1.6mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;font-family:Tahoma,Arial,sans-serif;page-break-after:always}'+
+    '.lbl-name{font-size:10pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
+    '.lbl-bc{width:100%}'+
+    '.lbl-ft{display:flex;justify-content:space-between;align-items:center;font-size:7.5pt;line-height:1.1;gap:2mm;white-space:nowrap}'+
+    '</style></head><body>'+html+'</body></html>');
+  d.close();
+  setTimeout(function(){
+    try{f.contentWindow.focus();f.contentWindow.print();}catch(e){toast('الطباعة مش متاحة هنا، افتح الصفحة من المتصفح');}
+    setTimeout(function(){f.remove();},3000);
+  },500);
+}
 function saveProd(F){
   var name=F.name.trim();
   if(!name){toast('اكتب اسم المنتج');return false;}
@@ -5668,6 +5723,7 @@ var ACT_CAT={
   lotZero:['prod','تصفير الدفعات','w'],testAlarm:['prod','تجربة الصوت','r'],stopAlarm:['prod','إيقاف المنبه','r'],
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
+  printFgLabel:['fgstock','طباعة ملصق الصنف','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6312,6 +6368,7 @@ var ACT={
   stepAdd:function(d){var g=U.form.stages[Number(d.gi)];g.steps.push('');U.focus='[data-gi="'+d.gi+'"][data-ti="'+(g.steps.length-1)+'"]';},
   stepDel:function(d){var g=U.form.stages[Number(d.gi)];g.steps.splice(Number(d.ti),1);if(!g.steps.length)g.steps.push('');},
   printOrder:function(d){var o=S.orders.filter(function(x){return x.id===d.id;})[0];if(o)doPrint(printOrderHTML(o));return false;},
+  printFgLabel:function(d){var p=P(d.p);if(!p){toast('الصنف مش موجود');return false;}doPrintLabel(fgLabelHTML(p));return false;},
   formClose:function(){U.form=null;U.confirm=null;},
   formSave:function(){return U.form.kind==='mat'?saveMat(U.form):saveProd(U.form);},
   recExport:function(d){return recExport(d);},
