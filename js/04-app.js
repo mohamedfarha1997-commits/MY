@@ -2301,6 +2301,7 @@ function feSync(){
   if(nm)E.name=nm.value;
   if(yl)E.yield=yl.value;
   if(gr)E.grp=gr.value;
+  var shEl=document.getElementById('feShelf');if(shEl)E.shelf=shEl.value;
   var stEl=document.getElementById('feStore');if(stEl)E.store=stEl.value;
   (E.rows||[]).forEach(function(r){var el=document.getElementById('feq'+r.p);if(el)r.q=el.value;});
 }
@@ -2384,6 +2385,7 @@ function feHTML(){
       '<div class="fe-grid">'+
         '<label class="fe-f"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه"></label>'+
         '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
+        '<label class="fe-f"><span>الصلاحية</span><input id="feShelf" value="'+esc(E.shelf||'')+'" placeholder="مثال: 3 أيام"></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="0"></label>'+
         '<label class="fe-f fe-full"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب اسم المجموعة أو اختارها"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
       '</div>'+
@@ -2545,7 +2547,7 @@ function prodFormHTML(){
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
-    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'</div>'+
+    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+fld('shelf','الصلاحية',{ph:'مثال: 3 أيام',hint:'بتتطبع على ملصق الصنف'})+'</div>'+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة)',{im:'numeric'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -2604,32 +2606,21 @@ function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge
 /* ---------- ملصق الصنف للطابعة الحرارية ---------- */
 /* مقاس الاستيكر بالمليمتر: غيّره لو الاستيكر عندك مقاس تاني (مثلاً 40 × 30 أو 58 × 40) */
 var LBL_W_MM=50, LBL_H_MM=30;
-/* Code 128 (مجموعة B): أنماط الشرائط والمسافات، كل نمط مجموعه ١١ وحدة */
-var C128_PAT=["212222","222122","222221","121223","121322","131222","122213","122312","132212","221213","221312","231212","112232","122132","122231","113222","123122","123221","223211","221132","221231","213212","223112","312131","311222","321122","321221","312212","322112","322211","212123","212321","232121","111323","131123","131321","112313","132113","132311","211313","231113","231311","112133","112331","132131","113123","113321","133121","313121","211331","231131","213113","213311","213131","311123","311321","331121","312113","312311","332111","314111","221411","431111","111224","111422","121124","121421","141122","141221","112214","112412","122114","122411","142112","142211","241211","221114","413111","241112","134111","111242","121142","121241","114212","124112","124211","411212","421112","421211","212141","214121","412121","111143","111341","131141","114113","114311","411113","411311","113141","114131","311141","411131","211412","211214","211232","2331112"];
-/* بيرجّع SVG للباركود، أو سلسلة فاضية لو الكود فيه حاجة مش مدعومة */
-function code128SVG(text){
-  var s=String(text||''),vals=[104],sum=104,i,c;
-  for(i=0;i<s.length;i++){c=s.charCodeAt(i);if(c<32||c>126)return '';vals.push(c-32);sum+=(c-32)*(i+1);}
-  vals.push(sum%103,106);
-  var x=10,rects='';
-  vals.forEach(function(v){
-    var pat=C128_PAT[v];
-    for(var k=0;k<pat.length;k++){
-      var w=+pat.charAt(k);
-      if(k%2===0){rects+='<rect x="'+x+'" y="0" width="'+w+'" height="100"/>';}
-      x+=w;
-    }
-  });
-  var total=x+10;
-  return '<svg viewBox="0 0 '+total+' 100" preserveAspectRatio="none" style="display:block;width:100%;height:11mm" aria-hidden="true"><g fill="#000">'+rects+'</g></svg>';
+function fgProdDate(p){
+  var ts=0;
+  if(isFill(p)&&Array.isArray(p.fillRuns)){p.fillRuns.forEach(function(r){if((r.at||0)>ts)ts=r.at;});}
+  else{S.done.forEach(function(d){if(d.p===p.id&&(d.at||0)>ts)ts=d.at;});}
+  return ts?new Date(ts).toLocaleDateString('en-GB'):'';
 }
 function fgLabelHTML(p){
-  var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p);
-  var bc=code128SVG(code);
+  var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p),date=fgProdDate(p);
   return '<div class="lbl">'+
     '<div class="lbl-name">'+esc(name)+'</div>'+
-    '<div class="lbl-bc" dir="ltr">'+bc+'</div>'+
-    '<div class="lbl-ft"><span dir="ltr"><b>'+esc(code)+'</b></span><span>'+esc(store)+(p.unit?' · '+esc(p.unit):'')+'</span></div>'+
+    '<div class="lbl-row"><span>الكود</span><b dir="ltr">'+esc(code)+'</b></div>'+
+    '<div class="lbl-row"><span>المكان</span><b>'+esc(store)+'</b></div>'+
+    '<div class="lbl-row"><span>الوحدة</span><b>'+esc(p.unit||'-')+'</b></div>'+
+    '<div class="lbl-row"><span>الصلاحية</span><b>'+esc(unesc(p.shelf||'')||'-')+'</b></div>'+
+    '<div class="lbl-row"><span>تاريخ الإنتاج</span><b dir="ltr">'+esc(date||'-')+'</b></div>'+
   '</div>';
 }
 /* الطباعة في إطار مخفي بمقاس الاستيكر بالظبط (من غير CSS الصفحة عشان ميتأثرش) */
@@ -2643,10 +2634,10 @@ function doPrintLabel(html){
   d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+
     '@page{size:'+LBL_W_MM+'mm '+LBL_H_MM+'mm;margin:0}'+
     'html,body{margin:0;padding:0;background:#fff;color:#000}'+
-    '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1.2mm 1.6mm;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;font-family:Tahoma,Arial,sans-serif;page-break-after:always}'+
-    '.lbl-name{font-size:10pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
-    '.lbl-bc{width:100%}'+
-    '.lbl-ft{display:flex;justify-content:space-between;align-items:center;font-size:7.5pt;line-height:1.1;gap:2mm;white-space:nowrap}'+
+    '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1.2mm 1.6mm;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;font-family:Tahoma,Arial,sans-serif;page-break-after:always}'+
+    '.lbl-name{font-size:11pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #000;padding-bottom:.5mm;margin-bottom:.5mm}'+
+    '.lbl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:8.5pt;line-height:1.2;gap:2mm;white-space:nowrap}'+
+    '.lbl-row span{color:#333}'+
     '</style></head><body>'+html+'</body></html>');
   d.close();
   setTimeout(function(){
@@ -2726,7 +2717,7 @@ function saveProd(F){
   var nu=PROD_UNITS.indexOf(F.unit)>-1?F.unit:'قطعة';
   var conv=null;
   if(F.edit){var pe=P(F.edit),ou=pe.unit||'قطعة';if(ou!==nu){var kk=convK(ou,nu);conv={k:kk,yield:r3((pe.yield||1)*kk)};}}
-  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',group:esc((F.group||'').trim()),comps:comps,noOrder:!!F.noOrder,fgStore:FG_STORES.indexOf(F.fgStore)>-1?F.fgStore:'عادي'};
+  var o={name:esc(name),cat:'عام',unit:nu,mins:mins,temp:tp,yield:conv?conv.yield:yl,stages:stages,notes:esc((F.notes||'').trim()),shop:!!F.shop,season:F.season||'normal',group:esc((F.group||'').trim()),comps:comps,noOrder:!!F.noOrder,fgStore:FG_STORES.indexOf(F.fgStore)>-1?F.fgStore:'عادي',shelf:esc((F.shelf||'').trim())};
   if(F.edit){var cur=P(F.edit);if(conv)convertUnitData(F.edit,conv.k,nu);Object.assign(cur,o);syncProd(cur);if(conv)save();toast('تم حفظ التعديلات');}
   else{o.id='p'+Date.now().toString(36);o.code='P-'+String(nextProdNo()).padStart(3,'0');syncProd(o);S.products.push(o);U.rsel=o.id;toast('تمت إضافة '+name+' بكود '+o.code);}
   U.form=null;
@@ -7176,12 +7167,12 @@ var ACT={
     var grp=String(E.grp||'').trim();
     var ex=E.id==='new'?null:PRODUCTS.filter(function(x){return String(x.id)===String(E.id);})[0];
     if(ex){
-      ex.name=name;ex.grp=grp;ex.runFrom=rows;ex.runOut=Y;ex.fgStore=FG_STORES.indexOf(E.store)>-1?E.store:'عادي';
+      ex.name=name;ex.grp=grp;ex.shelf=esc(String(E.shelf||'').trim());ex.runFrom=rows;ex.runOut=Y;ex.fgStore=FG_STORES.indexOf(E.store)>-1?E.store:'عادي';
       toast('اتحفظ '+name);
     }else{
       var codes=[];
       rows.forEach(function(r){var sp=P(r.p);if(sp&&sp.code!=null&&codes.indexOf(String(sp.code))<0)codes.push(String(sp.code));});
-      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:grp,unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],runFrom:rows,runOut:Y,fgStore:FG_STORES.indexOf(E.store)>-1?E.store:'عادي'};
+      var np={id:'p'+Date.now().toString(36),name:name,code:mergedCode(),srcCodes:codes,season:'normal',grp:grp,unit:'قطعة',mins:0,yield:1,comps:[],recipe:{},prep:[],shop:E.kind==='shop',fill:E.kind,by:actorCode(),from:[],fromTotal:0,outTotal:0,legacyFrom:[],legacyOutEstimate:0,fillRuns:[],shelf:esc(String(E.shelf||'').trim()),runFrom:rows,runOut:Y,fgStore:FG_STORES.indexOf(E.store)>-1?E.store:'عادي'};
       S.products.push(np);S.ready[np.id]=0;allocReady(np.id);
       toast('اتضاف '+name);
     }
