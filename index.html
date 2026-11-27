@@ -26,13 +26,18 @@
 .pchip.off{opacity:.55}
 .pchip-lock{color:var(--muted)}
 .upill.bad{background:rgba(220,38,38,.12);color:#b91c1c}
-.scard{background:var(--surface);color:var(--ink);border:1px solid var(--line);justify-content:center;box-shadow:none}
-.scard.on{box-shadow:none;border:2px solid var(--ink);opacity:1;transform:scale(1.05)}
-.scard .sname{text-shadow:none;font-size:16px}
 </style><link rel="manifest" href="manifest.json"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png"><link rel="apple-touch-icon" href="assets/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script src="js/01-boot-errors.js"></script><link rel="stylesheet" href="css/app.css?v=20261126-2200" data-app-css>
 
 <link rel="stylesheet" href="css/card.css" data-app-css id="cardCss">
 <link rel="stylesheet" href="css/login.css" data-app-css id="loginCss">
+<style>
+.scard{background:#fff !important;color:#111827 !important;border:1px solid #cbd2dc !important;justify-content:center !important;box-shadow:none !important;opacity:1 !important}
+.scard.on{background:#fff !important;color:#111827 !important;border:2px solid #111827 !important;box-shadow:none !important;transform:scale(1.05) !important}
+.scard .sname{color:inherit !important;text-shadow:none !important;font-size:16px !important;font-weight:800 !important}
+.scards{padding:22px calc(50% - 31px) !important}
+.scard{flex:0 0 62px !important;width:62px !important;height:86px !important;border-radius:10px !important;padding:4px 2px !important}
+.scard .sname{font-size:11px !important;line-height:1.2 !important;white-space:normal !important}
+</style>
 <script src="js/02-card-flag.js"></script>
 </head><body>
 <title>RMY Pro</title>
