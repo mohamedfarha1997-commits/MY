@@ -8595,8 +8595,6 @@ ACT.shelfPick=function(d){
 };
 try{render();}catch(e){console.error('first render',e);}
 restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();}catch(e){console.error("boot",e);}if(!window.RMY_NEEDS_DATA)document.dispatchEvent(new Event("rmy:loaded"));});
-})();
-}
 /* تغيير مكان التخزين: لو فيه مدة واحدة بتتطبق لوحدها، ولو مش مناسبة بتتفضّى عشان يختار */
 document.addEventListener('change',function(e){
   var t=e.target;if(!t)return;
@@ -8643,3 +8641,5 @@ netMeasure();
 setInterval(netMeasure,15000);
 window.addEventListener('online',netMeasure);
 window.addEventListener('offline',function(){NETQ.lvl='off';NETQ.ms=0;netPaint();});
+})();
+}
