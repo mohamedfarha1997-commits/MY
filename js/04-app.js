@@ -6512,16 +6512,16 @@ function seasonLevel(id){
   var lv=permLevel('boxcomp');
   return lv==='edit'?'edit':lv==='view'?'view':'hide';
 }
-function visibleSeasons(){return bcSeasons().filter(function(x){return seasonLevel(x.id)!=='hide';});}
+function bcVisibleSeasons(){return bcSeasons().filter(function(x){return seasonLevel(x.id)!=='hide';});}
 function bcCanEditSeason(){return seasonLevel(bcSeasonCur().id)==='edit';}
 function bcSeasonsHTML(){
   var cur=bcSeasonCur().id;
-  return '<div class="bcseasons">'+visibleSeasons().map(function(x){
+  return '<div class="bcseasons">'+bcVisibleSeasons().map(function(x){
     return '<button class="bcseason'+(x.id===cur?' on':'')+'" data-act="bcSeason" data-v="'+esc(x.id)+'">'+esc(x.name)+'</button>';
   }).join('')+'</div>';
 }
 function boxCompView(){
-  var vis=visibleSeasons();
+  var vis=bcVisibleSeasons();
   if(!vis.length)return head('تجميع علب','مفيش مواسم متاحة لحسابك')+'<div class="meta" style="text-align:center;padding:20px 0">كلمة المالك هي اللي بتظهر لك المواسم</div>';
   if(!vis.some(function(x){return x.id===bcSeasonCur().id;}))U.bcSeason=vis[0].id;
   if(U.bcDraft&&!bcCanEditSeason()){U.bcDraft=null;U.bcDraftNew=false;}
