@@ -308,7 +308,7 @@ function migrateEggRecipes(st){
 }
 var U={view:'home',sheet:null,recv:null,filter:'all',confirm:null};
 var h=(location.hash||'').slice(1);
-if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1)U.view=h;
+if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes','boxcomp'].indexOf(h)>-1)U.view=h;
 
 function liveRecipe(p){var rec={};((p&&p.stages)||[]).forEach(function(g){(g.ings||[]).forEach(function(i){if(!i.m&&i.mid)i.m=i.mid;rec[i.m]=r3((rec[i.m]||0)+i.q);});});return rec;}
 function need(b){var o={},r=liveRecipe(P(b.p));for(var k in r)o[k]=r3(r[k]*b.qty);return o;}
@@ -1130,7 +1130,7 @@ function greetHTML(){
 }
 /* هيدر الصفحات الفرعية: زرار رجوع واسم القسم الحالي */
 function titleHTML(){
-  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب',verify:'التحقق من البطاقة'}[U.view]||'';
+  var name={orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب',boxcomp:'تجميع علب',verify:'التحقق من البطاقة'}[U.view]||'';
   return '<b class="ttlname">'+esc(name)+'</b>';
 }
 function topHTML(){
@@ -1149,7 +1149,7 @@ function footHTML(){
 var DSH_SECS=[
   {t:'الأوردرات',keys:['orders','shopOrders','reserved','calendar']},
   {t:'التحضير والإنتاج',keys:['prep','prod','filling','prepreq']},
-  {t:'المخازن',keys:['stock','fgstock','waste']},
+  {t:'المخازن',keys:['stock','fgstock','waste','boxcomp']},
   {t:'الوصفات',keys:['recipes','shopProducts']}
 ];
 /* أيقونات الصفحة الرئيسية: ستايل واحد (خط 1.8)، ومعنى واضح لكل قسم، ومفيش أيقونتين شبه بعض */
@@ -1164,7 +1164,7 @@ var DSH_IC={
   prepreq:'<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   stock:'<path d="M12 3.5l8 4.5v8L12 20.5 4 16.5v-8z"/><path d="M4 8l8 4.5L20 8M12 12.5v8"/>',
   fgstock:'<path d="M3.5 10L12 4l8.5 6v9.5h-17z"/><path d="M9 19.5v-5h6v5"/>',
-  waste:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5"/>',
+  waste:'<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 12.5h9l1-12.5"/>',boxcomp:'<path d="M3.5 7.5L12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5L12 11.5l8.5-4M12 11.5v9"/>',
   recipes:'<path d="M5 4.5h10a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M8 8.5h6M8 12h6"/>',
   shopProducts:'<path d="M3.5 12.5V4.5h8l9 9-8 8z"/><circle cx="8" cy="8.5" r="1.2"/>'
 };
@@ -1276,7 +1276,7 @@ function navItems(){
     {k:'stock',l:'مكوّنات',n:MATERIALS.length,u:'مكوّن'},
     {k:'fgstock',l:'مخزن الإنتاج',n:fgShortCount(),u:'ناقص',warn:fgShortCount()>0}
   ];
-  st.push({k:'waste',l:'هالك',n:(S.waste||[]).length,u:'عملية'});
+  st.push({k:'waste',l:'هالك',n:(S.waste||[]).length,u:'عملية'});st.push({k:'boxcomp',l:'تجميع علب',n:bcTotalBoxes(),u:'علبة'});
   st.push({k:'verify',l:'التحقق من البطاقة',n:usersList().length,u:'مستخدم'});
   st.push({k:'refresh',l:'زرار التحديث',n:0,u:''});
   st.push({k:'theme',l:'الوضع الليلي والنهاري',n:0,u:''});
@@ -4464,7 +4464,7 @@ function render(){
   var sb=document.querySelector('.sbody'),sc=sb?sb.scrollTop:0;
   var tbEl=document.querySelector('[aria-label="أقسام الأصناف"]'),tsc=tbEl?tbEl.scrollLeft:0;
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
-  var v={home:function(){return '';},reserved:reservedView,calendar:calendarView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView}[U.view]();
+  var v={home:function(){return '';},reserved:reservedView,calendar:calendarView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView,boxcomp:boxCompView}[U.view]();
   app.classList.add('has-bbar');
   app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+lblSheetHTML()+(U.view==='calendar'?calDayHTML():'');
 applyActGuards();
@@ -5902,10 +5902,10 @@ function permsCardHTML(){
     '<div class="pgrp"><div class="pgrp-h">إخفاء من قائمتك انت (المالك)</div><div class="pchips">'+ownChips+'</div></div>'+
     '</section>';
 }
-PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:'تعبئة العلب والقوالب'}]});
+PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:'تعبئة العلب والقوالب'},{k:'boxcomp',l:'تجميع علب',d:'حساب الخامات لكل علبة وتعديل الأصناف والأعداد'}]});
 
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
-var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
+var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',boxcomp:'تجميع علب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
 var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
@@ -5925,7 +5925,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6407,7 +6407,50 @@ function installHTML(){
   var hint=ios?'<p class="meta" style="margin:0">على iPhone: من Safari اضغط زر المشاركة ثم "إضافة إلى الشاشة الرئيسية".</p>':(btn?'':'<p class="meta" style="margin:0">لو المتصفح بيدعم التثبيت هيظهر زر التثبيت هنا.</p>');
   return '<section class="card dat" style="--c:var(--prep)"><div class="row"><h3>تثبيت التطبيق على الهاتف</h3></div>'+hint+(btn?'<div class="dbtns">'+btn+'</div>':'')+'</section>';
 }
-var ACT={
+/* ===== تجميع علب: حساب الخامات لكل علبة (من ملف سيجما) ===== */
+var BC_SEED=[{"name": "علبة جزمة", "count": 0, "items": [["ملبن فسدق", 2.0], ["مرزيبان", 2.0], ["اكلير ملبن", 1.0], ["اكلير فدسق", 1.0], ["اكلير لوز", 1.0], ["اكلير سوداني", 1.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 1.0], ["فرسكة بندق", 1.0], ["فرسكة سوداني", 1.0], ["فرسكة عسل وطحينه", 1.0], ["بندق", 0.0], ["لوز", 1.0], ["كاجو", 1.0], ["بيكان", 1.0], ["فدسق", 1.0], ["سابليه شكولاته", 2.0], ["لب اخضر", 2.0], ["فوليه", 1.0], ["حمصيه", 1.0], ["سمسميه", 1.0], ["برازق فسدق", 2.0]]}, {"name": "علبة صغيرة", "count": 2, "items": [["ملبن فسدق", 3.0], ["مرزيبان", 3.0], ["اكلير ملبن", 2.0], ["اكلير فدسق", 2.0], ["اكلير لوز", 2.0], ["اكلير سوداني", 2.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 1.0], ["فرسكة بندق", 1.0], ["فرسكة سوداني", 1.0], ["فرسكة عسل وطحينه", 1.0], ["بندق", 2.0], ["لوز", 1.0], ["كاجو", 1.0], ["بيكان", 1.0], ["فدسق", 1.0], ["سابليه شكولاته", 2.0], ["لب اخضر", 2.0], ["فوليه", 2.0], ["حمصيه", 2.0], ["سمسميه", 2.0]]}, {"name": "علبة وسط", "count": 12, "items": [["ملبن فسدق", 4.0], ["مرزيبان", 8.0], ["اكلير ملبن", 2.0], ["اكلير فدسق", 2.0], ["اكلير لوز", 2.0], ["اكلير سوداني", 2.0], ["ملبن حبل", 10.0], ["فرسكة فدسق", 2.0], ["فرسكة بندق", 2.0], ["فرسكة سوداني", 2.0], ["فرسكة عسل وطحينه", 2.0], ["بندق", 3.0], ["لوز", 2.0], ["كاجو", 2.0], ["بيكان", 2.0], ["فدسق", 2.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 6.0], ["فوليه", 3.0], ["حمصيه", 3.0], ["سمسميه", 3.0], ["برازق فسدق", 4.0]]}, {"name": "علبة كبيرة", "count": 13, "items": [["ملبن فسدق", 13.0], ["مرزيبان", 12.0], ["اكلير ملبن", 7.0], ["اكلير فدسق", 7.0], ["اكلير لوز", 7.0], ["اكلير سوداني", 7.0], ["ملبن حبل", 14.0], ["فرسكة فدسق", 5.0], ["فرسكة بندق", 5.0], ["فرسكة سوداني", 5.0], ["فرسكة عسل وطحينه", 5.0], ["بندق", 6.0], ["لوز", 6.0], ["كاجو", 6.0], ["بيكان", 6.0], ["فدسق", 6.0], ["سابليه شكولاته", 6.0], ["لب اخضر", 10.0], ["فوليه", 8.0], ["حمصيه", 8.0], ["سمسميه", 8.0], ["برازق فسدق", 7.0], ["برازق نوتيلا", 7.0]]}, {"name": "علبة متر", "count": 0, "items": [["ملبن فسدق", 6.0], ["مرزيبان", 10.0], ["اكلير ملبن", 5.0], ["اكلير فدسق", 5.0], ["اكلير لوز", 5.0], ["اكلير سوداني", 5.0], ["ملبن حبل", 10.0], ["فرسكة فدسق", 4.0], ["فرسكة بندق", 4.0], ["فرسكة سوداني", 4.0], ["فرسكة عسل وطحينه", 4.0], ["بندق", 4.0], ["لوز", 4.0], ["كاجو", 4.0], ["بيكان", 0.0], ["فدسق", 4.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 10.0], ["فوليه", 4.0], ["حمصيه", 4.0], ["سمسميه", 4.0], ["برازق فسدق", 5.0]]}, {"name": "علبة دولاب", "count": 2, "items": [["ملبن فسدق", 10.0], ["مرزيبان", 10.0], ["اكلير ملبن", 5.0], ["اكلير فدسق", 5.0], ["اكلير لوز", 5.0], ["اكلير سوداني", 5.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 4.0], ["فرسكة بندق", 4.0], ["فرسكة سوداني", 4.0], ["فرسكة عسل وطحينه", 4.0], ["بندق", 4.0], ["لوز", 4.0], ["كاجو", 4.0], ["بيكان", 4.0], ["فدسق", 5.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 5.0], ["فوليه", 3.0], ["حمصيه", 3.0], ["سمسميه", 3.0], ["برازق فسدق", 4.0]]}];
+function bcData(){
+  if(!S.boxComp||!Array.isArray(S.boxComp.types)){
+    S.boxComp={types:BC_SEED.map(function(t,i){return {id:'bc'+i,name:t.name,count:t.count,items:t.items.map(function(x){return {name:x[0],q:x[1]};})};})};
+  }
+  return S.boxComp.types;
+}
+function bcType(id){return bcData().filter(function(t){return t.id===id;})[0]||null;}
+function bcNorm(n){return String(n||'').replace(/\s+/g,' ').trim();}
+function bcTotals(){
+  var m={},order=[];
+  bcData().forEach(function(t){(t.items||[]).forEach(function(it){
+    var k=bcNorm(it.name);if(!k)return;
+    if(order.indexOf(k)<0){order.push(k);m[k]=0;}
+    m[k]+=(Number(it.q)||0)*(Number(t.count)||0);
+  });});
+  return order.map(function(k){return {name:k,total:m[k]};});
+}
+function bcTotalBoxes(){return bcData().reduce(function(a,t){return a+(Number(t.count)||0);},0);}
+function boxCompView(){
+  var T=bcData();
+  var names=[];T.forEach(function(t){(t.items||[]).forEach(function(it){var k=bcNorm(it.name);if(k&&names.indexOf(k)<0)names.push(k);});});
+  var dl='<datalist id="bcNames">'+names.map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>';
+  var cards=T.map(function(t){
+    var rows=(t.items||[]).map(function(it,i){
+      return '<div class="bcrow"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'"><input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'"><button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف">×</button></div>';
+    }).join('');
+    return '<section class="bccard"><div class="bchead"><b>'+esc(t.name)+'</b><div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button><input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div><div class="bcmeta">عدد العلب</div>'+rows+'<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف</button></section>';
+  }).join('');
+  var tot=bcTotals();
+  var totHTML=tot.length?tot.map(function(r){return '<div class="bcrow bct"><span>'+esc(r.name)+'</span><b>'+r.total+'</b></div>';}).join(''):'<div class="meta">ضيف أصناف للعلب</div>';
+  return head('تجميع علب','عدّل عدد العلب والأصناف والكميات لكل علبة، والإجمالي بيتحدث تلقائي')+dl+cards+'<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+totHTML+'</section>';
+}
+document.addEventListener('change',function(e){
+  var el=e.target;if(!el||!el.dataset||!el.dataset.bc)return;
+  if(!canWrite()){toast('مش مسموح لك تعدل هنا');render();return;}
+  var t=bcType(el.dataset.t);if(!t)return;
+  if(el.dataset.bc==='cnt'){t.count=Math.max(0,Math.floor(Number(el.value)||0));}
+  else if(el.dataset.bc==='qty'){var a=t.items[Number(el.dataset.i)];if(a)a.q=Math.max(0,Number(el.value)||0);}
+  else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
+  save();render();
+});
+var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
@@ -7910,7 +7953,7 @@ window.addEventListener('scroll',hdrGlass,{passive:true});
 window.addEventListener('hashchange',function(){
   var h=(location.hash||'').slice(1);
   if(h&&!routeAllowed(h)){h=U.view||'home';try{history.replaceState(null,'','#'+h);}catch(e){}toast('مش مسموح لك تفتح القسم ده');}
-  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
+  if(['home','orders','shopOrders','shopProducts','recipes','settings','prep','prod','stock','fgstock','reserved','filling','prepreq','waste','boxes','boxcomp'].indexOf(h)>-1&&h!==U.view){U.view=h;render();window.scrollTo(0,0);}
 });
 
 /* ---------- live timers ---------- */
