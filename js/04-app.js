@@ -2020,6 +2020,7 @@ function fillRunOf(id){
 function trkRows(){
   var rows=[];
   PRODUCTS.forEach(function(p){
+    if(p.trkOff)return;
     var fill=isFill(p);
     if(fill){fillRunRows(p,rows);return;}
     fgLots(p.id).forEach(function(l){
@@ -2055,7 +2056,7 @@ function trkCardHTML(r){
     ctl='<div class="trk-note">الحشو ما بيتتبعش بتاريخ صلاحية، راجعه من تبويب تحضير الحشو لو محتاج</div>';
   } else {
     ctl='<div class="trk-note">الرصيد ده قبل تتبع الدفعات، مش معاه تاريخ. لو مش متأكد منه صفّره وسيب المخزن يتعبى بدفعات جديدة</div>'+
-      '<div class="trk-row2"><button class="btn ghost sm" data-act="lotZero" data-p="'+esc(p.id)+'" data-id="">صفّر الرصيد القديم</button></div>';
+      '<div class="trk-row2"><button class="btn ghost sm" data-act="lotZero" data-p="'+esc(p.id)+'" data-id="">صفّر الرصيد القديم</button><button class="btn ghost sm" data-act="trkOff" data-p="'+esc(p.id)+'">إخفاء من التتبع</button></div>';
   }
   return '<article class="trk-card trk-s-'+r.st+'">'+
     '<div class="trk-info"><div class="trk-top">'+head1+'<span class="pill '+TRK_PILL[r.st]+'">'+label+'</span></div>'+
@@ -6205,7 +6206,7 @@ var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
 var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,evOpen:1,evBack:1,syncOpen:1,syncClose:1,syncNow:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
-var ACT_CAT={trkOk:['tracking','تأكيد تاريخ الصلاحية','w'],trkFilter:['tracking','فلتر التتبع','r'],trkLoc:['tracking','مكان التخزين في التتبع','r'],
+var ACT_CAT={trkOk:['tracking','تأكيد تاريخ الصلاحية','w'],trkOff:['tracking','إخفاء صنف من تتبع الصلاحية','w'],trkFilter:['tracking','فلتر التتبع','r'],trkLoc:['tracking','مكان التخزين في التتبع','r'],
   calEditOrder:['orders','تعديل من التقويم','w'],
   newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
   oDelete:['orders','حذف الطلبية','w'],oDeliver:['orders','تسليم الأوردر','w'],oCreate:['orders','حفظ الأوردر','w'],
@@ -6916,6 +6917,11 @@ var ACT={ trkOk:function(d){
     if(!td){toast('الدفعة دي مش موجودة');return false;}
     if(!td.exp){toast('حدد تاريخ الصلاحية الأول');return false;}
     td.expOk=Date.now();toast('اتأكد تاريخ الصلاحية');
+  },
+  trkOff:function(d){
+    if(!canWrite()){toast('مش مسموح لك تعدّل هنا');return false;}
+    var tp=P(d.p);if(!tp){toast('الصنف ده مش موجود');return false;}
+    tp.trkOff=true;toast('اتشال '+tp.name+' من تتبع الصلاحية');
   },
   trkFilter:function(d){U.trkF=d.v;},
   trkLoc:function(d){U.trkLoc=d.v;},
