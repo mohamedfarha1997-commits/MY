@@ -33,6 +33,15 @@
 .bctab{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:5px 6px 5px 10px;background:var(--surface);color:var(--ink)}
 .bctn{font-weight:700;font-size:14px;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
 .bctc{width:50px;height:30px;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:14px;box-sizing:border-box;padding:0}
+.bcsplit{display:flex;gap:10px;align-items:flex-start}
+.bcstack{flex:0 0 46%;max-width:46%;display:flex;flex-direction:column;gap:8px}
+.bcsum{flex:1;min-width:0}
+.bcstack .bctab{display:grid;grid-template-columns:1fr 34px;gap:6px;align-items:center;width:100%;box-sizing:border-box;padding:8px}
+.bcstack .bctn{grid-column:1/-1;max-width:none;white-space:normal}
+.bcstack .bctc{width:100%;box-sizing:border-box}
+.bcstack .bctab-add{width:100%;height:40px;font-size:14px}
+.bcsum .bctbl th,.bcsum .bctbl td{padding:8px 4px}
+.bcsum .bctbl td:first-child{word-break:break-word}
 .bcgear{width:30px;height:30px;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0;border-radius:8px}
 .bcgear:active{background:var(--line)}
 .bctab-add{flex:0 0 auto;width:38px;height:40px;border-radius:12px;border:1px dashed var(--line);background:transparent;color:var(--ink);font-size:20px;cursor:pointer;padding:0}
@@ -87,7 +96,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/03-helpers.js"></script>
-<script src="js/04-app-v1200.js"></script>
+<script src="js/04-app.js?v=20261127-1300"></script>
 
 
 <script src="js/05-tabs-carousel.js"></script>
