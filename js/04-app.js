@@ -5907,7 +5907,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',boxcomp:'تجميع علب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,evOpen:1,evBack:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -6147,19 +6147,13 @@ var FOLD_CSS='<style>'+
   '</style>';
 function recentEventsHTML(list){
   var sel=U.evUser||'', n=U.evN||40;
-  var all=allEventsFor(sel), shown=all.slice(0,n);
+  var groups=batchGroups(sel), shown=groups.slice(0,n);
+  var totalOps=groups.reduce(function(a,g){return a+g.n;},0);
   var userChips=list.map(function(u){return '<button class="dash-chip'+(sel===u.code?' on':'')+'" data-act="evUser" data-c="'+esc(u.code)+'">'+esc(u.name)+'</button>';}).join('');
   var chips='<button class="dash-chip'+(!sel?' on':'')+'" data-act="evUser" data-c="">الكل</button>'+userChips+
     (list.some(function(u){return u.code==='CHEF MYF';})?'':'<button class="dash-chip'+(sel==='CHEF MYF'?' on':'')+'" data-act="evUser" data-c="CHEF MYF">المالك</button>');
-  var rows=shown.length?shown.map(function(x){
-    var nm=evNameOf(list,x.c);
-    return '<li class="ev-row">'+
-      '<div class="ev-who"><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span><div><b>'+esc(nm)+'</b><small class="ltr">'+esc(x.c)+'</small></div></div>'+
-      '<time class="ev-time">'+evDateStr(x.t)+'</time>'+
-      '<div class="ev-act"><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span><small>'+esc(x.p)+' · <span class="ltr">'+esc(x.b)+'</span></small></div>'+
-      '</li>';
-  }).join(''):'<li class="dash-empty">مفيش عمليات مسجلة للاختيار ده</li>';
-  var more=all.length>n?'<button class="btn ghost sm" data-act="evMore">عرض أكتر ('+(all.length-n)+' باقي)</button>':'<span></span>';
+  var rows=shown.length?shown.map(function(g){return evGroupRowHTML(g,list);}).join(''):'<li class="dash-empty">مفيش عمليات مسجلة للاختيار ده</li>';
+  var more=groups.length>n?'<button class="btn ghost sm" data-act="evMore">عرض أكتر ('+(groups.length-n)+' باقي)</button>':'<span></span>';
   var evCss='<style>'+
     '.ev-list{list-style:none;margin:0;padding:0}'+
     '.ev-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line-2,#E5EBF1);align-items:center}'+
@@ -6171,13 +6165,70 @@ function recentEventsHTML(list){
     '.ev-time{font-size:11.5px;color:var(--muted,#6b7090);white-space:nowrap;font-variant-numeric:tabular-nums}'+
     '.ev-act{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;min-width:0;padding-inline-start:36px}'+
     '.ev-act small{font-size:11.5px;color:var(--muted,#6b7090);overflow-wrap:anywhere;min-width:0}'+
+    EV_GRP_CSS+
     '</style>';
   return FOLD_CSS+evCss+'<details class="card ev-card" data-fk="usr-events"'+(FOLD_OPEN['usr-events']===false?'':' open')+' style="margin:12px 0">'+
-    '<summary class="ev-sum"><div><b>آخر الأحداث</b><small>'+all.length+' عملية'+(sel?' للمستخدم المختار':'')+'</small></div></summary>'+
+    '<summary class="ev-sum"><div><b>آخر الأحداث</b><small>'+groups.length+' دفعة · '+totalOps+' عملية'+(sel?' للمستخدم المختار':'')+'</small></div></summary>'+
     '<div class="dash-filters" style="margin:10px 0">'+chips+'</div>'+
     '<ul class="ev-list">'+rows+'</ul>'+
     '<div class="ev-foot">'+more+'<button class="btn primary sm" data-act="evPrint">طباعة '+(sel?'عمليات المستخدم':'كل العمليات')+'</button></div>'+
     '</details>';
+}
+/* تجميع الأحداث حسب الدفعة (العملية من أولها): كل دفعة صف واحد، وبيفتح صفحتها */
+var EV_GRP_CSS=
+  '.ev-list{list-style:none;margin:0;padding:0}'+
+  '.ev-grp{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--line-2,#E5EBF1);padding:9px 2px;cursor:pointer;color:inherit;font:inherit}'+
+  '.ev-grp:active{background:var(--surface-2,#F4F6F8)}'+
+  '.ev-grp-main{min-width:0;display:flex;flex-direction:column}'+
+  '.ev-grp-main b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+  '.ev-grp-main small{font-size:11px;color:var(--muted,#6b7090)}'+
+  '.ev-grp-side{display:flex;flex-direction:column;align-items:flex-end;gap:2px}'+
+  '.ev-grp-side small{font-size:11px;color:var(--muted,#6b7090);white-space:nowrap}'+
+  '.ev-grp-who{grid-column:1 / -1;font-size:11px;color:var(--muted,#6b7090);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}';
+function batchGroups(code){
+  var out=[];
+  Object.keys(S.plog||{}).forEach(function(id){
+    var e=S.plog[id]||{}, all=e.ev||[];
+    var evs=all.filter(function(x){return !code||x.c===code;});
+    if(!evs.length)return;
+    var pr=(PRODUCTS||[]).filter(function(p){return p.id===e.p;})[0];
+    var users=[];evs.forEach(function(x){if(users.indexOf(x.c)<0)users.push(x.c);});
+    var last=0;evs.forEach(function(x){if((x.t||0)>last)last=x.t||0;});
+    var first=e.at||Math.min.apply(null,all.map(function(x){return x.t||0;}));
+    out.push({k:id,b:sid(id),p:pr?pr.name:'—',start:first,last:last,n:evs.length,users:users});
+  });
+  return out.sort(function(x,y){return y.last-x.last;});
+}
+function evGroupRowHTML(g,list){
+  var names=g.users.map(function(c){return evNameOf(list,c);}).join('، ');
+  return '<li><button class="ev-grp" data-act="evOpen" data-k="'+esc(g.k)+'">'+
+    '<div class="ev-grp-main"><b>'+esc(g.p)+'</b><small class="ltr">'+esc(g.b)+'</small></div>'+
+    '<div class="ev-grp-side"><span class="dash-badge ok">'+g.n+' عملية</span><small>بدأت '+evDateStr(g.start)+'</small></div>'+
+    '<small class="ev-grp-who">'+esc(names)+'</small></button></li>';
+}
+/* صفحة الدفعة: كل عملياتها من البداية، وزرار رجوع للسجل */
+function evBatchPageHTML(list){
+  var k=U.evBatch, e=S.plog&&S.plog[k];
+  var back='<button class="btn ghost sm" data-act="evBack">→ رجوع للسجل</button>';
+  if(!e||!(e.ev||[]).length)return '<section class="card" style="--c:var(--settings)">'+back+'<div class="meta" style="margin-top:12px">العملية دي مابقتش موجودة في السجل.</div></section>';
+  var pr=(PRODUCTS||[]).filter(function(p){return p.id===e.p;})[0];
+  var evs=e.ev.slice().sort(function(x,y){return (x.t||0)-(y.t||0);});
+  var first=evs[0].t||0, users=[];evs.forEach(function(x){if(users.indexOf(x.c)<0)users.push(x.c);});
+  var rows=evs.map(function(x){
+    var nm=evNameOf(list,x.c);
+    return '<li class="ev-row">'+
+      '<div class="ev-who"><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span><div><b>'+esc(nm)+'</b><small class="ltr">'+esc(x.c)+'</small></div></div>'+
+      '<time class="ev-time">'+evDateStr(x.t||0)+'</time>'+
+      '<div class="ev-act"><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span></div>'+
+      '</li>';
+  }).join('');
+  return '<section class="card ev-card" style="--c:var(--settings)">'+
+    '<div class="bchead">'+back+'<span class="meta">'+evs.length+' عملية · '+users.length+' مستخدم</span></div>'+
+    '<div style="margin-top:12px"><b>'+esc(pr?pr.name:'—')+'</b> <small class="ltr">'+esc(sid(k))+'</small></div>'+
+    '<div class="meta" style="margin:4px 0 8px">بدأت '+evDateStr(first)+(e.qty?' · الكمية '+esc(String(e.qty)):'')+'</div>'+
+    '<ul class="ev-list">'+rows+'</ul>'+
+    '<style>'+EV_GRP_CSS+'.ev-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line-2,#E5EBF1);align-items:center}.ev-who{display:flex;align-items:center;gap:8px;min-width:0}.ev-who>div{min-width:0}.ev-who b{display:block;font-size:13px}.ev-who small{display:block;font-size:11px;color:var(--muted,#6b7090)}.ev-time{font-size:11.5px;color:var(--muted,#6b7090);white-space:nowrap}.ev-act{grid-column:1 / -1;padding-inline-start:36px}</style>'+
+    '</section>';
 }
 function printEvents(sel){
   var list=usersList(), all=allEventsFor(sel);
@@ -6301,6 +6352,7 @@ function usersCardHTML(){
     '<div class="fld"><label for="uJob">الوظيفة (اختياري)</label><input id="uJob" autocomplete="off" placeholder="مثال: عامل إنتاج"></div>'+
      '<div class="fld"><label for="uJoin">تاريخ الانضمام (اختياري)</label><input id="uJoin" type="date"></div>'+
      '<button class="btn block" data-act="userAdd">إضافة مستخدم</button></div>';
+  if(U.evBatch)return evBatchPageHTML(list);
   return '<section class="card" style="--c:var(--settings)"><h3>إدارة المستخدمين</h3>'+
     '<p class="meta" style="margin:0">كل مستخدم بيدخل بالباسورد بتاعه، ولازم يكون مختلف عن باسورد المالك وعن أي مستخدم تاني.</p>'+
     (list.length?userDashHTML(list,todayK):'<div class="meta" style="margin-top:12px">مفيش مستخدمين لسه.</div>')+
@@ -7385,6 +7437,8 @@ var ACT={ bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x
   uFilter:function(d){U.uFilter=d.f;render();return false;},
   evUser:function(d){U.evUser=d.c||'';U.evN=40;render();return false;},
   evMore:function(d){U.evN=(U.evN||40)+40;render();return false;},
+  evOpen:function(d){U.evBatch=d.k||null;render();return false;},
+  evBack:function(d){U.evBatch=null;render();return false;},
   evPrint:function(d){printEvents(U.evUser||'');return false;},
   uSort:function(d){U.uSort=d.s;render();return false;},
   userCardToggle:function(d){
