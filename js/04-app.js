@@ -2615,10 +2615,12 @@ function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge
 /* ---------- ملصق الصنف للطابعة الحرارية ---------- */
 /* مقاس الاستيكر بالمليمتر: غيّره لو الاستيكر عندك مقاس تاني (مثلاً 40 × 30 أو 58 × 40) */
 var LBL_W_MM=50, LBL_H_MM=30;
-/* قالب الملصق: اللوجو وحجمه (مم) - غيّر LBL_LOGO لو عندك ملف لوجو تاني داخل مجلد assets */
-var LBL_LOGO='assets/icon-512.png', LBL_LOGO_MM=11, LBL_LOGO_DOTS=80;
-var LBL_IMG=new Image();LBL_IMG.src=lblLogoURL();
-function lblLogoURL(){try{return new URL(LBL_LOGO,location.href).href;}catch(e){return LBL_LOGO;}}
+/* قالب الملصق: اللوجو العريض RMY (بدون خلفية) - اللون كحلي عشان يظهر على الورق الأبيض */
+var LBL_LOGO_FILL='#0c1233', LBL_LOGO_W_DOTS=115, LBL_LOGO_H_DOTS=24;
+var LBL_LOGO_PATHS='<path d="M120 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z"/><path d="M250 252 H420 L590 350 H420 Z"/><path d="M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z"/><path d="M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"/>';
+function lblLogoSVG(){return '<svg class="lbl-logo" viewBox="40 50 1540 320" aria-hidden="true"><g fill="'+LBL_LOGO_FILL+'">'+LBL_LOGO_PATHS+'</g></svg>';}
+var LBL_IMG=new Image();
+LBL_IMG.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="460" height="96" viewBox="40 50 1540 320"><g fill="'+LBL_LOGO_FILL+'">'+LBL_LOGO_PATHS+'</g></svg>');
 function fgProdDate(p){
   var ts=0;
   if(isFill(p)&&Array.isArray(p.fillRuns)){p.fillRuns.forEach(function(r){if((r.at||0)>ts)ts=r.at;});}
@@ -2627,15 +2629,15 @@ function fgProdDate(p){
 }
 /* ---------- نافذة طباعة الملصقات: معاينة + طريقة الطباعة + عدد النسخ ---------- */
 function lblCss(){
-  return '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1.2mm 1.6mm;display:flex;flex-direction:row;align-items:center;gap:2mm;overflow:hidden;font-family:Tahoma,Arial,sans-serif;color:#000;background:#fff;page-break-after:always}'+
-    '.lbl-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center}'+
-    '.lbl-name{font-size:11pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #000;padding-bottom:.5mm;margin-bottom:.6mm}'+
-    '.lbl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:8.5pt;line-height:1.25;gap:2mm;white-space:nowrap}'+
+  return '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1mm 1.6mm;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;font-family:Tahoma,Arial,sans-serif;color:#000;background:#fff;page-break-after:always}'+
+    '.lbl-logo{display:block;width:15mm;height:auto;margin-right:auto;margin-bottom:.8mm;flex:0 0 auto}'+
+    '.lbl-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:flex-start}'+
+    '.lbl-name{font-size:10pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #000;padding-bottom:.4mm;margin-bottom:.5mm}'+
+    '.lbl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:8pt;line-height:1.2;gap:2mm;white-space:nowrap}'+
     '.lbl-row span{color:#333}'+
-    '.lbl-codes{margin-top:.6mm;padding-top:.5mm;border-top:1px dashed #000;font-size:8pt;line-height:1.25}'+
+    '.lbl-codes{margin-top:.5mm;padding-top:.4mm;border-top:1px dashed #000;font-size:7.5pt;line-height:1.2}'+
     '.lbl-codes span{color:#333;font-weight:700}'+
-    '.lbl-codes b{display:block;font-weight:700;direction:ltr;text-align:right;word-break:break-all;max-height:6mm;overflow:hidden}'+
-    '.lbl-logo{flex:0 0 '+LBL_LOGO_MM+'mm;width:'+LBL_LOGO_MM+'mm;height:'+LBL_LOGO_MM+'mm;object-fit:contain}';
+    '.lbl-codes b{display:block;font-weight:700;direction:ltr;text-align:right;word-break:break-all;max-height:6mm;overflow:hidden}';
 }
 function lblItems(){var L=U.lbl;return L&&L.ids?L.ids.map(function(id){return P(id);}).filter(Boolean):[];}
 function lblSheetHTML(){
@@ -2682,14 +2684,14 @@ function fgSrcCodes(p){
 function fgLabelHTML(p){
   var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p),date=fgProdDate(p),cs=fgSrcCodes(p);
   var codes=cs.length?'<div class="lbl-codes"><span>الخامات المسحوبة</span><b>'+cs.map(function(c){return esc(sid(c));}).join(' · ')+'</b></div>':'';
-  return '<div class="lbl"><div class="lbl-body">'+
+  return '<div class="lbl">'+lblLogoSVG()+'<div class="lbl-body">'+
     '<div class="lbl-name">'+esc(name)+'</div>'+
     '<div class="lbl-row"><span>الكود</span><b dir="ltr">'+esc(code)+'</b></div>'+
     '<div class="lbl-row"><span>التخزين</span><b>'+esc(store)+'</b></div>'+
     '<div class="lbl-row"><span>الصلاحية</span><b>'+esc(unesc(p.shelf||'')||'-')+'</b></div>'+
     '<div class="lbl-row"><span>تاريخ الإنتاج</span><b dir="ltr">'+esc(date||'-')+'</b></div>'+
     codes+
-  '</div><img class="lbl-logo" src="'+esc(lblLogoURL())+'" alt=""></div>';
+  '</div></div>';
 }
 /* الطباعة في إطار مخفي بمقاس الاستيكر بالظبط (من غير CSS الصفحة عشان ميتأثرش) */
 function doPrintLabel(html){
@@ -2718,38 +2720,35 @@ var LBL_DOTS_H=240;  /* ارتفاع الملصق 30 مم بكثافة 203 DPI *
 var BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
 function fgLabelCanvas(p,withLogo){
   var c=document.createElement('canvas');c.width=LBL_DOTS_W;c.height=LBL_DOTS_H;
-  var x=c.getContext('2d'),W=c.width,H=c.height,pad=8;
+  var x=c.getContext('2d'),W=c.width,H=c.height,pad=8,TW=W-2*pad,RX=W-pad,LX=pad;
   x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#000';x.textBaseline='top';
   function fit(t,max){if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…';}
-  /* اللوجو على الشمال، والنصوص على اليمين بعيد عنه */
-  var hasLogo=withLogo&&LBL_IMG.complete&&LBL_IMG.naturalWidth>0;
-  var logoW=hasLogo?LBL_LOGO_DOTS:0;
-  if(hasLogo)x.drawImage(LBL_IMG,pad,(H-LBL_LOGO_DOTS)/2,LBL_LOGO_DOTS,LBL_LOGO_DOTS);
-  var TW=W-2*pad-(logoW?logoW+pad:0), RX=W-pad, LX=RX-TW;
-  var name=unesc(p.name||''),y=6;
-  x.font='bold 28px Tahoma, Arial, sans-serif';x.textAlign='right';
-  x.fillText(fit(name,TW),RX,y);y+=38;
-  x.fillRect(LX,y,TW,2);y+=8;
+  var y=6;
+  /* اللوجو فوق على الشمال */
+  if(withLogo&&LBL_IMG.complete&&LBL_IMG.naturalWidth>0){x.drawImage(LBL_IMG,LX,y,LBL_LOGO_W_DOTS,LBL_LOGO_H_DOTS);y+=LBL_LOGO_H_DOTS+4;}
+  var name=unesc(p.name||'');
+  x.font='bold 26px Tahoma, Arial, sans-serif';x.textAlign='right';
+  x.fillText(fit(name,TW),RX,y);y+=34;
+  x.fillRect(LX,y,TW,2);y+=6;
   var rows=[['الكود',String(p.code||'-')],['التخزين',fgStoreOf(p)],['الصلاحية',unesc(p.shelf||'')||'-'],['تاريخ الإنتاج',fgProdDate(p)||'-']];
-  x.font='22px Tahoma, Arial, sans-serif';
   rows.forEach(function(r){
-    x.font='22px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText(r[0],RX,y);
+    x.font='20px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText(r[0],RX,y);
     var lw=x.measureText(r[0]).width;
-    x.textAlign='left';x.font='bold 22px Tahoma, Arial, sans-serif';x.fillText(fit(r[1],TW-lw-10),LX,y);
-    y+=28;
+    x.textAlign='left';x.font='bold 20px Tahoma, Arial, sans-serif';x.fillText(fit(r[1],TW-lw-10),LX,y);
+    y+=24;
   });
   var cs=fgSrcCodes(p);
   if(cs.length){
-    y+=4;x.fillRect(LX,y,TW,1);y+=6;
-    x.font='bold 18px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText('الخامات المسحوبة',RX,y);y+=22;
+    y+=2;x.fillRect(LX,y,TW,1);y+=5;
+    x.font='bold 17px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText('الخامات المسحوبة',RX,y);y+=19;
     var txt=cs.map(function(c){return sid(c);}).join(' · ');
-    x.font='bold 18px Arial, sans-serif';x.textAlign='right';
+    x.font='bold 17px Arial, sans-serif';x.textAlign='right';
     var lines=[],cur='';
     txt.split(' ').forEach(function(w){var t=cur?cur+' '+w:w;if(x.measureText(t).width<=TW)cur=t;else{lines.push(cur);cur=w;}});
     if(cur)lines.push(cur);
     lines.slice(0,2).forEach(function(l,i,arr){
       var t=(i===arr.length-1&&lines.length>2)?fit(l,TW):l;
-      x.fillText(t,RX,y);y+=20;
+      x.fillText(t,RX,y);y+=18;
     });
   }
   return x.getImageData(0,0,W,H);
