@@ -26,6 +26,20 @@
 .pchip.off{opacity:.55}
 .pchip-lock{color:var(--muted)}
 .upill.bad{background:rgba(220,38,38,.12);color:#b91c1c}
+/* تجميع علب */
+.bccard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 12px;color:var(--ink)}
+.bchead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bcstep{display:flex;align-items:center;gap:6px}
+.bcb,.bcx{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:18px;cursor:pointer;padding:0}
+.bcnum{width:64px;height:34px;text-align:center;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:16px}
+.bcmeta{font-size:12px;opacity:.7;margin-top:4px}
+.bcrow{display:grid;grid-template-columns:1fr 84px 34px;gap:6px;margin:6px 0;align-items:center}
+.bcn,.bcq{height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font-size:14px;min-width:0;box-sizing:border-box}
+.bcq{text-align:center}
+.bct{grid-template-columns:1fr auto}
+.bct span{font-size:14px}
+.bct b{font-size:15px}
+.bcadd{margin-top:6px}
 </style><link rel="manifest" href="manifest.json"><meta name="description" content="نظام إدارة الإنتاج والمخزون والأوردرات للمخبز"><link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png"><link rel="apple-touch-icon" href="assets/icon-192.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="RMY Pro"><meta name="mobile-web-app-capable" content="yes"><script src="js/01-boot-errors.js"></script><link rel="stylesheet" href="css/app.css?v=20261126-2200" data-app-css>
 
 <link rel="stylesheet" href="css/card.css" data-app-css id="cardCss">
@@ -55,7 +69,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/03-helpers.js"></script>
-<script src="js/04-app.js?v=20261127-0800"></script>
+<script src="js/04-app.js?v=20261127-0900"></script>
 
 
 <script src="js/05-tabs-carousel.js"></script>
