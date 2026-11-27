@@ -3903,7 +3903,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261125-1330';
+var APP_BUILD='20261128-1000';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -6295,7 +6295,7 @@ var ACT_CAT={trkOk:['tracking','تأكيد تاريخ الصلاحية','w'],trk
   toggleMat:['prep','تعليم خامة في التحضير','w'],groupMat:['prep','تعليم خامة للمجموعة','w'],
   wasteAdd:['waste','تسجيل هالك','w'],wasteToggle:['waste','فتح تفاصيل الهالك','r'],wasteFilter:['waste','فلتر الهالك','r'],
   wasteGrpOpen:['waste','فتح مجموعة الهالك','r'],
-  newProd:['recipes','وصفة جديدة','w'],editProd:['recipes','تعديل وصفة','w'],copyProd:['recipes','نسخ وصفة','w'],
+  newProd:['recipes','وصفة جديدة','w'],editProd:['recipes','تعديل وصفة','w'],shelfPick:['recipes','مدة الصلاحية','w'],copyProd:['recipes','نسخ وصفة','w'],
   formSave:['recipes','حفظ الوصفة','w'],formDelete:['recipes','حذف الوصفة','w'],formClose:['recipes','إغلاق نموذج الوصفة','r'],
   recImport:['recipes','استيراد الوصفات','w'],recExport:['recipes','تصدير الوصفات','r'],rpOpen:['recipes','طباعة الوصفات','r'],
   rpPrint:['recipes','تنفيذ طباعة الوصفات','r'],rpAll:['recipes','تحديد الكل للطباعة','r'],rpNone:['recipes','إلغاء تحديد الطباعة','r'],
