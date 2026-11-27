@@ -3903,7 +3903,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261128-1000';
+var APP_BUILD='20261128-1100';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -8639,6 +8639,7 @@ window.addEventListener('online',netMeasure);
 window.addEventListener('offline',function(){NETQ.lvl='off';NETQ.ms=0;netPaint();});
 /* اختيار مدة الصلاحية من الأزرار */
 ACT.shelfPick=function(d){
+  toast('تشخيص: '+d.t+' | '+d.v+' | fedit='+(U.fedit?'Y':'N')+' form='+(U.form?'Y':'N'));
   if(d.t==='form'&&U.form){U.form.shelf=d.v;return;}
   if(d.t==='fedit'&&U.fedit){U.fedit.shelf=d.v;return;}
   return false;
