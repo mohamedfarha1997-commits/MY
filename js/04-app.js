@@ -2725,7 +2725,7 @@ function feHTML(){
       '<div class="fe-grid">'+
         '<label class="fe-f fe-full"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه" autocomplete="off"></label>'+
         '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
-        '<label class="fe-f"><span>الصلاحية</span>'+shelfSelHTML('feShelf',E.store||'عادي',E.shelf,'')+'<small>بتتطبع على الملصق</small></label>'+
+        '<label class="fe-f"><span>الصلاحية</span>'+shelfSelHTML('feShelf',E.store||'عادي',shelfNorm(E,'store'),'')+'<small>بتتطبع على الملصق</small></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="مثال: 20"><small>كام صنف بيطلع من الدفعة الواحدة</small></label>'+
         '<label class="fe-f"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب أو اختار"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
       '</div>'+
@@ -2887,7 +2887,7 @@ function prodFormHTML(){
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
-    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'<div class="fld"><label for="f_shelf">الصلاحية</label>'+shelfSelHTML('f_shelf',U.form.fgStore||FG_STORES[0],U.form.shelf,' data-f="shelf"')+'<small>بتتطبع على ملصق الصنف</small></div>'+'</div>'+
+    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'<div class="fld"><label for="f_shelf">الصلاحية</label>'+shelfSelHTML('f_shelf',U.form.fgStore||FG_STORES[0],shelfNorm(U.form,'fgStore'),' data-f="shelf"')+'<small>بتتطبع على ملصق الصنف</small></div>'+'</div>'+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة) · اختياري',{im:'numeric',hint:'سيبه فاضي لو الصنف مش بيدخل فرن، ويتعتمد على طول'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -2944,13 +2944,22 @@ var FG_STORES=['عادي','ثلاجة','فريزر'];
 var SHELF_PRESETS={'فريزر':['شهر'],'ثلاجة':['أسبوع','3 أيام','يوم واحد'],'عادي':['أسبوع']};
 function shelfSelHTML(id,store,cur,attrs){
   var opts=SHELF_PRESETS[store]||[];
-  return '<select id="'+id+'"'+(attrs||'')+'><option value="">اختار المدة</option>'+
+  var body=opts.length?'':'<option value="">—</option>';
+  return '<select id="'+id+'"'+(attrs||'')+'>'+body+
     opts.map(function(x){return '<option'+(x===cur?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
 }
+/* مكان فيه مدة واحدة: بتتطبق لوحدها. مكان فيه أكتر من مدة: الافتراضي أول اختيار (أسبوع للتلاجة) إلا لو المستخدم اختار حاجة من القايمة */
 function shelfForStore(store,cur){
   var pr=SHELF_PRESETS[store]||[];
+  if(!pr.length)return '';
   if(pr.length===1)return pr[0];
-  return pr.indexOf(cur)>-1?cur:'';
+  return pr.indexOf(cur)>-1?cur:pr[0];
+}
+/* تثبيت القيمة في الكائن قبل ما الفورم يترسم، عشان الاختيار اللي بيظهر هو اللي بيتحفظ */
+function shelfNorm(o,storeField){
+  var st=o[storeField]||FG_STORES[0];
+  o.shelf=shelfForStore(st,o.shelf);
+  return o.shelf;
 }
 function fgStoreOf(p){return p&&FG_STORES.indexOf(p.fgStore)>-1?p.fgStore:'عادي';}
 function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge','فريزر':'freezer'}[fgStoreOf(p)]||'dry')+'">'+esc(fgStoreOf(p))+'</span>';}
