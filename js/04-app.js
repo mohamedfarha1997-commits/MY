@@ -109,9 +109,14 @@ function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]
 function maskWa(w){w=String(w||'');return w.length>=6?w.slice(0,-4)+'****':'';}
 /* أي تفاعل على أي تبويب بيتسجل في السجل زي الدفعات: كل تبويب صف واحد، وعملياته مضغوطة جواه */
 var TAB_LBL={home:'الرئيسية',orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',tracking:'تتبع الصلاحية',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب',boxcomp:'تجميع علب',calendar:'التقويم',verify:'التحقق من البطاقة'};
-function actTargetOf(d){
+function actTargetOf(d,ctx){
   d=d||{};
-  var pr=d.p?P(d.p):null, name=pr?pr.name:'';
+  /* اسم الوصفة: من data-p، أو من الـ id لو هو وصفة فعلاً، أو من الفورم اللي مفتوح (ctx) */
+  var isProd=function(id){return !!id&&PRODUCTS.some(function(p){return p.id===id;});};
+  var pid=d.p||(isProd(d.id)?d.id:'')||(ctx&&ctx.edit&&isProd(ctx.edit)?ctx.edit:'');
+  var pr=pid?P(pid):null;
+  var name=pr?unesc(pr.name):'';
+  if(!name&&ctx&&!ctx.edit&&ctx.name)name=unesc(ctx.name);
   var code='';
   if(d.id){
     var s0=String(d.id);
@@ -120,7 +125,7 @@ function actTargetOf(d){
   if(!code&&d.id===''&&d.p)code='رصيد قديم';
   return [name,code].filter(Boolean).join(' · ');
 }
-function logUserAct(a,d){
+function logUserAct(a,d,ctx){
   if(!a||ACT_SYS[a]||EVENT_LABEL[a])return;
   var cat=ACT_CAT[a]||[],tab=cat[0]||U.view||'other',key='tab:'+tab;
   S.plog=S.plog||{};
@@ -128,7 +133,7 @@ function logUserAct(a,d){
   e.tabLbl=TAB_LBL[tab]||tab;
   var c=actorCode();
   if(e.by.indexOf(c)<0)e.by.push(c);
-  var g=actTargetOf(d);
+  var g=actTargetOf(d,ctx);
   e.ev=(e.ev||[]).concat([{c:c,a:a,l:cat[1]||a,g:g,t:Date.now()}]).slice(-40);
   S.plog[key]=e;
 }
@@ -8399,8 +8404,10 @@ document.addEventListener('click',function(e){
   var fn=ACT[t.dataset.act];if(!fn)return;
   if(!actBypass(t.dataset.act)&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
   markSeen(t.dataset.act);
+  /* لازم ناخد الفورم المفتوح قبل ما الإجراء يقفله (formClose/formSave) */
+  var ctx=(U.form&&U.form.kind==='prod')?{kind:'prod',edit:U.form.edit,name:U.form.name}:null;
   var rr=fn(t.dataset);
-  logUserAct(t.dataset.act,t.dataset);
+  logUserAct(t.dataset.act,t.dataset,ctx);
   if(rr===false)return;
   save();render();
 });
