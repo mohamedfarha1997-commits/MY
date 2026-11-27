@@ -2951,19 +2951,11 @@ function shelfSelHTML(id,store,cur,attrs){
     opts.map(function(x){return '<option'+(x===cur?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
 }
 function shelfChipsHTML(store,cur,target){
-  var opts=SHELF_PRESETS[store]||[];
-  if(!opts.length)return '<span class="meta">مفيش مدة للمكان ده</span>';
-  return '<div class="seg" style="flex-wrap:wrap">'+opts.map(function(x){
-    return '<button type="button" class="'+(x===cur?'on':'')+'" data-act="shelfPick" data-t="'+target+'" data-v="'+esc(x)+'">'+esc(x)+'</button>';
-  }).join('')+'</div>';
+  var id=target==='fedit'?'feShelf':'f_shelf';
+  return '<input id="'+id+'" type="text" data-shelf-t="'+target+'" value="'+esc(cur||'')+'" placeholder="مثال: 3 أيام، أسبوع، شهر" autocomplete="off" style="width:100%">';
 }
 /* مكان فيه مدة واحدة: بتتطبق لوحدها. مكان فيه أكتر من مدة: الافتراضي أول اختيار (أسبوع للتلاجة) إلا لو المستخدم اختار حاجة من القايمة */
-function shelfForStore(store,cur){
-  var pr=SHELF_PRESETS[store]||[];
-  if(!pr.length)return '';
-  if(pr.length===1)return pr[0];
-  return pr.indexOf(cur)>-1?cur:pr[0];
-}
+function shelfForStore(store,cur){return cur||'';}
 /* تثبيت القيمة في الكائن قبل ما الفورم يترسم، عشان الاختيار اللي بيظهر هو اللي بيتحفظ */
 function shelfNorm(o,storeField){
   var st=o[storeField]||FG_STORES[0];
@@ -3903,7 +3895,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261128-1200';
+var APP_BUILD='20261128-1300';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -8591,11 +8583,17 @@ try{render();}catch(e){console.error('first render',e);}
 restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();}catch(e){console.error("boot",e);}if(!window.RMY_NEEDS_DATA)document.dispatchEvent(new Event("rmy:loaded"));});
 })();
 }
+/* إدخال الصلاحية يدوي: بنحفظ الكتابة في الحالة من غير إعادة رسم عشان الكتابة ما تقطعش */
+document.addEventListener('input',function(e){
+  var t=e.target;if(!t||!t.dataset||!t.dataset.shelfT)return;
+  if(t.dataset.shelfT==='form'&&U.form)U.form.shelf=t.value;
+  if(t.dataset.shelfT==='fedit'&&U.fedit)U.fedit.shelf=t.value;
+});
 /* تغيير مكان التخزين: لو فيه مدة واحدة بتتطبق لوحدها، ولو مش مناسبة بتتفضّى عشان يختار */
 document.addEventListener('change',function(e){
   var t=e.target;if(!t)return;
   if(t.dataset&&t.dataset.f==='fgStore'&&U.form){
-    toast('تشخيص مكان: '+t.value);U.form.fgStore=t.value;U.form.shelf=shelfForStore(t.value,U.form.shelf);try{render();}catch(err){toast('خطأ عرض: '+err.message);}return;
+    U.form.fgStore=t.value;U.form.shelf=shelfForStore(t.value,U.form.shelf);render();return;
   }
   if(t.id==='feStore'&&U.fedit){
     U.fedit.store=t.value;U.fedit.shelf=shelfForStore(t.value,U.fedit.shelf);render();
@@ -8639,7 +8637,6 @@ window.addEventListener('online',netMeasure);
 window.addEventListener('offline',function(){NETQ.lvl='off';NETQ.ms=0;netPaint();});
 /* اختيار مدة الصلاحية من الأزرار */
 ACT.shelfPick=function(d){
-  toast('تشخيص: '+d.t+' | '+d.v+' | fedit='+(U.fedit?'Y':'N')+' form='+(U.form?'Y':'N'));
   if(d.t==='form'&&U.form){U.form.shelf=d.v;return;}
   if(d.t==='fedit'&&U.fedit){U.fedit.shelf=d.v;return;}
   return false;
