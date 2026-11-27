@@ -5925,7 +5925,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تغيير عدد العلب (+ و −)','w'],bcAdd:['boxcomp','إضافة صنف للعلبة','w'],bcDel:['boxcomp','حذف صنف من العلبة','w'],bcEdit:['boxcomp','فتح صفحة تعديل العلبة (الترس)','r'],bcPdfBox:['boxcomp','استخراج PDF لتركيبة العلبة','r'],bcPdfTotal:['boxcomp','استخراج PDF لمجموع الكل','r'],bcSaveDraft:['boxcomp','حفظ تعديلات العلبة','w'],bcCancelDraft:['boxcomp','الرجوع من التعديل بدون حفظ','r'],bcQStep:['boxcomp','تغيير كمية الصنف في العلبة (+ و −)','w'],bcNew:['boxcomp','إضافة علبة جديدة','w'],bcDelType:['boxcomp','حذف العلبة كلها','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تغيير عدد العلب (+ و −)','w'],bcAdd:['boxcomp','إضافة صنف للعلبة','w'],bcDel:['boxcomp','حذف صنف من العلبة','w'],bcEdit:['boxcomp','فتح صفحة تعديل العلبة (الترس)','r'],bcSeason:['boxcomp','تغيير الموسم (مولد النبي، رمضان...)','r'],bcPdfBox:['boxcomp','استخراج PDF لتركيبة العلبة','r'],bcPdfTotal:['boxcomp','استخراج PDF لمجموع الكل','r'],bcSaveDraft:['boxcomp','حفظ تعديلات العلبة','w'],bcCancelDraft:['boxcomp','الرجوع من التعديل بدون حفظ','r'],bcQStep:['boxcomp','تغيير كمية الصنف في العلبة (+ و −)','w'],bcNew:['boxcomp','إضافة علبة جديدة','w'],bcDelType:['boxcomp','حذف العلبة كلها','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6409,12 +6409,19 @@ function installHTML(){
 }
 /* ===== تجميع علب: حساب الخامات لكل علبة (من ملف سيجما) ===== */
 var BC_SEED=[{"name": "علبة جزمة", "count": 0, "items": [["ملبن فسدق", 2.0], ["مرزيبان", 2.0], ["اكلير ملبن", 1.0], ["اكلير فدسق", 1.0], ["اكلير لوز", 1.0], ["اكلير سوداني", 1.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 1.0], ["فرسكة بندق", 1.0], ["فرسكة سوداني", 1.0], ["فرسكة عسل وطحينه", 1.0], ["بندق", 0.0], ["لوز", 1.0], ["كاجو", 1.0], ["بيكان", 1.0], ["فدسق", 1.0], ["سابليه شكولاته", 2.0], ["لب اخضر", 2.0], ["فوليه", 1.0], ["حمصيه", 1.0], ["سمسميه", 1.0], ["برازق فسدق", 2.0]]}, {"name": "علبة صغيرة", "count": 2, "items": [["ملبن فسدق", 3.0], ["مرزيبان", 3.0], ["اكلير ملبن", 2.0], ["اكلير فدسق", 2.0], ["اكلير لوز", 2.0], ["اكلير سوداني", 2.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 1.0], ["فرسكة بندق", 1.0], ["فرسكة سوداني", 1.0], ["فرسكة عسل وطحينه", 1.0], ["بندق", 2.0], ["لوز", 1.0], ["كاجو", 1.0], ["بيكان", 1.0], ["فدسق", 1.0], ["سابليه شكولاته", 2.0], ["لب اخضر", 2.0], ["فوليه", 2.0], ["حمصيه", 2.0], ["سمسميه", 2.0]]}, {"name": "علبة وسط", "count": 12, "items": [["ملبن فسدق", 4.0], ["مرزيبان", 8.0], ["اكلير ملبن", 2.0], ["اكلير فدسق", 2.0], ["اكلير لوز", 2.0], ["اكلير سوداني", 2.0], ["ملبن حبل", 10.0], ["فرسكة فدسق", 2.0], ["فرسكة بندق", 2.0], ["فرسكة سوداني", 2.0], ["فرسكة عسل وطحينه", 2.0], ["بندق", 3.0], ["لوز", 2.0], ["كاجو", 2.0], ["بيكان", 2.0], ["فدسق", 2.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 6.0], ["فوليه", 3.0], ["حمصيه", 3.0], ["سمسميه", 3.0], ["برازق فسدق", 4.0]]}, {"name": "علبة كبيرة", "count": 13, "items": [["ملبن فسدق", 13.0], ["مرزيبان", 12.0], ["اكلير ملبن", 7.0], ["اكلير فدسق", 7.0], ["اكلير لوز", 7.0], ["اكلير سوداني", 7.0], ["ملبن حبل", 14.0], ["فرسكة فدسق", 5.0], ["فرسكة بندق", 5.0], ["فرسكة سوداني", 5.0], ["فرسكة عسل وطحينه", 5.0], ["بندق", 6.0], ["لوز", 6.0], ["كاجو", 6.0], ["بيكان", 6.0], ["فدسق", 6.0], ["سابليه شكولاته", 6.0], ["لب اخضر", 10.0], ["فوليه", 8.0], ["حمصيه", 8.0], ["سمسميه", 8.0], ["برازق فسدق", 7.0], ["برازق نوتيلا", 7.0]]}, {"name": "علبة متر", "count": 0, "items": [["ملبن فسدق", 6.0], ["مرزيبان", 10.0], ["اكلير ملبن", 5.0], ["اكلير فدسق", 5.0], ["اكلير لوز", 5.0], ["اكلير سوداني", 5.0], ["ملبن حبل", 10.0], ["فرسكة فدسق", 4.0], ["فرسكة بندق", 4.0], ["فرسكة سوداني", 4.0], ["فرسكة عسل وطحينه", 4.0], ["بندق", 4.0], ["لوز", 4.0], ["كاجو", 4.0], ["بيكان", 0.0], ["فدسق", 4.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 10.0], ["فوليه", 4.0], ["حمصيه", 4.0], ["سمسميه", 4.0], ["برازق فسدق", 5.0]]}, {"name": "علبة دولاب", "count": 2, "items": [["ملبن فسدق", 10.0], ["مرزيبان", 10.0], ["اكلير ملبن", 5.0], ["اكلير فدسق", 5.0], ["اكلير لوز", 5.0], ["اكلير سوداني", 5.0], ["ملبن حبل", 2.0], ["فرسكة فدسق", 4.0], ["فرسكة بندق", 4.0], ["فرسكة سوداني", 4.0], ["فرسكة عسل وطحينه", 4.0], ["بندق", 4.0], ["لوز", 4.0], ["كاجو", 4.0], ["بيكان", 4.0], ["فدسق", 5.0], ["سابليه شكولاته", 4.0], ["لب اخضر", 5.0], ["فوليه", 3.0], ["حمصيه", 3.0], ["سمسميه", 3.0], ["برازق فسدق", 4.0]]}];
-function bcData(){
-  if(!S.boxComp||!Array.isArray(S.boxComp.types)){
-    S.boxComp={types:BC_SEED.map(function(t,i){return {id:'bc'+i,name:t.name,count:t.count,items:t.items.map(function(x){return {name:x[0],q:x[1]};})};})};
+/* المواسم: كل موسم ليه صفحته ولعبه. مولد النبي هو الأصل (تركيبته القديمة)، والباقي فاضي لحد ما تضيف فيه */
+var BC_SEASON_DEFAULTS=[{id:'mawlid',name:'مولد النبي'},{id:'ramadan',name:'رمضان'},{id:'xmas',name:'الكريسماس'},{id:'yamish',name:'الياميش'},{id:'sham',name:'شم النسيم'}];
+function bcSeeded(){return BC_SEED.map(function(t,i){return {id:'bc'+i,name:t.name,count:t.count,items:t.items.map(function(x){return {name:x[0],q:x[1]};})};});}
+function bcSeasons(){
+  if(!Array.isArray(S.bcSeasons)){
+    var base=(S.boxComp&&Array.isArray(S.boxComp.types))?S.boxComp.types:bcSeeded();
+    if(S.boxComp)delete S.boxComp;
+    S.bcSeasons=BC_SEASON_DEFAULTS.map(function(x){return {id:x.id,name:x.name,types:x.id==='mawlid'?base:[]};});
   }
-  return S.boxComp.types;
+  return S.bcSeasons;
 }
+function bcSeasonCur(){var L=bcSeasons();return L.filter(function(x){return x.id===U.bcSeason;})[0]||L[0];}
+function bcData(){var c=bcSeasonCur();if(!Array.isArray(c.types))c.types=[];return c.types;}
 function bcType(id){return bcData().filter(function(t){return t.id===id;})[0]||null;}
 function bcTargetType(id){if(U.bcDraft&&U.bcDraft.id===id)return U.bcDraft;return bcType(id);}
 function bcNorm(n){return String(n||'').replace(/\s+/g,' ').trim();}
@@ -6459,7 +6466,7 @@ function bcBoxPdfHTML(t){
 function bcTotalPdfHTML(){
   var tot=bcTotals();
   var rows=tot.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td class="n">'+r.total+'</td></tr>';}).join('')||'<tr><td colspan="2">مفيش أصناف</td></tr>';
-  return '<h1>مجموع الكل</h1><div class="sub">إجمالي عدد العلب: '+bcTotalBoxes()+' · '+bcDateText()+'</div>'+
+  return '<h1>مجموع الكل - '+esc(bcSeasonCur().name)+'</h1><div class="sub">إجمالي عدد العلب: '+bcTotalBoxes()+' · '+bcDateText()+'</div>'+
     '<table><thead><tr><th>الصنف</th><th class="n">الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>';
 }
 var BC_GEAR='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
@@ -6481,10 +6488,17 @@ function bcTabsRowHTML(){
   }).join('');
   return '<div class="bcstack">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+ علبة جديدة</button></div>';
 }
+function bcSeasonsHTML(){
+  var cur=bcSeasonCur().id;
+  return '<div class="bcseasons">'+bcSeasons().map(function(x){
+    return '<button class="bcseason'+(x.id===cur?' on':'')+'" data-act="bcSeason" data-v="'+esc(x.id)+'">'+esc(x.name)+'</button>';
+  }).join('')+'</div>';
+}
 function boxCompView(){
-  if(U.bcDraft)return editorView(U.bcDraft);
-  if(!bcData().length)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+'<div class="bcsplit">'+bcTabsRowHTML()+'</div><div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
-  return '<div class="bcsplit">'+bcTabsRowHTML()+'<div class="bcsum">'+bcTotalView()+'</div></div>';
+  if(U.bcDraft)return bcSeasonsHTML()+editorView(U.bcDraft);
+  var head0=head('تجميع علب','موسم: '+bcSeasonCur().name);
+  if(!bcData().length)return head0+bcSeasonsHTML()+'<div class="bcsplit">'+bcTabsRowHTML()+'</div><div class="meta" style="text-align:center;padding:20px 0">الموسم ده فاضي، اضغط + علبة جديدة عشان تبدأ</div>';
+  return head0+bcSeasonsHTML()+'<div class="bcsplit">'+bcTabsRowHTML()+'<div class="bcsum">'+bcTotalView()+'</div></div>';
 }
 /* جدول المجموع */
 function bcTotalView(){
@@ -6517,7 +6531,7 @@ document.addEventListener('change',function(e){
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){S.boxComp.types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
+var ACT={ bcSeason:function(d){U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
