@@ -348,7 +348,7 @@ function batch(id){return S.batches.filter(function(b){return b.id===id;})[0];}
    The file is read and merged every 5 seconds, so changes from other devices show up here.
    Every record carries _u (last edit time). Merging keeps the newest version of each record,
    deletions are kept as tombstones, so two devices editing different things never overwrite each other. */
-var SYNC_MS=1000,SYNC_WAIT=0;
+var SYNC_MS=10000,SYNC_WAIT=0;
 /* معدل المزامنة على الجهاز ده: كل ثانية (افتراضي)، أو كل 10 ثواني، أو عند الفتح والتركيز بس */
 var SYNC_CHOICES={0:'عند الفتح والتركيز بس',1000:'كل ثانية',10000:'كل 10 ثواني'};
 function syncEvery(){var v=Number(uiLoad().syncEvery);return SYNC_CHOICES.hasOwnProperty(v)?v:SYNC_MS;}
@@ -1129,6 +1129,8 @@ function purgeLocalData(){
 var UI_KEYS=['theme','tabsHidden','seasonsHidden'];
 function uiLoad(){try{return JSON.parse(localStorage.getItem('khat-ui')||'{}');}catch(e){return {};}}
 function uiSave(k,v){try{var o=uiLoad();o[k]=v;localStorage.setItem('khat-ui',JSON.stringify(o));}catch(e){}}
+/* مرة واحدة: كل الأجهزة تتحول لـ ١٠ ثواني (حتى اللي كانت مختارة قبل كده) */
+try{if(!localStorage.getItem('khat-sync-mig10')){uiSave('syncEvery',10000);localStorage.setItem('khat-sync-mig10','1');}}catch(e){}
 function load(){return seed();}
 function save(){PRODUCTS.forEach(function(p){allocReady(p.id);});S.savedAt=Date.now();markEdits();saveSoon();persistLocal();}
 
