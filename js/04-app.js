@@ -2095,6 +2095,7 @@ function trkCardHTML(r){
 }
 function trackingView(){
   var all=trkRows(),L=U.trkLoc||'all',F=U.trkF||'attn';
+  if(['attn','expired','soon','all'].indexOf(F)<0)F='attn';
   var locs=['all'].concat(FG_STORES);
   var inLoc=function(r){return L==='all'||r.store===L;};
   var rows=all.filter(inLoc),c=trkCounts(rows);
@@ -2129,7 +2130,8 @@ function trackingView(){
     var name=k==='all'?'كل الأماكن':k;
     return '<button class="'+(L===k?'on':'')+'" data-act="trkLoc" data-v="'+esc(k)+'">'+name+(n?' · '+n+' مشكلة':'')+'</button>';
   }).join('')+'</div>';
-  var fl=[['attn','يحتاج متابعة'],['expired','منتهية'],['soon','قربت'],['nodate','بدون تاريخ'],['check','تأكيد'],['untracked','بدون دفعة'],['ok','متأكدة'],['all','الكل']];
+  /* الفلاتر: الحالات التانية (بدون تاريخ، تأكيد، بدون دفعة) ظاهرة جوه "يحتاج متابعة" كأقسام، فمالهاش تبويب لوحدها */
+  var fl=[['attn','يحتاج متابعة'],['expired','منتهية'],['soon','قربت'],['all','الكل']];
   var body='';
   if(!shown.length){
     body='<div class="empty"><b>'+(F==='attn'?'كله تمام':'مفيش أصناف')+'</b><span>'+(F==='attn'?'مفيش مشاكل في الصلاحية في المكان ده دلوقتي.':'مفيش أصناف في الفلتر ده.')+'</span></div>';
