@@ -5925,7 +5925,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],bcOpen:['boxcomp','تجميع علب','r'],bcNew:['boxcomp','تجميع علب','w'],bcDelType:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],bcOpen:['boxcomp','تجميع علب','r'],bcQStep:['boxcomp','تجميع علب','w'],bcNew:['boxcomp','تجميع علب','w'],bcDelType:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6428,33 +6428,50 @@ function bcTotals(){
 }
 function bcTotalBoxes(){return bcData().reduce(function(a,t){return a+(Number(t.count)||0);},0);}
 function bcNames(){var names=[];bcData().forEach(function(t){(t.items||[]).forEach(function(it){var k=bcNorm(it.name);if(k&&names.indexOf(k)<0)names.push(k);});});return names;}
-function bcRowsHTML(t){
-  return (t.items||[]).map(function(it,i){
-    return '<div class="bcrow"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'"><input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'"><button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف">×</button></div>';
+function bcItemHTML(t,it,i){
+  return '<div class="bcitem"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" placeholder="اسم الصنف" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
+    '<div class="bcline"><span class="bcl">الكمية في العلبة</span><div class="bcqs">'+
+    '<button class="bcb" data-act="bcQStep" data-t="'+esc(t.id)+'" data-i="'+i+'" data-d="-1">−</button>'+
+    '<input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
+    '<button class="bcb" data-act="bcQStep" data-t="'+esc(t.id)+'" data-i="'+i+'" data-d="1">+</button></div>'+
+    '<button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف الصنف">×</button></div></div>';
+}
+function bcTabsHTML(cur){
+  var T=bcData();
+  var tabs=T.map(function(t){
+    return '<button class="bctab'+(cur===t.id?' on':'')+'" data-act="bcOpen" data-t="'+esc(t.id)+'">'+esc(t.name)+'<small>'+(Number(t.count)||0)+'</small></button>';
   }).join('');
+  return '<div class="bctabs">'+tabs+
+    '<button class="bctab'+(cur==='__total'?' on':'')+'" data-act="bcOpen" data-t="__total">المجموع<small>'+bcTotalBoxes()+'</small></button>'+
+    '<button class="bctab bctab-add" data-act="bcNew">+ علبة</button></div>';
 }
 function boxCompView(){
-  var t=U.bcTab?bcType(U.bcTab):null;
-  return t?boxTabView(t):bcMainView();
-}
-/* الرئيسية: قايمة العلب + التوتال لوحده */
-function bcMainView(){
   var T=bcData();
-  var list=T.map(function(t){
-    return '<button class="bccard bcpick" data-act="bcOpen" data-t="'+esc(t.id)+'"><span class="bcpn">'+esc(t.name)+'</span><span class="meta">'+(Number(t.count)||0)+' علبة · '+(t.items||[]).length+' صنف</span></button>';
-  }).join('');
-  var tot=bcTotals();
-  var totHTML=tot.length?tot.map(function(r){return '<div class="bcrow bct"><span>'+esc(r.name)+'</span><b>'+r.total+'</b></div>';}).join(''):'<div class="meta">مفيش أصناف لسه</div>';
-  return head('تجميع علب','اختار علبة عشان تعدّل أصنافها، أو اعمل علبة جديدة')+'<div class="bclist">'+list+'</div>'+
-    '<button class="btn ghost sm bcadd" data-act="bcNew">+ علبة جديدة</button>'+
-    '<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+totHTML+'</section>';
+  var cur=U.bcTab;
+  if(cur==='__total')return bcTabsHTML(cur)+bcTotalView();
+  var t=cur?bcType(cur):null;
+  if(!t&&T.length){t=T[0];}
+  if(!t)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+bcTabsHTML(null)+'<div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
+  return bcTabsHTML(t.id)+boxTabView(t);
 }
-/* صفحة علبة لوحدها: اسم قابل للتعديل، عدد العلب، الأصناف والكميات */
+/* مجموع الكل: جدول لوحده */
+function bcTotalView(){
+  var tot=bcTotals();
+  var rows=tot.length?tot.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+r.total+'</td></tr>';}).join(''):'<tr><td colspan="2" class="meta">مفيش أصناف لسه</td></tr>';
+  return '<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+
+    '<table class="bctbl"><thead><tr><th>الصنف</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
+}
+/* علبة واحدة: اسم قابل للتعديل، عدد العلب، الأصناف والكميات */
 function boxTabView(t){
   var dl='<datalist id="bcNames">'+bcNames().map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>';
-  return '<button class="btn ghost sm bcadd" data-act="bcOpen" data-t="">→ رجوع لتجميع علب</button>'+dl+
-    '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(t.name)+'" data-bc="tname" data-t="'+esc(t.id)+'"><div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button><input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div><div class="bcmeta">عدد العلب</div>'+bcRowsHTML(t)+
-    '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف</button></section>'+
+  var items=(t.items||[]).map(function(it,i){return bcItemHTML(t,it,i);}).join('');
+  return dl+
+    '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(t.name)+'" data-bc="tname" data-t="'+esc(t.id)+'">'+
+    '<div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button>'+
+    '<input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'">'+
+    '<button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div>'+
+    '<div class="bcmeta">عدد العلب · '+(t.items||[]).length+' صنف</div>'+items+
+    '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف جديد</button></section>'+
     '<button class="btn ghost sm bcdelt" data-act="bcDelType" data-t="'+esc(t.id)+'">حذف العلبة دي</button>';
 }
 document.addEventListener('change',function(e){
@@ -6467,7 +6484,7 @@ document.addEventListener('change',function(e){
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcOpen:function(d){U.bcTab=d.t||null;}, bcNew:function(){var id='bc'+Date.now().toString(36);bcData().push({id:id,name:'علبة جديدة',count:0,items:[]});U.bcTab=id;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcTab=null;},
+var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcOpen:function(d){U.bcTab=d.t||null;}, bcNew:function(){var id='bc'+Date.now().toString(36);bcData().push({id:id,name:'علبة جديدة',count:0,items:[]});U.bcTab=id;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcTab=null;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
