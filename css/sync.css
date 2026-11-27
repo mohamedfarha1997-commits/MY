@@ -80,3 +80,9 @@
   .syn-kpis{grid-template-columns:1fr}
   .syn-hero{flex-wrap:wrap}
 }
+
+/* زرار حذف الجهاز */
+.syn-del{flex:none;width:34px;height:34px;border-radius:11px;border:1px solid color-mix(in srgb,var(--bad) 30%,var(--line));background:color-mix(in srgb,var(--bad) 8%,var(--surface));color:var(--bad);display:grid;place-items:center;cursor:pointer;padding:0}
+.syn-del svg{width:16px;height:16px}
+.syn-del:active{transform:scale(.94)}
+.syn-dot{margin-inline-end:2px}
