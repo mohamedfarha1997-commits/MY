@@ -2000,7 +2000,9 @@ function lotExpPill(exp){
 /* الكمية المنتهية والكمية اللي قربت تنتهي لصنف معين */
 function expiryTotals(pid){
   var out={expired:0,soon:0};
-  fgLots(pid).forEach(function(l){var d=expDays(l.exp);if(d==null)return;if(d<0)out.expired=r3(out.expired+l.q);else if(d<=2)out.soon=r3(out.soon+l.q);});
+  var pp=P(pid);
+  var lots=(pp&&isFill(pp))?fillRunLots(pp).filter(function(l){return l.tracked;}):fgLots(pid);
+  lots.forEach(function(l){var d=expDays(l.exp);if(d==null)return;if(d<0)out.expired=r3(out.expired+l.q);else if(d<=2)out.soon=r3(out.soon+l.q);});
   return out;
 }
 function expiryWarnHTML(p){
@@ -2011,7 +2013,7 @@ function expiryWarnHTML(p){
 }
 /* عدد الأصناف اللي فيها دفعات منتهية أو قربت تنتهي (للتنبيه في تبويب مخزن الإنتاج) */
 function expiryCountNow(){
-  var n=0;PRODUCTS.forEach(function(p){if(p.archived||isFill(p))return;var t=expiryTotals(p.id);if(t.expired>0||t.soon>0)n++;});
+  var n=0;PRODUCTS.forEach(function(p){if(p.archived)return;var t=expiryTotals(p.id);if(t.expired>0||t.soon>0)n++;});
   return n;
 }
 /* ===== تتبع الصلاحية: كل مخزون الإنتاج، مقسم حسب المكان وحالة الصلاحية ===== */
@@ -2050,7 +2052,6 @@ function fillRunOf(id){
 function trkRows(){
   var rows=[];
   PRODUCTS.forEach(function(p){
-    if(p.trkOff)return;
     var fill=isFill(p);
     if(fill){fillRunRows(p,rows);return;}
     fgLots(p.id).forEach(function(l){
@@ -2061,6 +2062,7 @@ function trkRows(){
         days=expDays(l.exp);
         st=days==null?'nodate':days<0?'expired':days<=2?'soon':(d.expOk?'ok':'check');
       }
+      if(p.trkOff&&st==='untracked')return;
       rows.push({p:p,id:d?l.id:'',q:l.q,exp:(d&&l.exp)||'',days:days,at:(d&&d.at)||0,st:st,store:fgStoreOf(p),fill:fill});
     });
   });
@@ -2723,7 +2725,7 @@ function feHTML(){
       '<div class="fe-grid">'+
         '<label class="fe-f fe-full"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه" autocomplete="off"></label>'+
         '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
-        '<label class="fe-f"><span>الصلاحية</span><input id="feShelf" value="'+esc(E.shelf||'')+'" placeholder="مثال: 3 أيام"><small>بتتطبع على الملصق</small></label>'+
+        '<label class="fe-f"><span>الصلاحية</span>'+shelfSelHTML('feShelf',E.store||'عادي',E.shelf,'')+'<small>بتتطبع على الملصق</small></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="مثال: 20"><small>كام صنف بيطلع من الدفعة الواحدة</small></label>'+
         '<label class="fe-f"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب أو اختار"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
       '</div>'+
@@ -2885,7 +2887,7 @@ function prodFormHTML(){
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
-    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+fld('shelf','الصلاحية',{ph:'مثال: 3 أيام',hint:'بتتطبع على ملصق الصنف'})+'</div>'+
+    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'<div class="fld"><label for="f_shelf">الصلاحية</label>'+shelfSelHTML('f_shelf',U.form.fgStore||FG_STORES[0],U.form.shelf,' data-f="shelf"')+'<small>بتتطبع على ملصق الصنف</small></div>'+'</div>'+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة) · اختياري',{im:'numeric',hint:'سيبه فاضي لو الصنف مش بيدخل فرن، ويتعتمد على طول'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -2938,6 +2940,18 @@ function saveMat(F){
 }
 /* مكان التخزين لكل صنف في مخزن الإنتاج: عادي / ثلاجة / فريزر */
 var FG_STORES=['عادي','ثلاجة','فريزر'];
+/* مدة الصلاحية حسب مكان التخزين: المكان بيحدد الاختيارات، ولو فيه خيار واحد بيتطبق لوحده */
+var SHELF_PRESETS={'فريزر':['شهر'],'ثلاجة':['أسبوع','3 أيام','يوم واحد'],'عادي':['أسبوع']};
+function shelfSelHTML(id,store,cur,attrs){
+  var opts=SHELF_PRESETS[store]||[];
+  return '<select id="'+id+'"'+(attrs||'')+'><option value="">اختار المدة</option>'+
+    opts.map(function(x){return '<option'+(x===cur?' selected':'')+'>'+x+'</option>';}).join('')+'</select>';
+}
+function shelfForStore(store,cur){
+  var pr=SHELF_PRESETS[store]||[];
+  if(pr.length===1)return pr[0];
+  return pr.indexOf(cur)>-1?cur:'';
+}
 function fgStoreOf(p){return p&&FG_STORES.indexOf(p.fgStore)>-1?p.fgStore:'عادي';}
 function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge','فريزر':'freezer'}[fgStoreOf(p)]||'dry')+'">'+esc(fgStoreOf(p))+'</span>';}
 
@@ -8559,3 +8573,13 @@ try{render();}catch(e){console.error('first render',e);}
 restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();}catch(e){console.error("boot",e);}if(!window.RMY_NEEDS_DATA)document.dispatchEvent(new Event("rmy:loaded"));});
 })();
 }
+/* تغيير مكان التخزين: لو فيه مدة واحدة بتتطبق لوحدها، ولو مش مناسبة بتتفضّى عشان يختار */
+document.addEventListener('change',function(e){
+  var t=e.target;if(!t)return;
+  if(t.dataset&&t.dataset.f==='fgStore'&&U.form){
+    U.form.fgStore=t.value;U.form.shelf=shelfForStore(t.value,U.form.shelf);render();return;
+  }
+  if(t.id==='feStore'&&U.fedit){
+    U.fedit.store=t.value;U.fedit.shelf=shelfForStore(t.value,U.fedit.shelf);render();
+  }
+});
