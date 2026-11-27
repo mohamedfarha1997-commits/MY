@@ -773,15 +773,58 @@ function gdStart(){
 function driveHTML(){
   var cloud='M17.5 19H9a7 7 0 1 1 6.9-8.2A5.5 5.5 0 1 1 17.5 19z';
   var refresh='M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18.5 2v4h-4M5.5 22v-4h4';
-  var st,lbl,ico,act='gdNow';
-  if(!GD.on){st='off';lbl='غير متصل';ico='<path d="'+cloud+'"/><path d="M3 3l18 18"/>';act='tab';}
+  var st,lbl,ico,act='syncOpen';
+  if(!GD.on){st='off';lbl='غير متصل';ico='<path d="'+cloud+'"/><path d="M3 3l18 18"/>';}
   else if(GD.needTap){st='warn';lbl='محتاج تأكيد';ico='<path d="'+cloud+'"/><path d="M12 10v3M12 16v.01"/>';}
-  else if(GD.err&&!GD.ok){st='bad';lbl='خطأ';ico='<path d="'+cloud+'"/><path d="M9.5 11.5l5 5M14.5 11.5l-5 5"/>';act='tab';}
+  else if(GD.err&&!GD.ok){st='bad';lbl='خطأ';ico='<path d="'+cloud+'"/><path d="M9.5 11.5l5 5M14.5 11.5l-5 5"/>';}
   else if(GD.busy){st='sync';lbl='بيزامن';ico='<path d="'+refresh+'"/>';}
   else if(GD.ok){st='ok';lbl='متصل';ico='<path d="'+cloud+'"/><path d="M9.5 13.5l2 2 3.5-3.5"/>';}
   else {st='conn';lbl='جاري الاتصال';ico='<path d="'+refresh+'"/>';}
-  return '<span class="dstat '+st+'" data-act="'+act+'"'+(act==='tab'?' data-v="settings"':'')+' role="button" tabindex="0">'+
+  return '<span class="dstat '+st+'" data-act="'+act+'" role="button" tabindex="0">'+
     '<svg class="dico" viewBox="0 0 24 24" aria-hidden="true">'+ico+'</svg><span>'+lbl+'</span></span>';
+}
+/* شاشة حالة المزامنة: بتفتح لما تضغط على حالة درايف في الشريط اللي تحت */
+function syncInfoRows(){
+  var st=!GD.on?'غير متصل بدرايف':GD.needTap?'محتاج تأكيد من جوجل':GD.busy?'بيزامن دلوقتي':GD.err&&!GD.ok?'في خطأ':GD.ok?'متزامن':'جاري الاتصال';
+  var rows=[
+    ['الحالة',st],
+    ['آخر مزامنة ناجحة',GD.at?evDateStr(GD.at):'لسه ماتمتش'],
+    ['الإنترنت',navigator.onLine?'متصل':'مفيش إنترنت'],
+    ['تعديلات مستنية ترفع',hasPending()?'أيوه، لسه ماترفعتش':'لا، كله اترفع'],
+    ['الملف الرئيسي على درايف',GD.id?'متوصّل · نسخة '+(GD.ver||'—'):'مش متوصّل'],
+    ['ملف الكروت',GD.cardsId?'متوصّل':'لسه ماتعملش'],
+    ['معدل المزامنة على الجهاز',SYNC_CHOICES[syncEvery()]||'—']
+  ];
+  if(GD.busy&&GD.stage)rows.splice(1,0,['المرحلة الحالية',GD.stage]);
+  if(GD.err)rows.push(['آخر خطأ',GD.err]);
+  return rows;
+}
+function syncDevicesHTML(){
+  var devs=S.devs||{},keys=Object.keys(devs),now=Date.now(),me=devId();
+  if(!keys.length)return '<div class="meta">مفيش أجهزة مسجلة لسه.</div>';
+  var list=(typeof usersList==='function')?usersList():[];
+  return keys.sort(function(a,b){return (devs[b]||0)-(devs[a]||0);}).map(function(k){
+    var t=devs[k]||0, online=now-t<=600000;
+    return '<div class="prow"><div class="pinfo"><b>'+(k===me?'الجهاز ده':'جهاز')+' <span class="ltr" style="font-size:11px;color:var(--muted,#6b7090)">'+esc(k.slice(0,6))+'</span></b><small>آخر ظهور '+evDateStr(t)+'</small></div>'+
+      '<span class="pill '+(online?'ok':'low')+'">'+(online?'نشط الآن':'غير نشط')+'</span></div>';
+  }).join('');
+}
+function syncScreenHTML(){
+  if(!U.syncOpen)return '';
+  var rows=syncInfoRows().map(function(r){
+    return '<div class="prow"><div class="pinfo"><small>'+esc(r[0])+'</small><b>'+esc(r[1])+'</b></div></div>';
+  }).join('');
+  var needConnect=!GD.on||GD.needTap||(GD.err&&!GD.ok);
+  var btns='<button class="btn" data-act="syncNow"'+(GD.on&&!GD.busy?'':' disabled')+'>مزامنة الآن</button>'+
+    (needConnect?'<button class="btn ghost sm" data-act="gdConnect">'+(GD.on?'تأكيد الربط مع جوجل':'ربط درايف')+'</button>':'')+
+    '<button class="btn ghost sm" data-act="syncClose">إغلاق</button>';
+  return '<button class="back" data-act="syncClose" aria-label="إغلاق"></button>'+
+    '<section class="sheet f" style="--c:var(--stock)" role="dialog" aria-label="حالة المزامنة"><div class="sbody">'+
+    '<h3>حالة المزامنة</h3><div class="meta">حالة الاتصال بدرايف وآخر مزامنة على الجهاز ده</div>'+
+    '<div class="pgrp"><div class="pgrp-h">الحالة</div>'+rows+'</div>'+
+    '<div class="pgrp"><div class="pgrp-h">الأجهزة</div>'+syncDevicesHTML()+'</div>'+
+    '<div class="btns" style="margin-top:12px">'+btns+'</div>'+
+    '</div></section>';
 }
 function syncChoicesHTML(){
   var cur=syncEvery();
@@ -4466,7 +4509,7 @@ function render(){
   if((U.view!=='settings'||limited())&&tabHidden(U.view))U.view='home';
   var v={home:function(){return '';},reserved:reservedView,calendar:calendarView,orders:function(){return ordersView('cust');},shopOrders:function(){return ordersView('shop');},shopProducts:shopProductsHTML,recipes:recipesView,settings:settingsGate,verify:verifyView,prep:prepView,prod:prodView,stock:stockView,fgstock:fgStockView,filling:fillingView,prepreq:prepReqView,waste:wasteView,boxcomp:boxCompView}[U.view]();
   app.classList.add('has-bbar');
-  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+lblSheetHTML()+(U.view==='calendar'?calDayHTML():'');
+  app.innerHTML=alarmHTML()+notifBannerHTML()+topHTML()+'<div id="offBanner">'+offNote()+'</div>'+(U.view==='home'?homeHTML():backHTML()+viewNoteHTML())+(S.demo?demoHTML():'')+'<main class="view" style="--c:var(--'+(U.view==='shopOrders'?'orders':U.view==='shopProducts'?'recipes':U.view==='fgstock'?'stock':U.view)+')">'+v+'</main>'+footHTML()+sheetHTML()+ordSheetHTML()+formHTML()+rpSheetHTML()+syncScreenHTML()+lblSheetHTML()+(U.view==='calendar'?calDayHTML():'');
 applyActGuards();
 focusSearchKeep();
   var nb=document.querySelector('.sbody');if(nb)nb.scrollTop=sc;
@@ -5907,7 +5950,7 @@ PERM_GROUPS.push({l:'أقسام إضافية',rows:[{k:'boxes',l:'العلب',d:
 /* ===== صلاحيات الإجراءات داخل التبويبات ===== */
 var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',waste:'الهالك',recipes:'الوصفات',filling:'تحضير الحشو',prepreq:'تحضيرات مطلوبة',boxes:'العلب',boxcomp:'تجميع علب',approve:'اعتماد الإنتاج',settings:'الإعدادات'};
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
-var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,evOpen:1,evBack:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
+var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,evOpen:1,evBack:1,syncOpen:1,syncClose:1,syncNow:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
 var ACT_CAT={
   calEditOrder:['orders','تعديل من التقويم','w'],
@@ -7439,6 +7482,13 @@ var ACT={ bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x
   evMore:function(d){U.evN=(U.evN||40)+40;render();return false;},
   evOpen:function(d){U.evBatch=d.k||null;render();return false;},
   evBack:function(d){U.evBatch=null;render();return false;},
+  syncOpen:function(){U.syncOpen=true;render();return false;},
+  syncClose:function(){U.syncOpen=false;render();return false;},
+  syncNow:function(){
+    if(!GD.on)return false;
+    if(!gdTokOk()){GD.needTap=false;gdRequest();return false;}
+    GD.busy=false;render();gdSync().then(function(){render();});return false;
+  },
   evPrint:function(d){printEvents(U.evUser||'');return false;},
   uSort:function(d){U.uSort=d.s;render();return false;},
   userCardToggle:function(d){
