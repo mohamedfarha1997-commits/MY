@@ -5925,7 +5925,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],bcOpen:['boxcomp','تجميع علب','r'],bcQStep:['boxcomp','تجميع علب','w'],bcNew:['boxcomp','تجميع علب','w'],bcDelType:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],bcEdit:['boxcomp','تجميع علب','r'],bcSaveDraft:['boxcomp','تجميع علب','w'],bcCancelDraft:['boxcomp','تجميع علب','r'],bcQStep:['boxcomp','تجميع علب','w'],bcNew:['boxcomp','تجميع علب','w'],bcDelType:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6416,6 +6416,7 @@ function bcData(){
   return S.boxComp.types;
 }
 function bcType(id){return bcData().filter(function(t){return t.id===id;})[0]||null;}
+function bcTargetType(id){if(U.bcDraft&&U.bcDraft.id===id)return U.bcDraft;return bcType(id);}
 function bcNorm(n){return String(n||'').replace(/\s+/g,' ').trim();}
 function bcTotals(){
   var m={},order=[];
@@ -6428,6 +6429,7 @@ function bcTotals(){
 }
 function bcTotalBoxes(){return bcData().reduce(function(a,t){return a+(Number(t.count)||0);},0);}
 function bcNames(){var names=[];bcData().forEach(function(t){(t.items||[]).forEach(function(it){var k=bcNorm(it.name);if(k&&names.indexOf(k)<0)names.push(k);});});return names;}
+var BC_GEAR='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
 function bcItemHTML(t,it,i){
   return '<div class="bcitem"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" placeholder="اسم الصنف" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
     '<div class="bcline"><span class="bcl">الكمية في العلبة</span><div class="bcqs">'+
@@ -6436,55 +6438,54 @@ function bcItemHTML(t,it,i){
     '<button class="bcb" data-act="bcQStep" data-t="'+esc(t.id)+'" data-i="'+i+'" data-d="1">+</button></div>'+
     '<button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف الصنف">×</button></div></div>';
 }
-function bcTabsHTML(cur){
+/* صف التبويبات: كل علبة فيها اسمها وعدد العلب (قابل للكتابة) وترس للتعديل، والمجموع على الشمال */
+function bcTabsRowHTML(){
   var T=bcData();
   var tabs=T.map(function(t){
-    return '<button class="bctab'+(cur===t.id?' on':'')+'" data-act="bcOpen" data-t="'+esc(t.id)+'">'+esc(t.name)+'<small>'+(Number(t.count)||0)+'</small></button>';
+    return '<div class="bctab"><span class="bctn">'+esc(t.name)+'</span>'+
+      '<input class="bctc" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'" aria-label="عدد العلب">'+
+      '<button class="bcgear" data-act="bcEdit" data-t="'+esc(t.id)+'" aria-label="تعديل العلبة">'+BC_GEAR+'</button></div>';
   }).join('');
-  return '<div class="bctabs">'+tabs+
-    '<button class="bctab'+(cur==='__total'?' on':'')+'" data-act="bcOpen" data-t="__total">المجموع<small>'+bcTotalBoxes()+'</small></button>'+
-    '<button class="bctab bctab-add" data-act="bcNew">+ علبة</button></div>';
+  return '<div class="bcrowtop"><div class="bctabs">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+</button></div>'+
+    '<div class="bctotal">المجموع <b>'+bcTotalBoxes()+'</b> علبة</div></div>';
 }
 function boxCompView(){
-  var T=bcData();
-  var cur=U.bcTab;
-  if(cur==='__total')return bcTabsHTML(cur)+bcTotalView();
-  var t=cur?bcType(cur):null;
-  if(!t&&T.length){t=T[0];}
-  if(!t)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+bcTabsHTML(null)+'<div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
-  return bcTabsHTML(t.id)+boxTabView(t);
+  if(U.bcDraft)return editorView(U.bcDraft);
+  if(!bcData().length)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+bcTabsRowHTML()+'<div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
+  return bcTabsRowHTML()+bcTotalView();
 }
-/* مجموع الكل: جدول لوحده */
+/* جدول المجموع */
 function bcTotalView(){
   var tot=bcTotals();
   var rows=tot.length?tot.map(function(r){return '<tr><td>'+esc(r.name)+'</td><td>'+r.total+'</td></tr>';}).join(''):'<tr><td colspan="2" class="meta">مفيش أصناف لسه</td></tr>';
   return '<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+
     '<table class="bctbl"><thead><tr><th>الصنف</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table></section>';
 }
-/* علبة واحدة: اسم قابل للتعديل، عدد العلب، الأصناف والكميات */
-function boxTabView(t){
+/* صفحة تعديل العلبة: بتتحفظ بس لما تضغط حفظ، وحذف بيشيل العلبة */
+function editorView(d){
   var dl='<datalist id="bcNames">'+bcNames().map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>';
-  var items=(t.items||[]).map(function(it,i){return bcItemHTML(t,it,i);}).join('');
+  var items=(d.items||[]).map(function(it,i){return bcItemHTML(d,it,i);}).join('');
   return dl+
-    '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(t.name)+'" data-bc="tname" data-t="'+esc(t.id)+'">'+
-    '<div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button>'+
-    '<input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'">'+
-    '<button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div>'+
-    '<div class="bcmeta">عدد العلب · '+(t.items||[]).length+' صنف</div>'+items+
-    '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف جديد</button></section>'+
-    '<button class="btn ghost sm bcdelt" data-act="bcDelType" data-t="'+esc(t.id)+'">حذف العلبة دي</button>';
+    '<div class="bcrowtop"><button class="btn ghost sm" data-act="bcCancelDraft">→ رجوع بدون حفظ</button></div>'+
+    '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(d.name)+'" data-bc="tname" data-t="'+esc(d.id)+'" aria-label="اسم العلبة">'+
+    '<div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(d.id)+'" data-d="-1">−</button>'+
+    '<input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(d.count)||0)+'" data-bc="cnt" data-t="'+esc(d.id)+'" aria-label="عدد العلب">'+
+    '<button class="bcb" data-act="bcStep" data-t="'+esc(d.id)+'" data-d="1">+</button></div></div>'+
+    '<div class="bcmeta">عدد العلب المطلوبة · '+(d.items||[]).length+' صنف</div>'+items+
+    '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(d.id)+'">+ صنف جديد</button></section>'+
+    '<div class="bcfoot"><button class="btn" data-act="bcSaveDraft">حفظ</button><button class="btn ghost bcdanger" data-act="bcDelType" data-t="'+esc(d.id)+'">حذف</button></div>';
 }
 document.addEventListener('change',function(e){
   var el=e.target;if(!el||!el.dataset||!el.dataset.bc)return;
   if(!canWrite()){toast('مش مسموح لك تعدل هنا');render();return;}
-  var t=bcType(el.dataset.t);if(!t)return;
+  var t=bcTargetType(el.dataset.t);if(!t)return;
   if(el.dataset.bc==='cnt'){t.count=Math.max(0,Math.floor(Number(el.value)||0));}
   else if(el.dataset.bc==='qty'){var a=t.items[Number(el.dataset.i)];if(a)a.q=Math.max(0,Number(el.value)||0);}
   else if(el.dataset.bc==='tname'){t.name=bcNorm(el.value)||'علبة';}
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcOpen:function(d){U.bcTab=d.t||null;}, bcNew:function(){var id='bc'+Date.now().toString(36);bcData().push({id:id,name:'علبة جديدة',count:0,items:[]});U.bcTab=id;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcTab=null;},
+var ACT={ bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){S.boxComp.types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
