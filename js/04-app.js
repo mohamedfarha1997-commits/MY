@@ -1992,10 +1992,36 @@ var TRK_PILL={expired:'bad',soon:'low',nodate:'',untracked:'',check:'c',ok:'ok'}
 /* كل كمية موجودة في مخزن الإنتاج، ولكل واحدة حالتها.
    - دفعة معتمدة ليها سجل: بتتتبع بتاريخ الصلاحية (منتهية / قربت / محتاجة تاريخ / محتاجة تأكيد / متأكدة)
    - رصيد قديم من غير دفعة، أو حشو: مش متتبعة بالدفعة */
+/* تشغيلات الحشو: كل تشغيلة ليها تاريخ صلاحية، والكمية المتبقية بتتوزع زي الدفعات (الأقدم بيتسحب الأول) */
+function fillRunLots(p){
+  var runs=Array.isArray(p.fillRuns)?p.fillRuns:[],R=S.ready[p.id]||0,T=0,out=[];
+  runs.forEach(function(r){T=r3(T+(Number(r.out)||0));});
+  var cons=Math.max(0,r3(T-R));
+  runs.forEach(function(r,i){
+    var o=Number(r.out)||0,t=Math.min(o,cons);cons=r3(cons-t);var q=r3(o-t);
+    if(q>0)out.push({i:i,id:'fp:'+p.id+':'+i,q:q,exp:r.exp||'',tracked:r.exp!==undefined,expOk:r.expOk||0,at:r.at||0});
+  });
+  var extra=r3(R-T);
+  if(extra>0)out.push({i:-1,id:'',q:extra,exp:'',tracked:false,expOk:0,at:0});
+  return out;
+}
+function fillRunRows(p,rows){
+  fillRunLots(p).forEach(function(l){
+    var tracked=l.i>=0&&l.tracked,days=null,st='untracked';
+    if(tracked){days=expDays(l.exp);st=days==null?'nodate':days<0?'expired':days<=2?'soon':(l.expOk?'ok':'check');}
+    rows.push({p:p,id:tracked?l.id:'',q:l.q,exp:tracked?l.exp:'',days:days,at:l.at,st:st,store:fgStoreOf(p),fill:true});
+  });
+}
+function fillRunOf(id){
+  var s=String(id||'');if(s.indexOf('fp:')!==0)return null;
+  var a=s.split(':'),p=P(a[1]),run=p&&Array.isArray(p.fillRuns)?p.fillRuns[+a[2]]:null;
+  return run?{p:p,run:run}:null;
+}
 function trkRows(){
   var rows=[];
   PRODUCTS.forEach(function(p){
     var fill=isFill(p);
+    if(fill){fillRunRows(p,rows);return;}
     fgLots(p.id).forEach(function(l){
       if(!(l.q>0))return;
       var d=(!fill&&l.id)?S.done.filter(function(x){return x.id===l.id&&x.p===p.id;})[0]:null;
@@ -2019,7 +2045,7 @@ function trkAttn(){return trkRows().filter(trkIsProblem).length;}
 function trkCardHTML(r){
   var p=r.p,ok=r.st==='ok',tracked=!!r.id;
   var label=r.st==='soon'?(r.days===0?'تنتهي النهارده':'تنتهي خلال '+r.days+' يوم'):TRK_LABEL[r.st];
-  var head1=tracked?'<span class="bid ltr">'+esc(sid(r.id))+'</span>':'<span class="meta">'+(r.fill?'حشو':'رصيد قديم')+'</span>';
+  var head1=(tracked&&!r.fill)?'<span class="bid ltr">'+esc(sid(r.id))+'</span>':'<span class="meta">'+(r.fill?'حشو':'رصيد قديم')+'</span>';
   var meta=f(r.q)+' '+esc(p.unit)+' · المكان: '+esc(r.store)+(tracked&&r.at?' · اتعملت '+ago(r.at):'')+(p.shelf?' · مدة الصلاحية: '+esc(unesc(p.shelf)):'');
   var ctl,act;
   if(tracked){
@@ -6884,6 +6910,8 @@ document.addEventListener('change',function(e){
   save();render();
 });
 var ACT={ trkOk:function(d){
+    var fr0=fillRunOf(d.id);
+    if(fr0){if(!fr0.run.exp){toast('حدد تاريخ الصلاحية الأول');return false;}fr0.run.expOk=Date.now();toast('اتأكد تاريخ الصلاحية');return;}
     var td=S.done.filter(function(x){return x.id===d.id&&x.p===d.p;})[0];
     if(!td){toast('الدفعة دي مش موجودة');return false;}
     if(!td.exp){toast('حدد تاريخ الصلاحية الأول');return false;}
@@ -7971,7 +7999,7 @@ var ACT={ trkOk:function(d){
         ex.legacyOutEstimate=ex.fromTotal||0; // تقدير للبيانات القديمة التي لم تسجل الناتج لكل تشغيله
         ex.fillRuns=[];
       }
-      ex.fillRuns.push({at:Date.now(),out:out,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})});
+      ex.fillRuns.push({at:Date.now(),out:out,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};}),exp:defExp(ex)});
       S.ready[ex.id]=r3((S.ready[ex.id]||0)+out);
       ex.from=(ex.from||[]).concat(src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}));
       ex.fromTotal=r3((ex.fromTotal||0)+pulled);
@@ -7987,6 +8015,7 @@ var ACT={ trkOk:function(d){
     var np={id:'p'+Date.now().toString(36),name:name,code:code,srcCodes:codes,season:F.season||'normal',grp:(F.grp||'').trim(),unit:unit,mins:0,yield:1,comps:[],recipe:{},prep:[],shop:F.kind==='shop',fill:F.kind,by:actorCode(),
       from:src.map(function(p){return {p:p.id,q:F.q[p.id],t:F.q[p.id]};}),fromTotal:pulled,outTotal:out,legacyFrom:[],legacyOutEstimate:0,fillRuns:[{at:Date.now(),out:out,by:actorCode(),from:src.map(function(p){return {p:p.id,q:F.q[p.id]};})}]};
     S.products.push(np);S.ready[np.id]=r3(out);allocReady(np.id);
+    np.fillRuns[0].exp=defExp(np);
     bind(S);U.fill=null;
     toast('اتعمل '+name+' بكود '+code+' وكمية '+f(r3(out))+' '+unit);
   },
@@ -8345,6 +8374,7 @@ function onField(e){
   if(d.exp!==undefined){var eb=batch(d.exp);if(eb)eb.exp=t.value||'';return;}
   if(d.tdate!==undefined){
     if(!canWrite()){toast('مش مسموح لك تعدّل هنا');render();return;}
+    var frd=fillRunOf(d.tdate);if(frd){frd.run.exp=t.value||'';frd.run.expOk=0;save();render();return;}
     var tdn=S.done.filter(function(x){return x.id===d.tdate;})[0];
     if(tdn){tdn.exp=t.value||'';tdn.expOk=0;save();render();}
     return;
