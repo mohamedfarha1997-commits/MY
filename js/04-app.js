@@ -2439,7 +2439,7 @@ var SEASON_ICO={normal:'🍞',ramadan:'🌙',mawlid:'🕌',christmas:'🎄',hall
 var SEASON_CLR={normal:['#0E8A8C','#0B3B3D'],ramadan:['#6D28D9','#1E1B4B'],mawlid:['#B45309','#5C2A0A'],christmas:['#15803D','#7F1D1D'],halloween:['#EA580C','#1C1917'],boxes:['#475569','#1E293B']};
 function seasonCardsHTML(act){
   var first=SEASONS[0];
-  return '<div class="scards" data-carousel="1">'+SEASONS.map(function(x,i){var c=SEASON_CLR[x[0]]||['#475569','#1E293B'];return '<div class="scard'+(i?'':' on')+'" style="--c1:'+c[0]+';--c2:'+c[1]+'" data-k="'+x[0]+'"><span class="sico" aria-hidden="true">'+(SEASON_ICO[x[0]]||'📅')+'</span><span class="sname">'+esc(x[1])+'</span></div>';}).join('')+'</div>'+
+  return '<div class="scards" data-carousel="1">'+SEASONS.map(function(x,i){var c=SEASON_CLR[x[0]]||['#475569','#1E293B'];return '<div class="scard'+(i?'':' on')+'" data-k="'+x[0]+'"><span class="sname">'+esc(x[1])+'</span></div>';}).join('')+'</div>'+
   '<div class="sbig">'+esc(first[1])+'</div><div class="sdots">'+SEASONS.map(function(x,i){return '<i'+(i?'':' class="on"')+' data-dot="'+x[0]+'"></i>';}).join('')+'</div>'+
   '<button class="btn block" data-act="'+act+'" data-v="'+first[0]+'" data-pick="1">اختار '+esc(first[1])+'</button>';
 }
