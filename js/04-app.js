@@ -1984,22 +1984,27 @@ function expiryCountNow(){
   var n=0;PRODUCTS.forEach(function(p){if(p.archived||isFill(p))return;var t=expiryTotals(p.id);if(t.expired>0||t.soon>0)n++;});
   return n;
 }
-/* ===== تتبع الصلاحية: الأصناف اللي لازم تتغير صلاحيتها أو تتأكد منها ===== */
-var TRK_ORDER={expired:0,soon:1,nodate:2,check:3,ok:4};
-var TRK_LABEL={expired:'منتهية',soon:'قربت تنتهي',nodate:'محتاجة تاريخ',check:'محتاجة تأكيد',ok:'متأكدة'};
-var TRK_COLOR={expired:'#dc2626',soon:'#d97706',nodate:'#64748b',check:'#4f5dff',ok:'#16a34a'};
-var TRK_PILL={expired:'bad',soon:'low',nodate:'',check:'c',ok:'ok'};
-/* كل دفعة جاهزة معاها حالتها: منتهية، قربت، من غير تاريخ، محتاجة تأكيد، ومتأكدة */
+/* ===== تتبع الصلاحية: كل مخزون الإنتاج، مقسم حسب المكان وحالة الصلاحية ===== */
+var TRK_ORDER={expired:0,soon:1,nodate:2,untracked:3,check:4,ok:5};
+var TRK_LABEL={expired:'منتهية',soon:'قربت تنتهي',nodate:'محتاجة تاريخ',untracked:'مش متتبعة بدفعة',check:'محتاجة تأكيد',ok:'متأكدة'};
+var TRK_COLOR={expired:'#dc2626',soon:'#d97706',nodate:'#64748b',untracked:'#8b5cf6',check:'#4f5dff',ok:'#16a34a'};
+var TRK_PILL={expired:'bad',soon:'low',nodate:'',untracked:'',check:'c',ok:'ok'};
+/* كل كمية موجودة في مخزن الإنتاج، ولكل واحدة حالتها.
+   - دفعة معتمدة ليها سجل: بتتتبع بتاريخ الصلاحية (منتهية / قربت / محتاجة تاريخ / محتاجة تأكيد / متأكدة)
+   - رصيد قديم من غير دفعة، أو حشو: مش متتبعة بالدفعة */
 function trkRows(){
   var rows=[];
   PRODUCTS.forEach(function(p){
-    if(p.archived||isFill(p))return;
+    var fill=isFill(p);
     fgLots(p.id).forEach(function(l){
-      if(!l.id||!(l.q>0))return;
-      var d=S.done.filter(function(x){return x.id===l.id&&x.p===p.id;})[0]||{};
-      var days=expDays(l.exp);
-      var st=days==null?'nodate':days<0?'expired':days<=2?'soon':(d.expOk?'ok':'check');
-      rows.push({p:p,id:l.id,q:l.q,exp:l.exp||'',days:days,at:d.at||0,st:st});
+      if(!(l.q>0))return;
+      var d=(!fill&&l.id)?S.done.filter(function(x){return x.id===l.id&&x.p===p.id;})[0]:null;
+      var st='untracked',days=null;
+      if(d){
+        days=expDays(l.exp);
+        st=days==null?'nodate':days<0?'expired':days<=2?'soon':(d.expOk?'ok':'check');
+      }
+      rows.push({p:p,id:d?l.id:'',q:l.q,exp:(d&&l.exp)||'',days:days,at:(d&&d.at)||0,st:st,store:fgStoreOf(p),fill:fill});
     });
   });
   rows.sort(function(a,b){
@@ -2007,24 +2012,41 @@ function trkRows(){
   });
   return rows;
 }
-function trkCounts(rows){var c={expired:0,soon:0,nodate:0,check:0,ok:0};rows.forEach(function(r){c[r.st]++;});return c;}
-function trkAttn(){return trkRows().filter(function(r){return r.st!=='ok';}).length;}
+/* المشكلة = أي حاجة مش متأكدة، ما عدا الحشو اللي مش متتبع أصلاً */
+function trkIsProblem(r){return r.st!=='ok'&&!(r.fill&&r.st==='untracked');}
+function trkCounts(rows){var c={expired:0,soon:0,nodate:0,untracked:0,check:0,ok:0};rows.forEach(function(r){c[r.st]++;});return c;}
+function trkAttn(){return trkRows().filter(trkIsProblem).length;}
 function trkCardHTML(r){
-  var p=r.p,ok=r.st==='ok';
+  var p=r.p,ok=r.st==='ok',tracked=!!r.id;
   var label=r.st==='soon'?(r.days===0?'تنتهي النهارده':'تنتهي خلال '+r.days+' يوم'):TRK_LABEL[r.st];
-  var act=ok?'<span class="trk-done">✓ متأكدة</span>':'<button class="btn sm" data-act="trkOk" data-id="'+esc(r.id)+'" data-p="'+esc(p.id)+'">تأكيد التاريخ</button>';
+  var head1=tracked?'<span class="bid ltr">'+esc(sid(r.id))+'</span>':'<span class="meta">'+(r.fill?'حشو':'رصيد قديم')+'</span>';
+  var meta=f(r.q)+' '+esc(p.unit)+' · المكان: '+esc(r.store)+(tracked&&r.at?' · اتعملت '+ago(r.at):'')+(p.shelf?' · مدة الصلاحية: '+esc(unesc(p.shelf)):'');
+  var ctl,act;
+  if(tracked){
+    ctl='<label class="trk-lbl">تاريخ الصلاحية</label><div class="trk-row2"><input type="date" class="trk-date" data-tdate="'+esc(r.id)+'" value="'+esc(r.exp)+'" aria-label="تاريخ الصلاحية">'+
+      (ok?'<span class="trk-done">✓ متأكدة</span>':'<button class="btn sm" data-act="trkOk" data-id="'+esc(r.id)+'" data-p="'+esc(p.id)+'">تأكيد التاريخ</button>')+'</div>';
+  } else if(r.fill){
+    ctl='<div class="trk-note">الحشو ما بيتتبعش بتاريخ صلاحية، راجعه من تبويب تحضير الحشو لو محتاج</div>';
+  } else {
+    ctl='<div class="trk-note">الرصيد ده قبل تتبع الدفعات، مش معاه تاريخ. لو مش متأكد منه صفّره وسيب المخزن يتعبى بدفعات جديدة</div>'+
+      '<div class="trk-row2"><button class="btn ghost sm" data-act="lotZero" data-p="'+esc(p.id)+'" data-id="">صفّر الرصيد القديم</button></div>';
+  }
   return '<article class="trk-card trk-s-'+r.st+'">'+
-    '<div class="trk-info"><div class="trk-top"><span class="bid ltr">'+esc(sid(r.id))+'</span><span class="pill '+TRK_PILL[r.st]+'">'+label+'</span></div>'+
-    '<h4 class="trk-name">'+esc(p.name)+'</h4>'+
-    '<div class="trk-meta">'+f(r.q)+' '+esc(p.unit)+(r.at?' · اتعملت '+ago(r.at):'')+(p.shelf?' · مدة الصلاحية: '+esc(unesc(p.shelf)):'')+'</div></div>'+
-    '<div class="trk-ctl"><label class="trk-lbl">تاريخ الصلاحية</label><div class="trk-row2">'+
-    '<input type="date" class="trk-date" data-tdate="'+esc(r.id)+'" value="'+esc(r.exp)+'" aria-label="تاريخ الصلاحية">'+act+'</div></div></article>';
+    '<div class="trk-info"><div class="trk-top">'+head1+'<span class="pill '+TRK_PILL[r.st]+'">'+label+'</span></div>'+
+    '<h4 class="trk-name">'+esc(p.name)+'</h4><div class="trk-meta">'+meta+'</div></div>'+
+    '<div class="trk-ctl">'+ctl+'</div></article>';
 }
 function trackingView(){
-  var rows=trkRows(),c=trkCounts(rows),F=U.trkF||'attn';
-  var shown=rows.filter(function(r){return F==='all'?true:F==='attn'?r.st!=='ok':r.st===F;});
+  var all=trkRows(),L=U.trkLoc||'all',F=U.trkF||'attn';
+  var locs=['all'].concat(FG_STORES);
+  var inLoc=function(r){return L==='all'||r.store===L;};
+  var rows=all.filter(inLoc),c=trkCounts(rows);
+  var shown=rows.filter(function(r){
+    if(F==='all')return true;
+    if(F==='attn')return trkIsProblem(r);
+    return r.st===F;
+  });
   var tile=function(k,n,l){return '<div style="--tc:'+TRK_COLOR[k]+'"><b>'+n+'</b><small>'+l+'</small></div>';};
-  var fl=[['attn','يحتاج متابعة'],['expired','منتهية'],['soon','قربت'],['nodate','بدون تاريخ'],['check','تأكيد'],['ok','متأكدة'],['all','الكل']];
   var css='<style>'+
     '.trk-tiles div{border-top:3px solid var(--tc);}'+
     '.trk-tiles b{color:var(--tc);}'+
@@ -2034,22 +2056,28 @@ function trackingView(){
     '.trk-grp{display:flex;align-items:center;gap:8px;margin:18px 0 2px;font-weight:800;font-size:14px}'+
     '.trk-dot{width:10px;height:10px;border-radius:50%;flex:0 0 auto}'+
     '.trk-card{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--sc,var(--line));border-radius:14px;padding:12px 14px;margin:8px 0;box-shadow:0 1px 2px rgba(15,23,42,.04)}'+
-    '.trk-s-expired{--sc:#dc2626}.trk-s-soon{--sc:#d97706}.trk-s-nodate{--sc:#64748b}.trk-s-check{--sc:#4f5dff}.trk-s-ok{--sc:#16a34a}'+
-    '@media (min-width:640px){.trk-card{grid-template-columns:minmax(0,1fr) minmax(240px,320px);align-items:center}}'+
+    '.trk-s-expired{--sc:#dc2626}.trk-s-soon{--sc:#d97706}.trk-s-nodate{--sc:#64748b}.trk-s-untracked{--sc:#8b5cf6}.trk-s-check{--sc:#4f5dff}.trk-s-ok{--sc:#16a34a}'+
+    '@media (min-width:640px){.trk-card{grid-template-columns:minmax(0,1fr) minmax(240px,340px);align-items:center}}'+
     '.trk-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}'+
     '.trk-name{margin:6px 0 2px;font-size:16px;font-weight:800;color:var(--ink)}'+
     '.trk-meta{font-size:12.5px;color:var(--muted)}'+
     '.trk-lbl{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:4px}'+
-    '.trk-row2{display:flex;gap:8px;align-items:center}'+
+    '.trk-row2{display:flex;gap:8px;align-items:center;margin-top:6px}'+
     '.trk-date{flex:1;min-width:0;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font:inherit;box-sizing:border-box}'+
     '.trk-done{color:#16a34a;font-weight:800;font-size:13px;white-space:nowrap}'+
+    '.trk-note{font-size:12.5px;color:var(--muted);line-height:1.6}'+
     '</style>';
+  var locSeg='<div class="seg trk-seg" role="group" aria-label="مكان التخزين">'+locs.map(function(k){
+    var n=all.filter(function(r){return (k==='all'||r.store===k)&&trkIsProblem(r);}).length;
+    var name=k==='all'?'كل الأماكن':k;
+    return '<button class="'+(L===k?'on':'')+'" data-act="trkLoc" data-v="'+esc(k)+'">'+name+(n?' · '+n+' مشكلة':'')+'</button>';
+  }).join('')+'</div>';
+  var fl=[['attn','يحتاج متابعة'],['expired','منتهية'],['soon','قربت'],['nodate','بدون تاريخ'],['check','تأكيد'],['untracked','بدون دفعة'],['ok','متأكدة'],['all','الكل']];
   var body='';
   if(!shown.length){
-    body='<div class="empty"><b>'+(F==='attn'?'كله تمام':'مفيش أصناف')+'</b><span>'+(F==='attn'?'مفيش دفعات محتاجة تغيير أو تأكيد تاريخ الصلاحية دلوقتي.':'مفيش دفعات في الفلتر ده.')+'</span></div>';
+    body='<div class="empty"><b>'+(F==='attn'?'كله تمام':'مفيش أصناف')+'</b><span>'+(F==='attn'?'مفيش مشاكل في الصلاحية في المكان ده دلوقتي.':'مفيش أصناف في الفلتر ده.')+'</span></div>';
   } else {
-    var order=F==='attn'?['expired','soon','nodate','check']:[F==='all'?'expired':F];
-    if(F==='all')order=['expired','soon','nodate','check','ok'];
+    var order=F==='attn'?['expired','soon','nodate','check','untracked']:F==='all'?['expired','soon','nodate','untracked','check','ok']:[F];
     order.forEach(function(st){
       var g=shown.filter(function(r){return r.st===st;});
       if(!g.length)return;
@@ -2057,8 +2085,8 @@ function trackingView(){
     });
   }
   var btns='<div class="btns"><button class="btn ghost sm" data-act="tab" data-v="fgstock">مخزن الإنتاج</button><button class="btn ghost sm" data-act="tab" data-v="waste">تسجيل هالك</button></div>';
-  return css+head('تتبع الصلاحية','الدفعات اللي لازم تغيّر تاريخ صلاحيتها أو تتأكد منه',btns)+
-    '<div class="pstats trk-tiles">'+tile('expired',c.expired,'منتهية')+tile('soon',c.soon,'قربت تنتهي')+tile('nodate',c.nodate,'بدون تاريخ')+tile('check',c.check,'محتاجة تأكيد')+'</div>'+
+  return css+head('تتبع الصلاحية','كل مخزون الإنتاج، مقسم حسب المكان وحالة الصلاحية',btns)+locSeg+
+    '<div class="pstats trk-tiles">'+tile('expired',c.expired,'منتهية')+tile('soon',c.soon,'قربت تنتهي')+tile('nodate',c.nodate+c.check,'بدون تاريخ / تأكيد')+tile('untracked',c.untracked,'بدون دفعة')+'</div>'+
     '<div class="seg trk-seg" role="group" aria-label="فلتر التتبع">'+fl.map(function(x){return '<button class="'+(F===x[0]?'on':'')+'" data-act="trkFilter" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+
     body;
 }
@@ -6151,7 +6179,7 @@ var PERM_SEC_LABEL={orders:'الأوردرات',calendar:'التقويم',prep:'
 /* إجراءات النظام: دايمًا متاحة (دخول، خروج، البصمة، الإشعارات، التحديث، التنقل) */
 var ACT_SYS={gdSetHint:1,toggleOwnerOnly:1,syncEvery:1,login:1,padKey:1,padMode:1,cardOffClose:1,logout:1,bioEnableAct:1,bioGo:1,bioLater:1,settingsBio:1,settingsSubmit:1,sCancel:1,notifAsk:1,notifLater:1,install:1,loaderRetry:1,resetOpen:1,resetBack:1,resetSend:1,resetApprove:1,resetReject:1,deepRefresh:1,theme:1,tab:1,sTab:1,gdConnect:1,gdNow:1,gdOff:1,permSel:1,permSet:1,evOpen:1,evBack:1,syncOpen:1,syncClose:1,syncNow:1,permPreset:1,permSec:1,permActSet:1,permActAll:1,toggleTab:1,updStart:1,updFinish:1,updAdd:1,updDel:1,updGo:1,updClose:1,updSeen:1,updSeenTop:1,uGenCode:1,stripGo:1};
 /* كل إجراء داخل التبويبات: [القسم، الاسم، w = بيغيّر بيانات / r = عرض أو تحكم في الشاشة] */
-var ACT_CAT={trkOk:['tracking','تأكيد تاريخ الصلاحية','w'],trkFilter:['tracking','فلتر التتبع','r'],
+var ACT_CAT={trkOk:['tracking','تأكيد تاريخ الصلاحية','w'],trkFilter:['tracking','فلتر التتبع','r'],trkLoc:['tracking','مكان التخزين في التتبع','r'],
   calEditOrder:['orders','تعديل من التقويم','w'],
   newOrder:['orders','أوردر جديد','w'],oEdit:['orders','تعديل الطلبية','w'],oCancel:['orders','إلغاء الطلبية','w'],
   oDelete:['orders','حذف الطلبية','w'],oDeliver:['orders','تسليم الأوردر','w'],oCreate:['orders','حفظ الأوردر','w'],
@@ -6862,6 +6890,7 @@ var ACT={ trkOk:function(d){
     td.expOk=Date.now();toast('اتأكد تاريخ الصلاحية');
   },
   trkFilter:function(d){U.trkF=d.v;},
+  trkLoc:function(d){U.trkLoc=d.v;},
   synDelDev:function(d){if(limited())return false;synDelDevice(d.k);return false;},bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});var k='bcs_'+d.s;if(d.lv==='def')delete o[k];else o[k]=d.lv;m[u.code]=o;setPref('aperms',m);render();return false;}, bcSeason:function(d){if(seasonLevel(d.v)==='hide')return false;U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
