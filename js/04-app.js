@@ -6527,16 +6527,18 @@ function batchGroups(code){
     var users=[];evs.forEach(function(x){if(users.indexOf(x.c)<0)users.push(x.c);});
     var last=0;evs.forEach(function(x){if((x.t||0)>last)last=x.t||0;});
     var first=e.at||Math.min.apply(null,all.map(function(x){return x.t||0;}));
-    out.push({k:id,b:e.tabLbl?'':sid(id),p:e.tabLbl||(pr?pr.name:'—'),start:first,last:last,n:evs.length,users:users});
+    var tl=e.tabLbl||(id.indexOf('tab:')===0?(TAB_LBL[id.slice(4)]||id.slice(4)):'');
+    out.push({k:id,b:tl?'':sid(id),p:tl||(pr?pr.name:'—'),start:first,last:last,n:evs.length,users:users});
   });
   return out.sort(function(x,y){return y.last-x.last;});
 }
 function evGroupRowHTML(g,list){
   var names=g.users.map(function(c){return evNameOf(list,c);}).join('، ');
-  return '<li><details class="bfold"><summary class="ev-grp">'+
-    '<div class="ev-grp-main"><b>'+esc(g.p)+'</b><small class="ltr">'+esc(g.b)+'</small></div>'+
+  var inner='<div class="ev-grp-main"><b>'+esc(g.p)+'</b><small class="ltr">'+esc(g.b)+'</small></div>'+
     '<div class="ev-grp-side"><span class="dash-badge ok">'+g.n+' عملية</span><small>بدأت '+evDateStr(g.start)+'</small></div>'+
-    '<small class="ev-grp-who">'+esc(names)+'</small></summary>'+batchOpsHTML(g.k)+'</details></li>';
+    '<small class="ev-grp-who">'+esc(names)+'</small>';
+  if(String(g.k).indexOf('tab:')===0)return '<li><button class="ev-grp" data-act="evOpen" data-k="'+esc(g.k)+'">'+inner+'</button></li>';
+  return '<li><details class="bfold"><summary class="ev-grp">'+inner+'</summary>'+batchOpsHTML(g.k)+'</details></li>';
 }
 /* صفحة الدفعة: كل عملياتها من البداية، وزرار رجوع للسجل */
 function evBatchPageHTML(list){
@@ -6544,6 +6546,8 @@ function evBatchPageHTML(list){
   var back='<button class="btn ghost sm" data-act="evBack">→ رجوع للسجل</button>';
   if(!e||!(e.ev||[]).length)return '<section class="card" style="--c:var(--settings)">'+back+'<div class="meta" style="margin-top:12px">العملية دي مابقتش موجودة في السجل.</div></section>';
   var pr=(PRODUCTS||[]).filter(function(p){return p.id===e.p;})[0];
+  var isTab=String(k).indexOf('tab:')===0;
+  var tabName=e.tabLbl||(isTab?(TAB_LBL[String(k).slice(4)]||String(k).slice(4)):'');
   var evs=e.ev.slice().sort(function(x,y){return (x.t||0)-(y.t||0);});
   var first=evs[0].t||0, users=[];evs.forEach(function(x){if(users.indexOf(x.c)<0)users.push(x.c);});
   var rows=evs.map(function(x){
@@ -6551,12 +6555,12 @@ function evBatchPageHTML(list){
     return '<li class="ev-row">'+
       '<div class="ev-who"><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span><div><b>'+esc(nm)+'</b><small class="ltr">'+esc(x.c)+'</small></div></div>'+
       '<time class="ev-time">'+evDateStr(x.t||0)+'</time>'+
-      '<div class="ev-act"><span class="dash-badge ok">'+esc(EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span></div>'+
+      '<div class="ev-act"><span class="dash-badge ok">'+esc(x.l||EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span></div>'+
       '</li>';
   }).join('');
   return '<section class="card ev-card" style="--c:var(--settings)">'+
     '<div class="bchead">'+back+'<span class="meta">'+evs.length+' عملية · '+users.length+' مستخدم</span></div>'+
-    '<div style="margin-top:12px"><b>'+esc(pr?pr.name:'—')+'</b> <small class="ltr">'+esc(sid(k))+'</small></div>'+
+    '<div style="margin-top:12px"><b>'+esc(tabName||(pr?pr.name:'—'))+'</b>'+(isTab?'':' <small class="ltr">'+esc(sid(k))+'</small>')+'</div>'+
     '<div class="meta" style="margin:4px 0 8px">بدأت '+evDateStr(first)+(e.qty?' · الكمية '+esc(String(e.qty)):'')+'</div>'+
     '<ul class="ev-list">'+rows+'</ul>'+
     '<style>'+EV_GRP_CSS+'.ev-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line-2,#E5EBF1);align-items:center}.ev-who{display:flex;align-items:center;gap:8px;min-width:0}.ev-who>div{min-width:0}.ev-who b{display:block;font-size:13px}.ev-who small{display:block;font-size:11px;color:var(--muted,#6b7090)}.ev-time{font-size:11.5px;color:var(--muted,#6b7090);white-space:nowrap}.ev-act{grid-column:1 / -1;padding-inline-start:36px}</style>'+

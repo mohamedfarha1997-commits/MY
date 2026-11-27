@@ -37,7 +37,7 @@ function mergePlog(a,b){
       var by=(y.by||[]).slice();(x.by||[]).forEach(function(c){if(by.indexOf(c)<0)by.push(c);});
       var seen={},ev=(y.ev||[]).concat(x.ev||[]).filter(function(v){var k=v.c+'|'+v.a+'|'+v.t;if(seen[k])return false;seen[k]=1;return true;}).sort(function(p,q){return p.t-q.t;}).slice(-40);
       var at=(y.at&&x.at)?Math.min(y.at,x.at):(y.at||x.at);
-      out[id]={p:y.p||x.p,qty:y.qty||x.qty,at:at,by:by,ev:ev};
+      out[id]={p:y.p||x.p,qty:y.qty||x.qty,at:at,by:by,ev:ev,tabLbl:y.tabLbl||x.tabLbl};
     });
   });
   return out;
