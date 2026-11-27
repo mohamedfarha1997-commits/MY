@@ -800,44 +800,95 @@ function syncInfoRows(){
   if(GD.err)rows.push(['آخر خطأ',GD.err]);
   return rows;
 }
-function syncDevicesHTML(){
+/* ---------- شاشة المزامنة (تصميم جديد) ---------- */
+var SYN_ICO={
+  cloud:'<path d="M17.5 19H9a7 7 0 1 1 6.9-8.2A5.5 5.5 0 1 1 17.5 19z"/>',
+  refresh:'<path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18.5 2v4h-4M5.5 22v-4h4"/>',
+  check:'<path d="M9.5 13.5l2 2 3.5-3.5"/>',
+  cross:'<path d="M9.5 11.5l5 5M14.5 11.5l-5 5"/>',
+  alert:'<path d="M12 10v3M12 16v.01"/>',
+  off:'<path d="M3 3l18 18"/>',
+  wifi:'<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r=".6"/>',
+  upload:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/>',
+  file:'<path d="M7 3h7l5 5v13H7zM14 3v5h5"/>',
+  cards:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
+  device:'<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>'
+};
+function synIco(k){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(SYN_ICO[k]||'')+'</svg>';}
+function synState(){
+  if(!GD.on)return {k:'off',ico:'off',t:'غير متصل بدرايف',s:'اربط حساب جوجل عشان كل الأجهزة تتزامن'};
+  if(GD.needTap)return {k:'warn',ico:'alert',t:'محتاج تأكيد من جوجل',s:'اضغط تأكيد الربط عشان المزامنة ترجع تشتغل'};
+  if(GD.busy)return {k:'sync',ico:'refresh',t:'بيزامن دلوقتي',s:GD.stage||'…'};
+  if(GD.err&&!GD.ok)return {k:'bad',ico:'cross',t:'في مشكلة في المزامنة',s:GD.err};
+  if(GD.ok)return {k:'ok',ico:'check',t:'متزامن',s:GD.at?'آخر مزامنة '+synRel(GD.at):'كل حاجة محدّثة'};
+  return {k:'conn',ico:'refresh',t:'جاري الاتصال',s:'استنى ثواني'};
+}
+function synRel(t){
+  var d=Date.now()-t;
+  if(d<60000)return 'دلوقتي';
+  if(d<3600000)return 'من '+Math.round(d/60000)+' دقيقة';
+  if(d<86400000)return 'من '+Math.round(d/3600000)+' ساعة';
+  return evDateStr(t);
+}
+/* لون ثابت لكل حساب بيتحسب من الكود، عشان الكارت يبان مميز */
+function synHue(s){var h=0;s=String(s||'');for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h)%360;}
+function synDevCards(){
   var devs=S.devs||{},keys=Object.keys(devs),now=Date.now(),me=devId();
-  if(!keys.length)return '<div class="meta">مفيش أجهزة مسجلة لسه.</div>';
-  var list=(typeof usersList==='function')?usersList():[];
+  if(!keys.length)return '<div class="syn-empty">'+synIco('device')+'<b>مفيش أجهزة مسجلة لسه</b><small>أول ما جهاز يفتح التطبيق ويزامن هيظهر هنا</small></div>';
   return keys.sort(function(a,b){return (devs[b]||0)-(devs[a]||0);}).map(function(k){
-    var t=devs[k]||0, online=now-t<=600000;
-    var du=(S.devUser||{})[k],uc=du?du.c:'',uname=!du?'غير معروف':(uc==='owner'?'المالك':((userByCode(uc)||{}).name||uc));
-    return '<div class="prow"><div class="pinfo"><b>'+esc(uname)+' <span class="ltr" style="font-size:11px;color:var(--muted,#6b7090)">'+(k===me?'الجهاز ده':'جهاز')+' · '+esc(k.slice(0,6))+'</span></b><small>آخر ظهور '+evDateStr(t)+'</small></div>'+
-      '<span class="pill '+(online?'ok':'low')+'">'+(online?'نشط الآن':'غير نشط')+'</span></div>';
+    var t=devs[k]||0,online=now-t<=600000,du=(S.devUser||{})[k],uc=du?du.c:'';
+    var name=!du?'غير معروف':(uc==='owner'?'المالك':((userByCode(uc)||{}).name||uc));
+    var initial=esc(String(name).trim().charAt(0)||'?');
+    var hue=synHue(uc||k);
+    return '<div class="syn-dev'+(online?' on':'')+(k===me?' me':'')+'">'+
+      '<div class="syn-av" style="--h:'+hue+'">'+initial+'</div>'+
+      '<div class="syn-dtx"><b>'+esc(name)+'</b>'+
+        '<small><span class="syn-chip">'+(k===me?'الجهاز ده':'جهاز')+' · <bdi dir="ltr">'+esc(k.slice(0,6))+'</bdi></span></small>'+
+        '<small class="syn-seen">'+(online?'نشط الآن':'آخر ظهور '+evDateStr(t))+'</small></div>'+
+      '<span class="syn-dot" aria-label="'+(online?'نشط':'غير نشط')+'"></span></div>';
   }).join('');
 }
-/* الجزء اللي بيتحدّث لوحده وهو مفتوح */
 function syncBodyHTML(){
-  var rows=syncInfoRows().map(function(r){
-    return '<div class="prow"><div class="pinfo"><small>'+esc(r[0])+'</small><b>'+esc(r[1])+'</b></div></div>';
-  }).join('');
+  var st=synState();
+  var pend=hasPending();
+  var fileRows=
+    '<div class="syn-file"><span class="syn-fi">'+synIco('file')+'</span><div class="syn-dtx"><b>الملف الرئيسي</b><small>'+(GD.id?'متوصّل · نسخة '+esc(GD.ver||'—'):'مش متوصّل')+'</small></div><span class="syn-dot '+(GD.id?'on':'')+'"></span></div>'+
+    '<div class="syn-file"><span class="syn-fi">'+synIco('cards')+'</span><div class="syn-dtx"><b>ملف الكروت</b><small>'+(GD.cardsId?'متوصّل':'لسه ماتعملش')+'</small></div><span class="syn-dot '+(GD.cardsId?'on':'')+'"></span></div>';
+  var kpis=
+    '<div class="syn-kpi '+(navigator.onLine?'good':'bad')+'"><span>'+synIco('wifi')+'</span><small>الإنترنت</small><b>'+(navigator.onLine?'متصل':'مفيش')+'</b></div>'+
+    '<div class="syn-kpi '+(pend?'warn':'good')+'"><span>'+synIco('upload')+'</span><small>تعديلات مستنية</small><b>'+(pend?(GD.busy?'بتترفع':'لسه'):'كله اترفع')+'</b></div>'+
+    '<div class="syn-kpi"><span>'+synIco('sliders')+'</span><small>معدل المزامنة</small><b>'+esc((GD.on&&SYNC_CHOICES[syncEvery()])||'—')+'</b></div>';
   var needConnect=!GD.on||GD.needTap||(GD.err&&!GD.ok);
-  var btns='<button class="btn" data-act="syncNow"'+(GD.on&&!GD.busy?'':' disabled')+'>مزامنة الآن</button>'+
+  var btns='<button class="btn syn-main" data-act="syncNow"'+(GD.on&&!GD.busy?'':' disabled')+'>مزامنة الآن</button>'+
     (needConnect?'<button class="btn ghost sm" data-act="gdConnect">'+(GD.on?'تأكيد الربط مع جوجل':'ربط درايف')+'</button>':'')+
     '<button class="btn ghost sm" data-act="syncClose">إغلاق</button>';
-  return '<div class="pgrp"><div class="pgrp-h">الحالة</div>'+rows+'</div>'+
-    '<div class="pgrp"><div class="pgrp-h">الأجهزة</div>'+syncDevicesHTML()+'</div>'+
-    '<div class="btns" style="margin-top:12px">'+btns+'</div>';
+  var devCount=Object.keys(S.devs||{}).length;
+  return '<div class="syn syn-'+st.k+'">'+
+    '<div class="syn-hero">'+
+      '<div class="syn-orb">'+synIco(st.ico)+'</div>'+
+      '<div class="syn-htx"><b>'+esc(st.t)+'</b><small>'+esc(st.s)+'</small></div>'+
+      (GD.busy?'<div class="syn-bar"><i style="width:'+Math.round(Math.max(4,GD.pct||0))+'%"></i></div>':'')+
+    '</div>'+
+    '<div class="syn-kpis">'+kpis+'</div>'+
+    '<div class="syn-sec"><h4>الملفات على درايف</h4><div class="syn-list">'+fileRows+'</div></div>'+
+    '<div class="syn-sec"><h4>الأجهزة <span class="syn-count">'+devCount+'</span></h4><div class="syn-list">'+synDevCards()+'</div></div>'+
+    '<div class="syn-foot">'+btns+'</div>'+
+  '</div>';
 }
 function syncScreenHTML(){
   if(!U.syncOpen)return '';
   return '<button class="back" data-act="syncClose" aria-label="إغلاق"></button>'+
-    '<section class="sheet f" style="--c:var(--stock)" role="dialog" aria-label="حالة المزامنة"><div class="sbody">'+
-    '<h3>حالة المزامنة</h3><div class="meta">حالة الاتصال بدرايف وآخر مزامنة على الجهاز ده</div>'+
+    '<section class="sheet f syn-sheet" style="--c:var(--stock)" role="dialog" aria-label="حالة المزامنة"><div class="sbody">'+
     '<div id="syncBody">'+syncBodyHTML()+'</div>'+
     '</div></section>';
 }
 /* تحديث الشاشة كل ثانية وهي مفتوحة، عشان المرحلة والتعديلات تتغير وانت شايف */
-var SYNC_TMR=null;
+var SYNC_TMR=null,SYNC_LAST='';
 function syncLiveRefresh(){
   var el=document.getElementById('syncBody');
   if(!U.syncOpen||!el){syncLiveStop();return;}
-  el.innerHTML=syncBodyHTML();
+  var h=syncBodyHTML();if(h!==SYNC_LAST){SYNC_LAST=h;el.innerHTML=h;}
 }
 function syncLiveStart(){syncLiveStop();SYNC_TMR=setInterval(syncLiveRefresh,800);}
 function syncLiveStop(){if(SYNC_TMR){clearInterval(SYNC_TMR);SYNC_TMR=null;}}
