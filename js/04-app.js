@@ -902,7 +902,7 @@ function syncBodyHTML(){
     '<div class="syn-file"><span class="syn-fi">'+synIco('file')+'</span><div class="syn-dtx"><b>الملف الرئيسي</b><small>'+(GD.id?'متوصّل · نسخة '+esc(GD.ver||'—'):'مش متوصّل')+'</small></div><span class="syn-dot '+(GD.id?'on':'')+'"></span></div>'+
     '<div class="syn-file"><span class="syn-fi">'+synIco('cards')+'</span><div class="syn-dtx"><b>ملف الكروت</b><small>'+(GD.cardsId?'متوصّل':'لسه ماتعملش')+'</small></div><span class="syn-dot '+(GD.cardsId?'on':'')+'"></span></div>';
   var kpis=
-    '<div class="syn-kpi '+(navigator.onLine?'good':'bad')+'"><span>'+synIco('wifi')+'</span><small>الإنترنت</small><b>'+(navigator.onLine?'متصل':'مفيش')+'</b></div>'+
+    netKpiHTML()+
     '<div class="syn-kpi '+(pend?'warn':'good')+'"><span>'+synIco('upload')+'</span><small>تعديلات مستنية</small><b>'+(pend?(GD.busy?'بتترفع':'لسه'):'كله اترفع')+'</b></div>'+
     '<div class="syn-kpi"><span>'+synIco('sliders')+'</span><small>معدل المزامنة</small><b>'+esc((GD.on&&SYNC_CHOICES[syncEvery()])||'—')+'</b></div>';
   var owner=!limited(),canEdit=owner||permLevel('sync')==='edit';
@@ -8583,3 +8583,39 @@ document.addEventListener('change',function(e){
     U.fedit.store=t.value;U.fedit.shelf=shelfForStore(t.value,U.fedit.shelf);render();
   }
 });
+/* قياس جودة الاتصال الحقيقية: زمن رد السيرفر الفعلي + نوع الشبكة لو المتصفح بيعرضه */
+var NETQ={lvl:'',ms:0,mbps:null,busy:false};
+var NET_LBL={fast:'سريع',mid:'متوسط',slow:'بطيء',off:'مفيش'};
+function netKpiHTML(){
+  var q=NETQ,cls='',txt='بيقيس…';
+  if(!navigator.onLine||q.lvl==='off'){cls='bad';txt='مفيش';}
+  else if(q.lvl){
+    cls=q.lvl==='fast'?'good':q.lvl==='mid'?'warn':'bad';
+    txt=NET_LBL[q.lvl]+(q.ms?' · '+Math.round(q.ms)+' مللي':'')+(q.mbps?' · ~'+q.mbps.toFixed(1)+' ميجا':'');
+  }
+  return '<div class="syn-kpi '+cls+'" id="netKpi"><span>'+synIco('wifi')+'</span><small>الإنترنت</small><b>'+txt+'</b></div>';
+}
+function netPaint(){var el=document.getElementById('netKpi');if(el)el.outerHTML=netKpiHTML();}
+function netMeasure(){
+  if(!navigator.onLine){NETQ.lvl='off';NETQ.ms=0;netPaint();return;}
+  if(NETQ.busy)return;
+  NETQ.busy=true;
+  var t0=performance.now(),ok=true;
+  var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var to=setTimeout(function(){if(ctrl)ctrl.abort();},8000);
+  fetch('./?netq='+Date.now(),{method:'HEAD',cache:'no-store',signal:ctrl?ctrl.signal:undefined})
+    .then(function(r){if(!r.ok)ok=false;},function(){ok=false;})
+    .then(function(){
+      clearTimeout(to);NETQ.busy=false;
+      var ms=performance.now()-t0,c=navigator.connection||{};
+      NETQ.ms=ok?ms:0;
+      NETQ.mbps=(typeof c.downlink==='number'&&c.downlink>0)?c.downlink:null;
+      var slow=/2g/.test(c.effectiveType||'');
+      NETQ.lvl=!ok?'off':(slow||ms>1500)?'slow':ms>500?'mid':'fast';
+      netPaint();
+    });
+}
+netMeasure();
+setInterval(netMeasure,15000);
+window.addEventListener('online',netMeasure);
+window.addEventListener('offline',function(){NETQ.lvl='off';NETQ.ms=0;netPaint();});
