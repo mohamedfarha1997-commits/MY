@@ -17,7 +17,7 @@ function unesc(s){return String(s==null?'':s).replace(/&#39;/g,"'").replace(/&qu
 function canon(x){return JSON.stringify(x,function(k,v){
   return v&&typeof v==='object'&&!Array.isArray(v)?Object.keys(v).sort().reduce(function(o,kk){o[kk]=v[kk];return o;},{}):v;});}
 /* مقارنة المحتوى بس: من غير أوقات الجهاز (devs/clk/savedAt) عشان مايحصلش رفع مستمر بين الأجهزة */
-function coreKey(x){return canon(Object.assign({},x,{devs:0,clk:0,savedAt:0}));}
+function coreKey(x){return canon(Object.assign({},x,{devs:0,devUser:0,clk:0,savedAt:0}));}
 function recSig(r){var c={};Object.keys(r).forEach(function(k){if(k!=='_u')c[k]=r[k];});return canon(c);}
 function parseTolerant(t){
   try{return JSON.parse(t);}catch(e){
@@ -141,6 +141,7 @@ function mergeStates(a,b,base){
   M.clk=Math.max(a.clk||0,b.clk||0,maxStamp(a),maxStamp(b));
   M.seen={};[a,b].forEach(function(s){var m=s.seen||{};Object.keys(m).forEach(function(k){if(!M.seen[k]||(m[k].t||0)>(M.seen[k].t||0))M.seen[k]=m[k];});});
   M.devs={};[a,b].forEach(function(s){var d=s.devs||{};Object.keys(d).forEach(function(k){M.devs[k]=Math.max(M.devs[k]||0,d[k]||0);});});
+  M.devUser={};[a,b].forEach(function(s){var du=s.devUser||{};Object.keys(du).forEach(function(k){if(!M.devUser[k]||(du[k].t||0)>(M.devUser[k].t||0))M.devUser[k]=du[k];});});
   M.seq=Math.max(a.seq||0,b.seq||0);
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
   M.fseq=Math.max(a.fseq||0,b.fseq||0);

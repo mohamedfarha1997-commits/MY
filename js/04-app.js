@@ -719,6 +719,7 @@ function gdSync(){
         /* fix() inside gdDownload points MATERIALS/PRODUCTS at the downloaded copy; re-point them at the live state, or edits go to a copy that never gets saved */
         bind(S);
         S.devs=S.devs||{};if(!S.devs[devId()]||nowStamp()-S.devs[devId()]>600000)S.devs[devId()]=nowStamp();
+        S.devUser=S.devUser||{};var _du=S.devUser[devId()],_cc=sessionCode()||'owner';if(!_du||_du.c!==_cc||nowStamp()-(_du.t||0)>600000)S.devUser[devId()]={c:_cc,t:nowStamp()};
         pruneTombs(S,Date.now());
         SYNCBASE=snapshotBase();
         return need?gdUpload():undefined;
@@ -805,7 +806,8 @@ function syncDevicesHTML(){
   var list=(typeof usersList==='function')?usersList():[];
   return keys.sort(function(a,b){return (devs[b]||0)-(devs[a]||0);}).map(function(k){
     var t=devs[k]||0, online=now-t<=600000;
-    return '<div class="prow"><div class="pinfo"><b>'+(k===me?'الجهاز ده':'جهاز')+' <span class="ltr" style="font-size:11px;color:var(--muted,#6b7090)">'+esc(k.slice(0,6))+'</span></b><small>آخر ظهور '+evDateStr(t)+'</small></div>'+
+    var du=(S.devUser||{})[k],uc=du?du.c:'',uname=!du?'غير معروف':(uc==='owner'?'المالك':((userByCode(uc)||{}).name||uc));
+    return '<div class="prow"><div class="pinfo"><b>'+esc(uname)+' <span class="ltr" style="font-size:11px;color:var(--muted,#6b7090)">'+(k===me?'الجهاز ده':'جهاز')+' · '+esc(k.slice(0,6))+'</span></b><small>آخر ظهور '+evDateStr(t)+'</small></div>'+
       '<span class="pill '+(online?'ok':'low')+'">'+(online?'نشط الآن':'غير نشط')+'</span></div>';
   }).join('');
 }
