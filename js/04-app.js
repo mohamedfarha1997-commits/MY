@@ -2079,7 +2079,7 @@ function trkCardHTML(r){
   var p=r.p,ok=r.st==='ok',tracked=!!r.id;
   var label=r.st==='soon'?(r.days===0?'تنتهي النهارده':'تنتهي خلال '+r.days+' يوم'):TRK_LABEL[r.st];
   var head1=(tracked&&!r.fill)?'<span class="bid ltr">'+esc(sid(r.id))+'</span>':'<span class="meta">'+(r.fill?'حشو':'رصيد قديم')+'</span>';
-  var meta=f(r.q)+' '+esc(p.unit)+' · المكان: '+esc(r.store)+(tracked&&r.at?' · اتعملت '+ago(r.at):'')+(p.shelf?' · مدة الصلاحية: '+esc(unesc(p.shelf)):'');
+  var meta=f(r.q)+' '+esc(p.unit)+' · المكان: '+esc(storeLbl(r.store))+(tracked&&r.at?' · اتعملت '+ago(r.at):'')+(p.shelf?' · مدة الصلاحية: '+esc(unesc(p.shelf)):'');
   var ctl,act;
   if(tracked){
     ctl='<label class="trk-lbl">تاريخ الصلاحية</label><div class="trk-row2"><input type="date" class="trk-date" data-tdate="'+esc(r.id)+'" value="'+esc(r.exp)+'" aria-label="تاريخ الصلاحية">'+
@@ -2131,7 +2131,7 @@ function trackingView(){
     '</style>';
   var locSeg='<div class="seg trk-seg" role="group" aria-label="مكان التخزين">'+locs.map(function(k){
     var n=all.filter(function(r){return (k==='all'||r.store===k)&&trkIsProblem(r);}).length;
-    var name=k==='all'?'كل الأماكن':k;
+    var name=k==='all'?'كل الأماكن':storeLbl(k);
     return '<button class="'+(L===k?'on':'')+'" data-act="trkLoc" data-v="'+esc(k)+'">'+name+(n?' · '+n+' مشكلة':'')+'</button>';
   }).join('')+'</div>';
   /* الفلاتر: الحالات التانية (بدون تاريخ، تأكيد، بدون دفعة) ظاهرة جوه "يحتاج متابعة" كأقسام، فمالهاش تبويب لوحدها */
@@ -2724,7 +2724,7 @@ function feHTML(){
     '<section class="fe-sec"><div class="fe-sh"><span class="fe-n">١</span><h4>بيانات الصنف</h4></div>'+
       '<div class="fe-grid">'+
         '<label class="fe-f fe-full"><span>اسم الصنف</span><input id="feName" value="'+esc(E.name||'')+'" placeholder="مثلاً: كريم بروليه" autocomplete="off"></label>'+
-        '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option'+(s===(E.store||'عادي')?' selected':'')+'>'+s+'</option>';}).join('')+'</select></label>'+
+        '<label class="fe-f"><span>مكان التخزين</span><select id="feStore">'+FG_STORES.map(function(s){return '<option value="'+s+'"'+(s===(E.store||'عادي')?' selected':'')+'>'+storeLbl(s)+'</option>';}).join('')+'</select></label>'+
         '<label class="fe-f"><span>الصلاحية</span>'+shelfSelHTML('feShelf',E.store||'عادي',shelfNorm(E,'store'),'')+'<small>بتتطبع على الملصق</small></label>'+
         '<label class="fe-f"><span>الناتج في الدفعة</span><input id="feYield" inputmode="decimal" value="'+esc(E.yield==null?'':String(E.yield))+'" placeholder="مثال: 20"><small>كام صنف بيطلع من الدفعة الواحدة</small></label>'+
         '<label class="fe-f"><span>المجموعة</span><input id="feGrp" list="feGrpList" value="'+esc(grpNow)+'" placeholder="اكتب أو اختار"><datalist id="feGrpList">'+grpOpts+'</datalist></label>'+
@@ -2887,7 +2887,7 @@ function prodFormHTML(){
     
 fld('name','اسم المنتج',{ph:'مثال: تورتة فراولة'})+
     fld('group','مجموعة التحضير (اختياري)',{ph:'مثال: ام علي',hint:'الأصناف اللي ليها نفس المجموعة بتتجمع في شاشة التحضير'})+
-    '<div class="frow">'+sel('fgStore','مكان التخزين في مخزن الإنتاج',FG_STORES)+'<div class="fld"><label for="f_shelf">الصلاحية</label>'+shelfSelHTML('f_shelf',U.form.fgStore||FG_STORES[0],shelfNorm(U.form,'fgStore'),' data-f="shelf"')+'<small>بتتطبع على ملصق الصنف</small></div>'+'</div>'+
+    '<div class="frow">'+'<div class="fld"><label for="f_fgStore">مكان التخزين في مخزن الإنتاج</label><select id="f_fgStore" data-f="fgStore">'+FG_STORES.map(function(x){return '<option value="'+x+'"'+(x===(U.form.fgStore||FG_STORES[0])?' selected':'')+'>'+storeLbl(x)+'</option>';}).join('')+'</select></div>'+'<div class="fld"><label for="f_shelf">الصلاحية</label>'+shelfSelHTML('f_shelf',U.form.fgStore||FG_STORES[0],shelfNorm(U.form,'fgStore'),' data-f="shelf"')+'<small>بتتطبع على ملصق الصنف</small></div>'+'</div>'+
     '<div class="frow">'+fld('mins','وقت التشغيل (دقيقة) · اختياري',{im:'numeric',hint:'سيبه فاضي لو الصنف مش بيدخل فرن، ويتعتمد على طول'})+fld('temp','درجة الحرارة (°م)',{im:'numeric',hint:'اختياري، بتظهر في الإنتاج'})+'</div>'+
     '<div class="frow">'+sel('unit','وحدة الإنتاج',PROD_UNITS)+fld('yield',isPiece(F)?'عدد القطع اللي الوصفة بتطلعها (لكل وحدة)':'الوزن اللي الوصفة بتطلعه لكل وجبة ('+F.unit+')',{im:qIM(F),hint:isPiece(F)?'':'مثال: لو الوجبة بتطلع 1200 جرام اكتب 1200'})+'</div>'+
     '<datalist id="matl">'+(function(d){return MATERIALS.map(function(m){return '<option value="'+esc(matOptLabel(m,d))+'">';}).join('');})(matDupNames())+'</datalist>'+
@@ -2940,6 +2940,8 @@ function saveMat(F){
 }
 /* مكان التخزين لكل صنف في مخزن الإنتاج: عادي / ثلاجة / فريزر */
 var FG_STORES=['عادي','ثلاجة','فريزر'];
+/* الاسم اللي بيظهر للمستخدم: "عادي" معناها خارج التلاجة (الاسم المخزّن ما اتغيرش عشان البيانات القديمة) */
+function storeLbl(x){return x==='عادي'?'خارج التلاجة':x;}
 /* مدة الصلاحية حسب مكان التخزين: المكان بيحدد الاختيارات، ولو فيه خيار واحد بيتطبق لوحده */
 var SHELF_PRESETS={'فريزر':['شهر'],'ثلاجة':['أسبوع','3 أيام','يوم واحد'],'عادي':['أسبوع']};
 function shelfSelHTML(id,store,cur,attrs){
