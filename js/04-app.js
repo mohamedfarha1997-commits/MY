@@ -6467,7 +6467,7 @@ function bcItemHTML(t,it,i){
   return '<div class="bcitem"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" placeholder="اسم الصنف" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
     '<div class="bcline"><span class="bcl">الكمية في العلبة</span><div class="bcqs">'+
     '<button class="bcb" data-act="bcQStep" data-t="'+esc(t.id)+'" data-i="'+i+'" data-d="-1">−</button>'+
-    '<input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
+    '<input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)?Number(it.q):'')+'" placeholder="0" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'">'+
     '<button class="bcb" data-act="bcQStep" data-t="'+esc(t.id)+'" data-i="'+i+'" data-d="1">+</button></div>'+
     '<button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف الصنف">×</button></div></div>';
 }
@@ -6476,7 +6476,7 @@ function bcTabsRowHTML(){
   var T=bcData();
   var tabs=T.map(function(t){
     return '<div class="bctab"><span class="bctn">'+esc(t.name)+'</span>'+
-      '<input class="bctc" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'" aria-label="عدد العلب">'+
+      '<input class="bctc" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)?Number(t.count):'')+'" placeholder="0" data-bc="cnt" data-t="'+esc(t.id)+'" aria-label="عدد العلب">'+
       '<div class="bcacts"><button class="bcgear" data-act="bcEdit" data-t="'+esc(t.id)+'" aria-label="تعديل العلبة">'+BC_GEAR+'</button><button class="bcgear" data-act="bcPdfBox" data-t="'+esc(t.id)+'" aria-label="استخراج PDF للعلبة">'+BC_PDF+'</button></div></div>';
   }).join('');
   return '<div class="bcstack">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+ علبة جديدة</button></div>';
@@ -6501,7 +6501,7 @@ function editorView(d){
     '<div class="bcrowtop"><button class="btn ghost sm" data-act="bcCancelDraft">→ رجوع بدون حفظ</button></div>'+
     '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(d.name)+'" data-bc="tname" data-t="'+esc(d.id)+'" aria-label="اسم العلبة">'+
     '<div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(d.id)+'" data-d="-1">−</button>'+
-    '<input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(d.count)||0)+'" data-bc="cnt" data-t="'+esc(d.id)+'" aria-label="عدد العلب">'+
+    '<input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(d.count)?Number(d.count):'')+'" placeholder="0" data-bc="cnt" data-t="'+esc(d.id)+'" aria-label="عدد العلب">'+
     '<button class="bcb" data-act="bcStep" data-t="'+esc(d.id)+'" data-d="1">+</button></div></div>'+
     '<div class="bcmeta">عدد العلب المطلوبة · '+(d.items||[]).length+' صنف</div>'+items+
     '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(d.id)+'">+ صنف جديد</button></section>'+
