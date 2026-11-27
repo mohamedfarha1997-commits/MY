@@ -33,6 +33,10 @@
 .bctab{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:5px 6px 5px 10px;background:var(--surface);color:var(--ink)}
 .bctn{font-weight:700;font-size:14px;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
 .bctc{width:50px;height:30px;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:14px;box-sizing:border-box;padding:0}
+.bcseasons{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 12px}
+.bcseasons::-webkit-scrollbar{display:none}
+.bcseason{flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
+.bcseason.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .bcsplit{display:flex;gap:10px;align-items:flex-start}
 .bcstack{flex:0 0 46%;max-width:46%;display:flex;flex-direction:column;gap:8px}
 .bcsum{flex:1;min-width:0}
@@ -97,7 +101,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/03-helpers.js"></script>
-<script src="js/04-app.js?v=20261127-1600"></script>
+<script src="js/04-app.js?v=20261127-1700"></script>
 
 
 <script src="js/05-tabs-carousel.js"></script>
