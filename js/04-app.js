@@ -5963,11 +5963,13 @@ var ACT_CAT={
 };
 function actAllowed(act){
   if(!limited())return true;
+  if(BC_WRITE_ACTS.indexOf(act)>-1&&!bcCanEditSeason())return false;
   if(ACT_SYS[act])return true;
   if(!authed())return false;
   var o=(pref('aperms',{})[sessionCode()])||{};
   if(o[act]==='on')return true;
   if(o[act]==='off')return false;
+  if(BC_WRITE_ACTS.indexOf(act)>-1&&seasonLevel(bcSeasonCur().id)==='edit')return true;
   var def=ACT_CAT[act];
   if(!def)return canWrite();
   var lvl=permLevel(def[0]);
@@ -6025,7 +6027,19 @@ function permActsHTML(sel){
     '<div class="pusers">'+chips+'</div>'+
     note+
     '<div class="ppresets">'+bulk+'</div>'+
-    (rows||(note?'':empty))+'</div>';
+    (rows||(note?'':empty))+(curTab==='boxcomp'?bcSeasonPermHTML(sel,o):'')+'</div>';
+}
+function bcSeasonPermHTML(sel,o){
+  var rows=bcSeasons().map(function(x){
+    var v=o&&o['bcs_'+x.id];
+    var st=(v==='hide'||v==='view'||v==='edit')?v:'def';
+    var seg=[['def','حسب التبويب'],['hide','مخفي'],['view','يعرض'],['edit','يعدّل']].map(function(y){
+      var cls=st===y[0]?' on '+(y[0]==='hide'?'none':y[0]==='edit'?'edit':y[0]==='view'?'view':''):'';
+      return '<button class="pseg-b'+cls+'" data-act="bcSeasonPerm" data-u="'+esc(sel.id)+'" data-s="'+esc(x.id)+'" data-lv="'+y[0]+'" aria-pressed="'+(st===y[0])+'">'+y[1]+'</button>';
+    }).join('');
+    return '<div class="prow"><div class="pinfo"><b>موسم '+esc(x.name)+'</b><small>مخفي: مابيظهرش له · يعرض: يشوف بس · يعدّل: يقدر يغيّر</small></div><div class="pseg">'+seg+'</div></div>';
+  }).join('');
+  return '<div class="pgrp"><div class="pgrp-h">مواسم تجميع علب</div><p class="meta" style="margin:0">حدد لكل موسم: مخفي، يعرض بس، ولا يعدّل.</p>'+rows+'</div>';
 }
 
 /* ===== إدارة المستخدمين ===== */
@@ -6488,13 +6502,29 @@ function bcTabsRowHTML(){
   }).join('');
   return '<div class="bcstack">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+ علبة جديدة</button></div>';
 }
+/* صلاحية كل موسم لكل مستخدم: مخفي / عرض / تعديل. لو مش متحددة بتتبع صلاحية تبويب تجميع علب */
+var BC_WRITE_ACTS=['bcEdit','bcNew','bcSaveDraft','bcDelType','bcStep','bcAdd','bcDel','bcQStep'];
+function seasonLevel(id){
+  if(!limited())return 'edit';
+  var o=(pref('aperms',{})[sessionCode()])||{};
+  var v=o['bcs_'+id];
+  if(v==='hide'||v==='view'||v==='edit')return v;
+  var lv=permLevel('boxcomp');
+  return lv==='edit'?'edit':lv==='view'?'view':'hide';
+}
+function visibleSeasons(){return bcSeasons().filter(function(x){return seasonLevel(x.id)!=='hide';});}
+function bcCanEditSeason(){return seasonLevel(bcSeasonCur().id)==='edit';}
 function bcSeasonsHTML(){
   var cur=bcSeasonCur().id;
-  return '<div class="bcseasons">'+bcSeasons().map(function(x){
+  return '<div class="bcseasons">'+visibleSeasons().map(function(x){
     return '<button class="bcseason'+(x.id===cur?' on':'')+'" data-act="bcSeason" data-v="'+esc(x.id)+'">'+esc(x.name)+'</button>';
   }).join('')+'</div>';
 }
 function boxCompView(){
+  var vis=visibleSeasons();
+  if(!vis.length)return head('تجميع علب','مفيش مواسم متاحة لحسابك')+'<div class="meta" style="text-align:center;padding:20px 0">كلمة المالك هي اللي بتظهر لك المواسم</div>';
+  if(!vis.some(function(x){return x.id===bcSeasonCur().id;}))U.bcSeason=vis[0].id;
+  if(U.bcDraft&&!bcCanEditSeason()){U.bcDraft=null;U.bcDraftNew=false;}
   if(U.bcDraft)return bcSeasonsHTML()+editorView(U.bcDraft);
   var head0=head('تجميع علب','موسم: '+bcSeasonCur().name);
   if(!bcData().length)return head0+bcSeasonsHTML()+'<div class="bcsplit">'+bcTabsRowHTML()+'</div><div class="meta" style="text-align:center;padding:20px 0">الموسم ده فاضي، اضغط + علبة جديدة عشان تبدأ</div>';
@@ -6523,7 +6553,7 @@ function editorView(d){
 }
 document.addEventListener('change',function(e){
   var el=e.target;if(!el||!el.dataset||!el.dataset.bc)return;
-  if(!canWrite()){toast('مش مسموح لك تعدل هنا');render();return;}
+  if(!canWrite()||!bcCanEditSeason()){toast('مش مسموح لك تعدل هنا');render();return;}
   var t=bcTargetType(el.dataset.t);if(!t)return;
   if(el.dataset.bc==='cnt'){t.count=Math.max(0,Math.floor(Number(el.value)||0));}
   else if(el.dataset.bc==='qty'){var a=t.items[Number(el.dataset.i)];if(a)a.q=Math.max(0,Number(el.value)||0);}
@@ -6531,7 +6561,7 @@ document.addEventListener('change',function(e){
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcSeason:function(d){U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
+var ACT={ bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});var k='bcs_'+d.s;if(d.lv==='def')delete o[k];else o[k]=d.lv;m[u.code]=o;setPref('aperms',m);render();return false;}, bcSeason:function(d){if(seasonLevel(d.v)==='hide')return false;U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
