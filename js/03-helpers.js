@@ -142,6 +142,8 @@ function mergeStates(a,b,base){
   M.seen={};[a,b].forEach(function(s){var m=s.seen||{};Object.keys(m).forEach(function(k){if(!M.seen[k]||(m[k].t||0)>(M.seen[k].t||0))M.seen[k]=m[k];});});
   M.devs={};[a,b].forEach(function(s){var d=s.devs||{};Object.keys(d).forEach(function(k){M.devs[k]=Math.max(M.devs[k]||0,d[k]||0);});});
   M.devUser={};[a,b].forEach(function(s){var du=s.devUser||{};Object.keys(du).forEach(function(k){if(!M.devUser[k]||(du[k].t||0)>(M.devUser[k].t||0))M.devUser[k]=du[k];});});
+  M.devGone={};[a,b].forEach(function(s){var g=s.devGone||{};Object.keys(g).forEach(function(k){M.devGone[k]=Math.max(M.devGone[k]||0,g[k]||0);});});
+  Object.keys(M.devGone).forEach(function(k){if(M.devs[k]!==undefined&&M.devs[k]<=M.devGone[k]){delete M.devs[k];delete M.devUser[k];}});
   M.seq=Math.max(a.seq||0,b.seq||0);
   M.oseq=Math.max(a.oseq||0,b.oseq||0);
   M.fseq=Math.max(a.fseq||0,b.fseq||0);

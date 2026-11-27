@@ -813,7 +813,8 @@ var SYN_ICO={
   sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/>',
   file:'<path d="M7 3h7l5 5v13H7zM14 3v5h5"/>',
   cards:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
-  device:'<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>'
+  device:'<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M11 18h2"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 function synIco(k){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+(SYN_ICO[k]||'')+'</svg>';}
 function synState(){
@@ -846,7 +847,8 @@ function synDevCards(){
       '<div class="syn-dtx"><b>'+esc(name)+'</b>'+
         '<small><span class="syn-chip">'+(k===me?'الجهاز ده':'جهاز')+' · <bdi dir="ltr">'+esc(k.slice(0,6))+'</bdi></span></small>'+
         '<small class="syn-seen">'+(online?'نشط الآن':'آخر ظهور '+evDateStr(t))+'</small></div>'+
-      '<span class="syn-dot" aria-label="'+(online?'نشط':'غير نشط')+'"></span></div>';
+      '<span class="syn-dot'+(online?' on':'')+'" aria-label="'+(online?'نشط':'غير نشط')+'"></span>'+
+      (k===me?'':'<button class="syn-del" data-act="synDelDev" data-k="'+esc(k)+'" aria-label="حذف الجهاز">'+synIco('trash')+'</button>')+'</div>';
   }).join('');
 }
 function syncBodyHTML(){
@@ -6722,7 +6724,7 @@ document.addEventListener('change',function(e){
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});var k='bcs_'+d.s;if(d.lv==='def')delete o[k];else o[k]=d.lv;m[u.code]=o;setPref('aperms',m);render();return false;}, bcSeason:function(d){if(seasonLevel(d.v)==='hide')return false;U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
+var ACT={ synDelDev:function(d){synDelDevice(d.k);return false;}, bcSeasonPerm:function(d){var u=usersList().filter(function(x){return x.id===d.u;})[0];if(!u)return false;var m=Object.assign({},pref('aperms',{}));var o=Object.assign({},m[u.code]||{});var k='bcs_'+d.s;if(d.lv==='def')delete o[k];else o[k]=d.lv;m[u.code]=o;setPref('aperms',m);render();return false;}, bcSeason:function(d){if(seasonLevel(d.v)==='hide')return false;U.bcSeason=d.v;U.bcDraft=null;U.bcDraftNew=false;}, bcPdfBox:function(d){var t=bcType(d.t);if(!t)return false;bcPrintHTML(t.name,bcBoxPdfHTML(t));return false;}, bcPdfTotal:function(){bcPrintHTML('مجموع الكل',bcTotalPdfHTML());return false;}, bcStep:function(d){var t=bcTargetType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcTargetType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcQStep:function(d){var t=bcTargetType(d.t);if(!t)return false;var it=t.items[Number(d.i)];if(!it)return false;it.q=Math.max(0,(Number(it.q)||0)+Number(d.d));}, bcEdit:function(d){var t=bcType(d.t);if(!t)return false;U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=false;}, bcNew:function(){var id='bc'+Date.now().toString(36);var t={id:id,name:'علبة جديدة',count:0,items:[]};bcData().push(t);U.bcDraft=JSON.parse(JSON.stringify(t));U.bcDraftNew=true;}, bcSaveDraft:function(){var d=U.bcDraft;if(!d)return false;var real=bcType(d.id);if(!real)return false;real.name=bcNorm(d.name)||'علبة';real.count=Math.max(0,Math.floor(Number(d.count)||0));real.items=(d.items||[]).filter(function(it){return bcNorm(it.name);}).map(function(it){return {name:bcNorm(it.name),q:Number(it.q)||0};});U.bcDraft=null;U.bcDraftNew=false;}, bcCancelDraft:function(){var d=U.bcDraft;if(d&&U.bcDraftNew){bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.id;});}U.bcDraft=null;U.bcDraftNew=false;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;bcSeasonCur().types=bcData().filter(function(x){return x.id!==d.t;});U.bcDraft=null;U.bcDraftNew=false;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
@@ -7876,6 +7878,15 @@ var READ_ACTS={calNav:1,calDay:1,calClose:1,calToday:1,deepRefresh:1,resetOpen:1
   printOrder:1,printAllOrders:1,exportBatchMats:1,monthPdf:1,logout:1,login:1,gdConnect:1,gdOff:1,recvClose:1,recv:1,
   newOrder:1,oEdit:1,newBatch:1,newMat:1,newProd:1,editMat:1,editProd:1,toggle:1,rQty:1,theme:1,install:1,matsToggle:1,prodKind:1,prodOrd:1,setSeason:1,prodSeason:1,toggleSeason:1,shopTab:1,toggleTab:1,settingsSubmit:1,settingsBio:1,bioGo:1,bioSkipAct:1,bioEnableAct:1,sChangeStart:1,sCancel:1,sLock:1};
 /* ألوان الحقول: أخضر مع علامة صح، أو أحمر مع علامة غلط */
+/* حذف جهاز من القايمة (ما ينفعش على الجهاز اللي انت فيه) */
+function synDelDevice(k){
+  if(!S.devs||!S.devs[k])return;
+  if(!window.confirm('تشيل الجهاز ده من القايمة؟ لو كان لسه بيشتغل هيرجع يظهر تلقائي.'))return;
+  delete S.devs[k];
+  if(S.devUser)delete S.devUser[k];
+  S.devGone=S.devGone||{};S.devGone[k]=nowStamp();
+  save();render();
+}
 function paintField(id,st){
   if(id==='rLast'){paintBox(st);return;}
   var inp=document.getElementById(id);if(!inp)return;
