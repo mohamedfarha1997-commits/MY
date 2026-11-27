@@ -27,17 +27,22 @@
 .pchip-lock{color:var(--muted)}
 .upill.bad{background:rgba(220,38,38,.12);color:#b91c1c}
 /* تجميع علب */
-.bctabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.bcrowtop{display:flex;align-items:center;gap:8px;margin:0 0 12px}
+.bctabs{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px}
 .bctabs::-webkit-scrollbar{display:none}
-.bctab{flex:0 0 auto;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font-size:14px;white-space:nowrap;cursor:pointer}
-.bctab small{opacity:.65;margin-inline-start:6px;font-weight:600}
-.bctab.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.bctab-add{border-style:dashed}
+.bctab{flex:0 0 auto;display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:5px 6px 5px 10px;background:var(--surface);color:var(--ink)}
+.bctn{font-weight:700;font-size:14px;white-space:nowrap;max-width:96px;overflow:hidden;text-overflow:ellipsis}
+.bctc{width:50px;height:30px;text-align:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:14px;box-sizing:border-box;padding:0}
+.bcgear{width:30px;height:30px;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;padding:0;border-radius:8px}
+.bcgear:active{background:var(--line)}
+.bctab-add{flex:0 0 auto;width:38px;height:40px;border-radius:12px;border:1px dashed var(--line);background:transparent;color:var(--ink);font-size:20px;cursor:pointer;padding:0}
+.bctotal{flex:0 0 auto;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--surface);color:var(--ink);font-size:13px;white-space:nowrap}
+.bctotal b{font-size:15px;margin:0 2px}
 .bccard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;margin:0 0 12px;color:var(--ink)}
 .bchead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .bcstep{display:flex;align-items:center;gap:6px}
 .bcb,.bcx{width:36px;height:36px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:18px;cursor:pointer;padding:0;flex:0 0 auto}
-.bcnum{width:64px;height:36px;text-align:center;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:16px}
+.bcnum{width:64px;height:36px;text-align:center;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:800;font-size:16px;box-sizing:border-box}
 .bcmeta{font-size:12px;opacity:.7;margin:6px 0 4px}
 .bcitem{border:1px solid var(--line);border-radius:12px;padding:10px;margin:8px 0;background:var(--surface)}
 .bcn{width:100%;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font-size:15px;box-sizing:border-box}
@@ -47,7 +52,8 @@
 .bcq{width:76px;height:36px;text-align:center;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:15px;font-weight:700;box-sizing:border-box}
 .bcname{flex:1;min-width:0;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:0 10px;font-size:16px;font-weight:800;box-sizing:border-box}
 .bcadd{margin-top:8px;width:100%}
-.bcdelt{margin-top:4px;width:100%}
+.bcfoot{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.bcdanger{color:#c0392b !important;border-color:#c0392b !important}
 .bctbl{width:100%;border-collapse:collapse;color:var(--ink)}
 .bctbl th,.bctbl td{padding:9px 6px;border-bottom:1px solid var(--line);text-align:right}
 .bctbl th{font-size:13px;opacity:.7;font-weight:600}
@@ -81,7 +87,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/03-helpers.js"></script>
-<script src="js/04-app.js?v=20261127-1100"></script>
+<script src="js/04-app.js?v=20261127-1200"></script>
 
 
 <script src="js/05-tabs-carousel.js"></script>
