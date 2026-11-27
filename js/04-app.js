@@ -3895,7 +3895,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261128-1300';
+var APP_BUILD='20261128-1400';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -7166,7 +7166,7 @@ var ACT={ trkOk:function(d){
   },
   editProd:function(d){
     var p=P(d.id);U.sheet=null;U.osheet=null;U.confirm=null;
-    U.form={kind:'prod',edit:p.id,fgStore:fgStoreOf(p),group:unesc(p.group||''),noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:(hasOven(p)?String(p.mins):''),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
+    U.form={kind:'prod',edit:p.id,fgStore:fgStoreOf(p),shelf:unesc(p.shelf||''),group:unesc(p.group||''),noOrder:!!p.noOrder,shop:!!p.shop,season:seasonOf(p),name:unesc(p.name),cat:unesc(p.cat),unit:PROD_UNITS.indexOf(p.unit)>-1?p.unit:(isPieceU(p.unit)?'قطعة':'جرام'),mins:(hasOven(p)?String(p.mins):''),temp:(p.temp==null?'':String(p.temp)),yield:String(p.yield||1),notes:unesc(p.notes),comps:(p.comps||[]).map(function(c){return {p:c.p,q:String(c.q)};}),
       stages:p.stages.map(function(g){
         return {kind:g.kind,name:unesc(g.name),
           ings:g.ings.map(function(i){var m=M(i.m);return {m:i.m,n:m?unesc(m.name):'',q:String(i.dq!=null?i.dq:i.q),u:i.du||(m?m.unit:'جرام')};}),
@@ -7999,7 +7999,7 @@ var ACT={ trkOk:function(d){
     var lr=p.runFrom?null:fillLastRun(p);
     var src=p.runFrom||(lr?lr.from:[]);
     var yv=p.runOut!=null?p.runOut:(lr?lr.out:'');
-    U.fedit={id:p.id,kind:p.fill,name:p.name,grp:p.grp||'',store:fgStoreOf(p),yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
+    U.fedit={id:p.id,kind:p.fill,name:p.name,grp:p.grp||'',store:fgStoreOf(p),shelf:unesc(p.shelf||''),yield:yv,rows:src.map(function(x){return {p:x.p,q:x.q};})};
   },
   feAdd:function(){
     var E=U.fedit;if(!E)return false;
