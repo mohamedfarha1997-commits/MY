@@ -6446,13 +6446,12 @@ function bcTabsRowHTML(){
       '<input class="bctc" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'" aria-label="عدد العلب">'+
       '<button class="bcgear" data-act="bcEdit" data-t="'+esc(t.id)+'" aria-label="تعديل العلبة">'+BC_GEAR+'</button></div>';
   }).join('');
-  return '<div class="bcrowtop"><div class="bctabs">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+</button></div>'+
-    '<div class="bctotal">المجموع <b>'+bcTotalBoxes()+'</b> علبة</div></div>';
+  return '<div class="bcstack">'+tabs+'<button class="bctab-add" data-act="bcNew" aria-label="علبة جديدة">+ علبة جديدة</button></div>';
 }
 function boxCompView(){
   if(U.bcDraft)return editorView(U.bcDraft);
-  if(!bcData().length)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+bcTabsRowHTML()+'<div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
-  return bcTabsRowHTML()+bcTotalView();
+  if(!bcData().length)return head('تجميع علب','ضيف أول علبة عشان تبدأ')+'<div class="bcsplit">'+bcTabsRowHTML()+'</div><div class="meta" style="text-align:center;padding:20px 0">مفيش علب لسه</div>';
+  return '<div class="bcsplit">'+bcTabsRowHTML()+'<div class="bcsum">'+bcTotalView()+'</div></div>';
 }
 /* جدول المجموع */
 function bcTotalView(){
