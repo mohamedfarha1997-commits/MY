@@ -8587,6 +8587,12 @@ document.addEventListener('focusin',function(e){
 });
 vvSync();
 
+/* اختيار مدة الصلاحية من الأزرار (لازم يتعرّف جوه نفس الـ scope بتاع ACT) */
+ACT.shelfPick=function(d){
+  if(d.t==='form'&&U.form){U.form.shelf=d.v;return;}
+  if(d.t==='fedit'&&U.fedit){U.fedit.shelf=d.v;return;}
+  return false;
+};
 try{render();}catch(e){console.error('first render',e);}
 restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='finish'){b.stage='prod';b.startedAt=b.startedAt||(Date.now()-dur(b)-1000);b.notified=true;b.ringing=false;}});migrateBoxOrders();PRODUCTS.forEach(function(p){allocReady(p.id);});save();render();}catch(e){console.error("boot",e);}if(!window.RMY_NEEDS_DATA)document.dispatchEvent(new Event("rmy:loaded"));});
 })();
@@ -8637,9 +8643,3 @@ netMeasure();
 setInterval(netMeasure,15000);
 window.addEventListener('online',netMeasure);
 window.addEventListener('offline',function(){NETQ.lvl='off';NETQ.ms=0;netPaint();});
-/* اختيار مدة الصلاحية من الأزرار */
-ACT.shelfPick=function(d){
-  if(d.t==='form'&&U.form){U.form.shelf=d.v;return;}
-  if(d.t==='fedit'&&U.fedit){U.fedit.shelf=d.v;return;}
-  return false;
-};
