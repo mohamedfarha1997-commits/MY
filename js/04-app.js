@@ -107,6 +107,19 @@ function nextUserCode(){var used={};usersList().forEach(function(u){used[u.code]
 /* رقم الـ ID الثابت للمستخدم: بيتولد مرة واحدة ومش بيتغير حتى لو الاسم أو الكود اتعدل */
 
 function maskWa(w){w=String(w||'');return w.length>=6?w.slice(0,-4)+'****':'';}
+/* أي تفاعل على أي تبويب بيتسجل في السجل زي الدفعات: كل تبويب صف واحد، وعملياته مضغوطة جواه */
+var TAB_LBL={home:'الرئيسية',orders:'الأوردرات',shopOrders:'أوردرات المحل',shopProducts:'وصفات المحل',prep:'التحضير',prod:'الإنتاج',stock:'الخامات',fgstock:'مخزن الإنتاج',tracking:'تتبع الصلاحية',reserved:'تحت التشغيل',recipes:'الوصفات',settings:'الإعدادات',filling:'تحضير حشو',prepreq:'تحضيرات مطلوبة',waste:'الهالك',boxes:'العلب',boxcomp:'تجميع علب',calendar:'التقويم',verify:'التحقق من البطاقة'};
+function logUserAct(a){
+  if(!a||ACT_SYS[a]||EVENT_LABEL[a])return;
+  var cat=ACT_CAT[a]||[],tab=cat[0]||U.view||'other',key='tab:'+tab;
+  S.plog=S.plog||{};
+  var e=S.plog[key]||{p:key,qty:0,by:[],at:Date.now()};
+  e.tabLbl=TAB_LBL[tab]||tab;
+  var c=actorCode();
+  if(e.by.indexOf(c)<0)e.by.push(c);
+  e.ev=(e.ev||[]).concat([{c:c,a:a,l:cat[1]||a,t:Date.now()}]).slice(-40);
+  S.plog[key]=e;
+}
 function markBy(b,act){
   if(!b)return;
   S.plog=S.plog||{};
@@ -1828,7 +1841,12 @@ function codeOf(n,c){
   var u=usersList().filter(function(x){return x.name===n;})[0];
   return u?u.code:(n||'');
 }
-function plLine(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(limited()?(whoOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: '+esc(whoOf(r.d.ap,r.d.apc))+'</span>':''):(codeOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: <span class="ltr">'+esc(codeOf(r.d.ap,r.d.apc))+'</span></span>':''))+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
+function plLine(r){
+  var base=plLineBase(r);
+  if(r.d.fill||!r.d.id||!(S.plog&&S.plog[r.d.id]))return base;
+  return '<details class="bfold"><summary>'+base+'</summary>'+batchOpsHTML(r.d.id)+'</details>';
+}
+function plLineBase(r){var i=plInfo(r.d);return '<div class="hist"><span><span class="ltr">'+esc(i.code)+'</span> · '+esc(i.name)+'<br><span class="meta">'+esc(monthKey(r.d.at||0)+(r.d.fill?' · حشو · من: '+(r.d.from||[]).map(function(x){var pp=P(x.p);return pp?pp.name:'';}).filter(Boolean).join('، '):' · تشغيل'))+'</span>'+(whoOf(r.d.by,r.d.byc)?'<br><span class="meta">عملها: '+esc(whoOf(r.d.by,r.d.byc))+'</span>':'')+(limited()?(whoOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: '+esc(whoOf(r.d.ap,r.d.apc))+'</span>':''):(codeOf(r.d.ap,r.d.apc)?'<br><span class="meta">اعتمدها: <span class="ltr">'+esc(codeOf(r.d.ap,r.d.apc))+'</span></span>':''))+'</span><span class="meta" style="text-align:end">'+f(i.qty)+' '+esc(i.unit)+'<br>'+tstr(r.d.at)+'</span></div>';}
 function plSearchHTML(mode){
   var q=String(U.plq||'').toLowerCase().replace(/[\s-]/g,'');
   if(!q)return '';
@@ -1847,7 +1865,7 @@ function prodLogHTML(mode){
     var isOpen=FOLD_OPEN['plog-'+k]!==undefined?FOLD_OPEN['plog-'+k]===true:k===cur;
     return '<details class="card arch" data-fk="plog-'+k+'" style="margin-top:10px;--c:var(--prod)"'+(isOpen?' open':'')+'><summary class="bh"><div><h3 class="bn">'+k+'</h3><span class="meta">'+list.length+' صنف معتمد</span></div><span class="pill '+(locked?'ok':'low')+'">'+(locked?'مقفول':'مفتوح')+'</span></summary>'+list.map(plLine).join('')+'</details>';
   }).join('');
-  return '<div class="grp" style="margin-top:22px">'+(mode==='fill'?'سجل إنتاج الحشو':'سجل إنتاج الدفعات')+'</div>'+
+  return FOLD_CSS+'<div class="grp" style="margin-top:22px">'+(mode==='fill'?'سجل إنتاج الحشو':'سجل إنتاج الدفعات')+'</div>'+
     '<input type="text" data-plq="'+(mode==='fill'?'fill':'batch')+'" value="'+esc(U.plq||'')+'" placeholder="'+(mode==='fill'?'ابحث بكود الحشو أو اسم الصنف':'ابحث بكود التشغيل أو اسم الصنف')+'" aria-label="بحث في سجل الإنتاج" style="width:100%;margin:6px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font:inherit">'+
     '<div id="plqRes">'+plSearchHTML(mode)+'</div>'+body;
 }
@@ -6441,7 +6459,24 @@ var FOLD_CSS='<style>'+
   '.tblfold-sum::-webkit-details-marker{display:none}'+
   '.tblfold-sum::after{content:"▾";color:var(--muted,#6b7090)}'+
   '.tblfold[open]>.tblfold-sum::after{content:"▴"}'+
+  '.bfold>summary{list-style:none;cursor:pointer;display:block}'+
+  '.bfold>summary::-webkit-details-marker{display:none}'+
+  '.bfold>summary::marker{content:""}'+
+  '.bfold-ops{padding:4px 2px 8px;margin-inline-start:6px;border-inline-start:2px solid var(--line-2,#E5EBF1);padding-inline-start:10px}'+
+  '.bfold-op{display:flex;justify-content:space-between;gap:6px;padding:5px 0;font-size:12px;color:var(--ink-2,#3A4959);border-bottom:1px dashed var(--line-2,#E5EBF1)}'+
+  '.bfold-op:last-child{border-bottom:0}'+
+  '.bfold-op small{color:var(--muted,#6b7090);white-space:nowrap}'+
   '</style>';
+/* عمليات الدفعة الواحدة مضغوطة جوه الصف: بتتفتح بالضغط على الدفعة نفسها */
+function batchOpsHTML(k){
+  var e=S.plog&&S.plog[k];
+  if(!e||!(e.ev||[]).length)return '<div class="meta">مفيش عمليات مسجلة</div>';
+  var list=usersList();
+  var evs=e.ev.slice().sort(function(x,y){return (x.t||0)-(y.t||0);});
+  return '<div class="bfold-ops">'+evs.map(function(x){
+    return '<div class="bfold-op"><span>'+esc(evNameOf(list,x.c))+' · '+esc(x.l||EVENT_LABEL[x.a]||'عملية')+'</span><small>'+evDateStr(x.t||0)+'</small></div>';
+  }).join('')+'</div>';
+}
 function recentEventsHTML(list){
   var sel=U.evUser||'', n=U.evN||40;
   var groups=batchGroups(sel), shown=groups.slice(0,n);
@@ -6492,16 +6527,16 @@ function batchGroups(code){
     var users=[];evs.forEach(function(x){if(users.indexOf(x.c)<0)users.push(x.c);});
     var last=0;evs.forEach(function(x){if((x.t||0)>last)last=x.t||0;});
     var first=e.at||Math.min.apply(null,all.map(function(x){return x.t||0;}));
-    out.push({k:id,b:sid(id),p:pr?pr.name:'—',start:first,last:last,n:evs.length,users:users});
+    out.push({k:id,b:e.tabLbl?'':sid(id),p:e.tabLbl||(pr?pr.name:'—'),start:first,last:last,n:evs.length,users:users});
   });
   return out.sort(function(x,y){return y.last-x.last;});
 }
 function evGroupRowHTML(g,list){
   var names=g.users.map(function(c){return evNameOf(list,c);}).join('، ');
-  return '<li><button class="ev-grp" data-act="evOpen" data-k="'+esc(g.k)+'">'+
+  return '<li><details class="bfold"><summary class="ev-grp">'+
     '<div class="ev-grp-main"><b>'+esc(g.p)+'</b><small class="ltr">'+esc(g.b)+'</small></div>'+
     '<div class="ev-grp-side"><span class="dash-badge ok">'+g.n+' عملية</span><small>بدأت '+evDateStr(g.start)+'</small></div>'+
-    '<small class="ev-grp-who">'+esc(names)+'</small></button></li>';
+    '<small class="ev-grp-who">'+esc(names)+'</small></summary>'+batchOpsHTML(g.k)+'</details></li>';
 }
 /* صفحة الدفعة: كل عملياتها من البداية، وزرار رجوع للسجل */
 function evBatchPageHTML(list){
@@ -8313,7 +8348,9 @@ document.addEventListener('click',function(e){
   var fn=ACT[t.dataset.act];if(!fn)return;
   if(!actBypass(t.dataset.act)&&!actAllowed(t.dataset.act)){toast('مش مسموح لك تعمل الإجراء ده');return;}
   markSeen(t.dataset.act);
-  if(fn(t.dataset)===false)return;
+  var rr=fn(t.dataset);
+  logUserAct(t.dataset.act);
+  if(rr===false)return;
   save();render();
 });
 document.addEventListener('keydown',function(e){
