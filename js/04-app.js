@@ -3903,7 +3903,7 @@ function footFine(){
 }
 
 /* ===== تحديث النظام: زرار تحديث عميق في الهيدر + ورقة إجبارية قبل الدخول لو فيه نسخة أحدث ===== */
-var APP_BUILD='20261128-1100';
+var APP_BUILD='20261128-1200';
 /* بعد أي تحديث: لو النسخة اتغيرت، نبلّغ المستخدم إن الأيقونة على الشاشة الرئيسية ممكن تفضل قديمة لحد ما يعيد إضافة التطبيق */
 (function(){
   var KEY='khat-build-seen';
@@ -8595,7 +8595,7 @@ restoreLocal().then(function(){try{S.batches.forEach(function(b){if(b.stage==='f
 document.addEventListener('change',function(e){
   var t=e.target;if(!t)return;
   if(t.dataset&&t.dataset.f==='fgStore'&&U.form){
-    U.form.fgStore=t.value;U.form.shelf=shelfForStore(t.value,U.form.shelf);render();return;
+    toast('تشخيص مكان: '+t.value);U.form.fgStore=t.value;U.form.shelf=shelfForStore(t.value,U.form.shelf);try{render();}catch(err){toast('خطأ عرض: '+err.message);}return;
   }
   if(t.id==='feStore'&&U.fedit){
     U.fedit.store=t.value;U.fedit.shelf=shelfForStore(t.value,U.fedit.shelf);render();
