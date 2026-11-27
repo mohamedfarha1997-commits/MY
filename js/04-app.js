@@ -5925,7 +5925,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],bcStep:['boxcomp','تجميع علب','w'],bcAdd:['boxcomp','تجميع علب','w'],bcDel:['boxcomp','تجميع علب','w'],bcOpen:['boxcomp','تجميع علب','r'],bcNew:['boxcomp','تجميع علب','w'],bcDelType:['boxcomp','تجميع علب','w'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6427,19 +6427,35 @@ function bcTotals(){
   return order.map(function(k){return {name:k,total:m[k]};});
 }
 function bcTotalBoxes(){return bcData().reduce(function(a,t){return a+(Number(t.count)||0);},0);}
+function bcNames(){var names=[];bcData().forEach(function(t){(t.items||[]).forEach(function(it){var k=bcNorm(it.name);if(k&&names.indexOf(k)<0)names.push(k);});});return names;}
+function bcRowsHTML(t){
+  return (t.items||[]).map(function(it,i){
+    return '<div class="bcrow"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'"><input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'"><button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف">×</button></div>';
+  }).join('');
+}
 function boxCompView(){
+  var t=U.bcTab?bcType(U.bcTab):null;
+  return t?boxTabView(t):bcMainView();
+}
+/* الرئيسية: قايمة العلب + التوتال لوحده */
+function bcMainView(){
   var T=bcData();
-  var names=[];T.forEach(function(t){(t.items||[]).forEach(function(it){var k=bcNorm(it.name);if(k&&names.indexOf(k)<0)names.push(k);});});
-  var dl='<datalist id="bcNames">'+names.map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>';
-  var cards=T.map(function(t){
-    var rows=(t.items||[]).map(function(it,i){
-      return '<div class="bcrow"><input class="bcn" list="bcNames" value="'+esc(it.name)+'" data-bc="name" data-t="'+esc(t.id)+'" data-i="'+i+'"><input class="bcq" type="number" inputmode="decimal" min="0" step="any" value="'+(Number(it.q)||0)+'" data-bc="qty" data-t="'+esc(t.id)+'" data-i="'+i+'"><button class="bcx" data-act="bcDel" data-t="'+esc(t.id)+'" data-i="'+i+'" aria-label="حذف">×</button></div>';
-    }).join('');
-    return '<section class="bccard"><div class="bchead"><b>'+esc(t.name)+'</b><div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button><input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div><div class="bcmeta">عدد العلب</div>'+rows+'<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف</button></section>';
+  var list=T.map(function(t){
+    return '<button class="bccard bcpick" data-act="bcOpen" data-t="'+esc(t.id)+'"><span class="bcpn">'+esc(t.name)+'</span><span class="meta">'+(Number(t.count)||0)+' علبة · '+(t.items||[]).length+' صنف</span></button>';
   }).join('');
   var tot=bcTotals();
-  var totHTML=tot.length?tot.map(function(r){return '<div class="bcrow bct"><span>'+esc(r.name)+'</span><b>'+r.total+'</b></div>';}).join(''):'<div class="meta">ضيف أصناف للعلب</div>';
-  return head('تجميع علب','عدّل عدد العلب والأصناف والكميات لكل علبة، والإجمالي بيتحدث تلقائي')+dl+cards+'<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+totHTML+'</section>';
+  var totHTML=tot.length?tot.map(function(r){return '<div class="bcrow bct"><span>'+esc(r.name)+'</span><b>'+r.total+'</b></div>';}).join(''):'<div class="meta">مفيش أصناف لسه</div>';
+  return head('تجميع علب','اختار علبة عشان تعدّل أصنافها، أو اعمل علبة جديدة')+'<div class="bclist">'+list+'</div>'+
+    '<button class="btn ghost sm bcadd" data-act="bcNew">+ علبة جديدة</button>'+
+    '<section class="bccard"><div class="bchead"><b>مجموع الكل</b><span class="meta">'+bcTotalBoxes()+' علبة</span></div>'+totHTML+'</section>';
+}
+/* صفحة علبة لوحدها: اسم قابل للتعديل، عدد العلب، الأصناف والكميات */
+function boxTabView(t){
+  var dl='<datalist id="bcNames">'+bcNames().map(function(n){return '<option value="'+esc(n)+'">';}).join('')+'</datalist>';
+  return '<button class="btn ghost sm bcadd" data-act="bcOpen" data-t="">→ رجوع لتجميع علب</button>'+dl+
+    '<section class="bccard"><div class="bchead"><input class="bcname" value="'+esc(t.name)+'" data-bc="tname" data-t="'+esc(t.id)+'"><div class="bcstep"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="-1">−</button><input class="bcnum" type="number" inputmode="numeric" min="0" step="1" value="'+(Number(t.count)||0)+'" data-bc="cnt" data-t="'+esc(t.id)+'"><button class="bcb" data-act="bcStep" data-t="'+esc(t.id)+'" data-d="1">+</button></div></div><div class="bcmeta">عدد العلب</div>'+bcRowsHTML(t)+
+    '<button class="btn ghost sm bcadd" data-act="bcAdd" data-t="'+esc(t.id)+'">+ صنف</button></section>'+
+    '<button class="btn ghost sm bcdelt" data-act="bcDelType" data-t="'+esc(t.id)+'">حذف العلبة دي</button>';
 }
 document.addEventListener('change',function(e){
   var el=e.target;if(!el||!el.dataset||!el.dataset.bc)return;
@@ -6447,10 +6463,11 @@ document.addEventListener('change',function(e){
   var t=bcType(el.dataset.t);if(!t)return;
   if(el.dataset.bc==='cnt'){t.count=Math.max(0,Math.floor(Number(el.value)||0));}
   else if(el.dataset.bc==='qty'){var a=t.items[Number(el.dataset.i)];if(a)a.q=Math.max(0,Number(el.value)||0);}
+  else if(el.dataset.bc==='tname'){t.name=bcNorm(el.value)||'علبة';}
   else if(el.dataset.bc==='name'){var b=t.items[Number(el.dataset.i)];if(b)b.name=bcNorm(el.value);}
   save();render();
 });
-var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);},
+var ACT={ bcStep:function(d){var t=bcType(d.t);if(!t)return false;t.count=Math.max(0,(Number(t.count)||0)+Number(d.d));}, bcAdd:function(d){var t=bcType(d.t);if(!t)return false;t.items=t.items||[];t.items.push({name:'',q:0});}, bcDel:function(d){var t=bcType(d.t);if(!t)return false;t.items.splice(Number(d.i),1);}, bcOpen:function(d){U.bcTab=d.t||null;}, bcNew:function(){var id='bc'+Date.now().toString(36);bcData().push({id:id,name:'علبة جديدة',count:0,items:[]});U.bcTab=id;}, bcDelType:function(d){var t=bcType(d.t);if(!t)return false;if(!window.confirm('حذف العلبة "'+t.name+'"؟'))return false;S.boxComp.types=bcData().filter(function(x){return x.id!==d.t;});U.bcTab=null;},
   theme:function(){var n=curTheme()==="dark"?"light":"dark";var u=sessionCode()?userByCode(sessionCode()):null;if(u){u.theme=n;save();}else setPref('theme',n);render();return false;},
   install:function(){var p=window.KH_INSTALL;if(!p)return false;p.prompt();p.userChoice.then(function(){window.KH_INSTALL=null;render();});return false;},
   login:function(){
