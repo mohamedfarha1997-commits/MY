@@ -2614,13 +2614,28 @@ function fgStoreBadge(p){return '<span class="fgst fgst-'+({'ثلاجة':'fridge
 
 /* ---------- ملصق الصنف للطابعة الحرارية ---------- */
 /* مقاس الاستيكر بالمليمتر: غيّره لو الاستيكر عندك مقاس تاني (مثلاً 40 × 30 أو 58 × 40) */
-var LBL_W_MM=50, LBL_H_MM=30;
-/* قالب الملصق: اللوجو العريض RMY (بدون خلفية) - اللون كحلي عشان يظهر على الورق الأبيض */
-var LBL_LOGO_FILL='#0c1233', LBL_LOGO_W_DOTS=115, LBL_LOGO_H_DOTS=24;
-var LBL_LOGO_PATHS='<path d="M120 70 H475 C535 70 570 105 570 155 C570 205 535 235 475 235 H250 L165 350 H65 L200 180 H465 C480 180 490 170 490 155 C490 140 480 130 465 130 H120 Z"/><path d="M250 252 H420 L590 350 H420 Z"/><path d="M610 70 H700 L820 190 L940 70 H1030 V350 H940 V165 L820 285 L700 165 V350 H610 Z"/><path d="M1050 70 H1160 L1270 165 L1380 70 H1490 L1320 250 V350 H1220 V250 Z"/>';
-function lblLogoSVG(){return '<svg class="lbl-logo" viewBox="40 50 1540 320" aria-hidden="true"><g fill="'+LBL_LOGO_FILL+'">'+LBL_LOGO_PATHS+'</g></svg>';}
+var LBL_W_MM=50, LBL_H_MM=30; /* التصميم الأساسي للملصق، والباقي بيتكبر أو يتصغر تلقائي حسب الورق */
+var LBL_DPMM=7.68; /* كثافة الطباعة الحرارية: 384 نقطة لعرض 50 مم */
+/* مقاسات الورق: الاستيكرات (roll) بتتطبع بالطابعة الحرارية أو المتصفح، والـ A تتطبع من المتصفح بس */
+var LBL_PAPERS=[
+  {k:'50x30',n:'50 × 30 مم',w:50,h:30},
+  {k:'40x30',n:'40 × 30 مم',w:40,h:30},
+  {k:'40x25',n:'40 × 25 مم',w:40,h:25},
+  {k:'A6',n:'A6',w:105,h:148,sheet:1},
+  {k:'A5',n:'A5',w:148,h:210,sheet:1},
+  {k:'A4',n:'A4',w:210,h:297,sheet:1}];
+function lblPaperOf(L){var k=(L&&L.paper)||printerInfo().paper||'50x30';for(var i=0;i<LBL_PAPERS.length;i++)if(LBL_PAPERS[i].k===k)return LBL_PAPERS[i];return LBL_PAPERS[0];}
+function lblScale(pp){return Math.min(pp.w/LBL_W_MM,pp.h/LBL_H_MM);}
+/* يحط الملصق في صفحة الورق المختارة: مكبّر أو مصغّر وفي النص */
+function lblPageWrap(inner,pp){
+  var s=lblScale(pp),ox=(pp.w-LBL_W_MM*s)/2,oy=(pp.h-LBL_H_MM*s)/2;
+  return '<div class="lblpg" style="width:'+pp.w+'mm;height:'+pp.h+'mm;position:relative;overflow:hidden"><div style="position:absolute;left:'+ox.toFixed(2)+'mm;top:'+oy.toFixed(2)+'mm;transform:scale('+s.toFixed(4)+');transform-origin:0 0">'+inner+'</div></div>';
+}
+/* قالب الملصق: اللوجو الصغير على الشمال فوق (مربع أزرق RMY) */
+var LBL_LOGO_SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="64" height="64"><rect width="512" height="512" fill="#2B3595"/><g fill="#FFFFFF" fill-rule="evenodd"><path d="M87 215 H150 Q185 215 185 245 Q185 268 165 275 L185 297 H160 L140 277 H108 V297 H87 Z M108 236 V256 H150 Q163 256 163 246 Q163 236 150 236 Z"/><path d="M195 215 H222 L250 262 L278 215 H305 V297 H283 V248 L258 288 H242 L217 248 V297 H195 Z"/><path d="M308 215 H333 L364 254 L395 215 H422 L380 270 V297 H355 V270 Z"/></g></svg>';
+function lblLogoSVG(){return LBL_LOGO_SVG.replace('<svg ','<svg class="lbl-logo" aria-hidden="true" ');}
 var LBL_IMG=new Image();
-LBL_IMG.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="460" height="96" viewBox="40 50 1540 320"><g fill="'+LBL_LOGO_FILL+'">'+LBL_LOGO_PATHS+'</g></svg>');
+LBL_IMG.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(LBL_LOGO_SVG);
 function fgProdDate(p){
   var ts=0;
   if(isFill(p)&&Array.isArray(p.fillRuns)){p.fillRuns.forEach(function(r){if((r.at||0)>ts)ts=r.at;});}
@@ -2629,10 +2644,11 @@ function fgProdDate(p){
 }
 /* ---------- نافذة طباعة الملصقات: معاينة + طريقة الطباعة + عدد النسخ ---------- */
 function lblCss(){
-  return '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1mm 1.6mm;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;font-family:Tahoma,Arial,sans-serif;color:#000;background:#fff;page-break-after:always}'+
-    '.lbl-logo{display:block;width:15mm;height:auto;margin-right:auto;margin-bottom:.8mm;flex:0 0 auto}'+
+  return '.lbl{width:'+LBL_W_MM+'mm;height:'+LBL_H_MM+'mm;box-sizing:border-box;padding:1mm 1.6mm;display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;font-family:Tahoma,Arial,sans-serif;color:#000;background:#fff}'+
+    '.lbl-top{display:flex;align-items:center;gap:1mm;border-bottom:1px solid #000;padding-bottom:.4mm;margin-bottom:.5mm}'+
+    '.lbl-logo{display:block;width:5mm;height:5mm;flex:0 0 auto}'+
     '.lbl-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:flex-start}'+
-    '.lbl-name{font-size:10pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid #000;padding-bottom:.4mm;margin-bottom:.5mm}'+
+    '.lbl-name{flex:1 1 auto;min-width:0;font-size:10pt;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'+
     '.lbl-row{display:flex;justify-content:space-between;align-items:baseline;font-size:8pt;line-height:1.2;gap:2mm;white-space:nowrap}'+
     '.lbl-row span{color:#333}'+
     '.lbl-codes{margin-top:.5mm;padding-top:.4mm;border-top:1px dashed #000;font-size:7.5pt;line-height:1.2}'+
@@ -2644,7 +2660,7 @@ function lblSheetHTML(){
   var L=U.lbl;if(!L)return '';
   var list=lblItems();if(!list.length)return '';
   var idx=Math.min(L.i||0,list.length-1),cur=list[idx],copies=L.copies||1,total=list.length*copies;
-  var method=L.method||'bt';
+  var method=L.method||'bt',pp=lblPaperOf(L);
   var scale=300/(LBL_W_MM*96/25.4);
   var preview='<style>'+lblCss()+'</style><div class="lblprev"><div class="lblprev-in" style="transform:scale('+scale.toFixed(3)+')">'+fgLabelHTML(cur)+'</div></div>';
   var chips=list.length>1?'<div class="lblchips">'+list.map(function(p,i){return '<button class="'+(i===idx?'on':'')+'" data-act="lblPick" data-i="'+i+'">'+esc(unesc(p.name))+'</button>';}).join('')+'</div>':'';
@@ -2655,6 +2671,7 @@ function lblSheetHTML(){
       '<h3>طباعة الملصقات</h3>'+
       '<div class="meta">'+(list.length>1?list.length+' صنف':'صنف واحد')+' · راجع المعاينة قبل الطباعة</div>'+
       '<div class="sec-l" style="margin-top:12px">المعاينة</div>'+preview+chips+
+      '<div class="sec-l" style="margin-top:14px">حجم الورق</div><div class="lblchips">'+LBL_PAPERS.map(function(q){return '<button class="'+(pp.k===q.k?'on':'')+'" data-act="lblPaper" data-v="'+q.k+'">'+q.n+'</button>';}).join('')+'</div>'+
       '<div class="sec-l" style="margin-top:14px">طريقة الطباعة</div>'+
       '<div class="meta" style="font-size:12px;margin-bottom:6px">'+(printerInfo().id?'🔵 الطابعة: <b>'+esc(unesc(printerInfo().name||'طابعة'))+'</b>':'مفيش طابعة بلوتوث مربوطة، اربطها من الإعدادات')+'</div>'+
       '<div class="seg lblseg" role="group" aria-label="طريقة الطباعة">'+mSeg+'</div>'+
@@ -2684,8 +2701,8 @@ function fgSrcCodes(p){
 function fgLabelHTML(p){
   var name=unesc(p.name||''),code=String(p.code||'-'),store=fgStoreOf(p),date=fgProdDate(p),cs=fgSrcCodes(p);
   var codes=cs.length?'<div class="lbl-codes"><span>الخامات المسحوبة</span><b>'+cs.map(function(c){return esc(sid(c));}).join(' · ')+'</b></div>':'';
-  return '<div class="lbl">'+lblLogoSVG()+'<div class="lbl-body">'+
-    '<div class="lbl-name">'+esc(name)+'</div>'+
+  return '<div class="lbl"><div class="lbl-body">'+
+    '<div class="lbl-top"><div class="lbl-name">'+esc(name)+'</div>'+lblLogoSVG()+'</div>'+
     '<div class="lbl-row"><span>الكود</span><b dir="ltr">'+esc(code)+'</b></div>'+
     '<div class="lbl-row"><span>التخزين</span><b>'+esc(store)+'</b></div>'+
     '<div class="lbl-row"><span>الصلاحية</span><b>'+esc(unesc(p.shelf||'')||'-')+'</b></div>'+
@@ -2694,7 +2711,8 @@ function fgLabelHTML(p){
   '</div></div>';
 }
 /* الطباعة في إطار مخفي بمقاس الاستيكر بالظبط (من غير CSS الصفحة عشان ميتأثرش) */
-function doPrintLabel(html){
+function doPrintLabel(html,pp){
+  pp=pp||lblPaperOf();
   var f=document.createElement('iframe');
   f.setAttribute('aria-hidden','true');
   f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0';
@@ -2702,7 +2720,7 @@ function doPrintLabel(html){
   var d=f.contentWindow.document;
   d.open();
   d.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><style>'+
-    '@page{size:'+LBL_W_MM+'mm '+LBL_H_MM+'mm;margin:0}'+
+    '@page{size:'+pp.w+'mm '+pp.h+'mm;margin:0}'+'.lblpg{page-break-after:always}.lblpg:last-child{page-break-after:auto}'+
     'html,body{margin:0;padding:0;background:#fff;color:#000}'+
     lblCss()+
     '</style></head><body>'+html+'</body></html>');
@@ -2718,44 +2736,51 @@ function doPrintLabel(html){
 var LBL_DOTS_W=384;  /* عرض الورق 58 مم = 384 نقطة */
 var LBL_DOTS_H=240;  /* ارتفاع الملصق 30 مم بكثافة 203 DPI */
 var BT_SERVICES=['000018f0-0000-1000-8000-00805f9b34fb','0000ff00-0000-1000-8000-00805f9b34fb','0000ffe0-0000-1000-8000-00805f9b34fb','0000fee7-0000-1000-8000-00805f9b34fb','49535343-fe7d-4ae5-8fa9-9fafd205e455','e7810a71-73ae-499d-8c15-faa9aef0c3f2'];
-function fgLabelCanvas(p,withLogo){
-  var c=document.createElement('canvas');c.width=LBL_DOTS_W;c.height=LBL_DOTS_H;
-  var x=c.getContext('2d'),W=c.width,H=c.height,pad=8,TW=W-2*pad,RX=W-pad,LX=pad;
+function fgLabelCanvas(p,withLogo,pp){
+  pp=pp||lblPaperOf();
+  var W=Math.round(pp.w*LBL_DPMM),H=Math.round(pp.h*LBL_DPMM),s=lblScale(pp);
+  function sc(n){return Math.round(n*s);}
+  var c=document.createElement('canvas');c.width=W;c.height=H;
+  var x=c.getContext('2d'),pad=sc(8),TW=W-2*pad,RX=W-pad,LX=pad;
   x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#000';x.textBaseline='top';
+  function F(n,b){return (b?'bold ':'')+sc(n)+'px Tahoma, Arial, sans-serif';}
   function fit(t,max){if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…';}
-  var y=6;
-  /* اللوجو فوق على الشمال */
-  if(withLogo&&LBL_IMG.complete&&LBL_IMG.naturalWidth>0){x.drawImage(LBL_IMG,LX,y,LBL_LOGO_W_DOTS,LBL_LOGO_H_DOTS);y+=LBL_LOGO_H_DOTS+4;}
+  var y=sc(6),LOGO=sc(34);
   var name=unesc(p.name||'');
-  x.font='bold 26px Tahoma, Arial, sans-serif';x.textAlign='right';
-  x.fillText(fit(name,TW),RX,y);y+=34;
-  x.fillRect(LX,y,TW,2);y+=6;
+  /* اللوجو الصغير فوق على الشمال، والاسم جنبه على اليمين */
+  var hasLogo=withLogo&&LBL_IMG.complete&&LBL_IMG.naturalWidth>0;
+  if(hasLogo)x.drawImage(LBL_IMG,LX,y,LOGO,LOGO);
+  x.font=F(26,1);x.textAlign='right';
+  x.fillText(fit(name,TW-(hasLogo?LOGO+sc(4):0)),RX,y+sc(3));
+  y+=LOGO+sc(2);
+  x.fillRect(LX,y,TW,Math.max(1,sc(2)));y+=sc(5);
   var rows=[['الكود',String(p.code||'-')],['التخزين',fgStoreOf(p)],['الصلاحية',unesc(p.shelf||'')||'-'],['تاريخ الإنتاج',fgProdDate(p)||'-']];
   rows.forEach(function(r){
-    x.font='20px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText(r[0],RX,y);
+    x.font=F(20);x.textAlign='right';x.fillText(r[0],RX,y);
     var lw=x.measureText(r[0]).width;
-    x.textAlign='left';x.font='bold 20px Tahoma, Arial, sans-serif';x.fillText(fit(r[1],TW-lw-10),LX,y);
-    y+=24;
+    x.textAlign='left';x.font=F(20,1);x.fillText(fit(r[1],TW-lw-sc(10)),LX,y);
+    y+=sc(23);
   });
   var cs=fgSrcCodes(p);
   if(cs.length){
-    y+=2;x.fillRect(LX,y,TW,1);y+=5;
-    x.font='bold 17px Tahoma, Arial, sans-serif';x.textAlign='right';x.fillText('الخامات المسحوبة',RX,y);y+=19;
+    y+=sc(2);x.fillRect(LX,y,TW,1);y+=sc(4);
+    x.font=F(17,1);x.textAlign='right';x.fillText('الخامات المسحوبة',RX,y);y+=sc(18);
     var txt=cs.map(function(c){return sid(c);}).join(' · ');
-    x.font='bold 17px Arial, sans-serif';x.textAlign='right';
+    x.font=F(17,1);x.textAlign='right';
     var lines=[],cur='';
     txt.split(' ').forEach(function(w){var t=cur?cur+' '+w:w;if(x.measureText(t).width<=TW)cur=t;else{lines.push(cur);cur=w;}});
     if(cur)lines.push(cur);
     lines.slice(0,2).forEach(function(l,i,arr){
       var t=(i===arr.length-1&&lines.length>2)?fit(l,TW):l;
-      x.fillText(t,RX,y);y+=18;
+      x.fillText(t,RX,y);y+=sc(18);
     });
   }
   return x.getImageData(0,0,W,H);
 }
 /* أوامر ESC/POS: تهيئة + صورة raster (GS v 0) + تغذية ورق */
-function fgLabelEscpos(p){
-  var img;try{img=fgLabelCanvas(p,true);}catch(e){img=fgLabelCanvas(p,false);}
+function fgLabelEscpos(p,pp){
+  pp=pp||lblPaperOf();
+  var img;try{img=fgLabelCanvas(p,true,pp);}catch(e){img=fgLabelCanvas(p,false,pp);}
   var W=img.width,H=img.height,rb=Math.ceil(W/8),d=img.data;
   var out=[0x1B,0x40,0x1D,0x76,0x30,0x00,rb&255,rb>>8,H&255,H>>8];
   for(var y=0;y<H;y++){
@@ -5902,7 +5927,7 @@ var ACT_CAT={
   sheetProd:['prod','اختيار منتج للإنتاج','r'],sheetSeason:['prod','اختيار موسم الدفعة','r'],sheetQty:['prod','كمية الإنتاج','r'],sheetClose:['prod','إغلاق نافذة الإنتاج','r'],
   fgZero:['fgstock','تصفير المخزن','w'],fgDel:['fgstock','حذف من المخزن','w'],fgSelAll:['fgstock','تحديد الكل','r'],
   printerPair:['settings','ربط الطابعة','w'],printerForget:['settings','فك ربط الطابعة','w'],printerMethod:['settings','طريقة الطباعة الافتراضية','w'],
-  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
+  lblOpen:['fgstock','طباعة ملصق','r'],lblOpenSel:['fgstock','طباعة ملصقات محددة','r'],lblClose:['fgstock','إغلاق الملصقات','r'],lblPick:['fgstock','اختيار ملصق','r'],lblMethod:['fgstock','طريقة الطباعة','r'],lblPaper:['fgstock','حجم الورق','r'],lblCopies:['fgstock','عدد النسخ','r'],lblPrint:['fgstock','طباعة الملصقات','r'],
   fgSel:['fgstock','تحديد صنف','r'],fgClear:['fgstock','إلغاء التحديد','r'],fgFilter:['fgstock','فلتر المخزن','r'],
   fgSeason:['fgstock','موسم المخزن','r'],toggleFgHide:['fgstock','إخفاء/إظهار صنف','r'],fgGrpOpen:['fgstock','فتح مجموعة','r'],
   newMat:['stock','مكوّن جديد','w'],editMat:['stock','تعديل مكوّن','w'],recv:['stock','استلام خامة','w'],
@@ -6583,16 +6608,17 @@ var ACT={
   lblOpenSel:function(){var ids=(U.fgSel||[]).slice();if(!ids.length){toast('حدد صنف واحد على الأقل');return false;}U.lbl={ids:ids,i:0,copies:1,method:printerInfo().method||'bt'};},
   lblClose:function(){U.lbl=null;},
   lblPick:function(d){if(U.lbl)U.lbl.i=+d.i||0;},
-  lblMethod:function(d){if(U.lbl)U.lbl.method=d.v;},
+  lblPaper:function(d){if(!U.lbl)return false;var q=lblPaperOf({paper:d.v});U.lbl.paper=q.k;if(q.sheet)U.lbl.method='web';},
+  lblMethod:function(d){if(!U.lbl)return false;if(lblPaperOf(U.lbl).sheet&&d.v!=='web'){toast('الورق ده بيتطبع من المتصفح بس');return false;}U.lbl.method=d.v;},
   lblCopies:function(d){if(U.lbl)U.lbl.copies=Math.max(1,Math.min(20,(U.lbl.copies||1)+(+d.d)));},
   lblPrint:function(){
     var list=lblItems(),L=U.lbl;if(!list.length||!L)return false;
-    var copies=L.copies||1;
-    if(L.method==='web'){
-      var html='';list.forEach(function(p){for(var c=0;c<copies;c++)html+=fgLabelHTML(p);});
-      doPrintLabel(html);
+    var copies=L.copies||1,pp=lblPaperOf(L);
+    if(L.method==='web'||pp.sheet){
+      var html='';list.forEach(function(p){for(var c=0;c<copies;c++)html+=lblPageWrap(fgLabelHTML(p),pp);});
+      doPrintLabel(html,pp);
     }else{
-      var parts=[];list.forEach(function(p){for(var c=0;c<copies;c++)parts.push(fgLabelEscpos(p));});
+      var parts=[];list.forEach(function(p){for(var c=0;c<copies;c++)parts.push(fgLabelEscpos(p,pp));});
       var total=parts.reduce(function(n,x){return n+x.length;},0),bytes=new Uint8Array(total),off=0;
       parts.forEach(function(x){bytes.set(x,off);off+=x.length;});
       if(L.method==='raw')printBytesRaw(bytes);else printBytesBT(bytes);
