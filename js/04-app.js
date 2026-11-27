@@ -6519,6 +6519,12 @@ var FOLD_CSS='<style>'+
   '.bfold-op:last-child{border-bottom:0}'+
   '.bfold-op small{color:var(--muted,#6b7090);white-space:nowrap}'+
   '</style>';
+/* اسم الوصفة للعمليات القديمة: بيتسجل الكود بس، فبنجيب الاسم وقت العرض من الكود */
+function evGText(g){
+  var s=String(g==null?'':g);
+  var pr=s?(PRODUCTS||[]).filter(function(p){return p.id===s;})[0]:null;
+  return pr?unesc(pr.name)+' · '+s:s;
+}
 /* عمليات الدفعة الواحدة مضغوطة جوه الصف: بتتفتح بالضغط على الدفعة نفسها */
 function batchOpsHTML(k){
   var e=S.plog&&S.plog[k];
@@ -6526,7 +6532,7 @@ function batchOpsHTML(k){
   var list=usersList();
   var evs=e.ev.slice().sort(function(x,y){return (x.t||0)-(y.t||0);});
   return '<div class="bfold-ops">'+evs.map(function(x){
-    return '<div class="bfold-op"><span>'+esc(evNameOf(list,x.c))+' · '+esc(x.l||EVENT_LABEL[x.a]||'عملية')+(x.g?' · '+esc(x.g):'')+'</span><small>'+evDateStr(x.t||0)+'</small></div>';
+    return '<div class="bfold-op"><span>'+esc(evNameOf(list,x.c))+' · '+esc(x.l||EVENT_LABEL[x.a]||'عملية')+(x.g?' · '+esc(evGText(x.g)):'')+'</span><small>'+evDateStr(x.t||0)+'</small></div>';
   }).join('')+'</div>';
 }
 function recentEventsHTML(list){
@@ -6607,7 +6613,7 @@ function evBatchPageHTML(list){
     return '<li class="ev-row">'+
       '<div class="ev-who"><span class="uava sm">'+esc((nm||'?').charAt(0))+'</span><div><b>'+esc(nm)+'</b><small class="ltr">'+esc(x.c)+'</small></div></div>'+
       '<time class="ev-time">'+evDateStr(x.t||0)+'</time>'+
-      '<div class="ev-act"><span class="dash-badge ok">'+esc(x.l||EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span>'+(x.g?'<small>'+esc(x.g)+'</small>':'')+'</div>'+
+      '<div class="ev-act"><span class="dash-badge ok">'+esc(x.l||EVENT_LABEL[x.a]||'عملية على الدفعة')+'</span>'+(x.g?'<small>'+esc(evGText(x.g))+'</small>':'')+'</div>'+
       '</li>';
   }).join('');
   return '<section class="card ev-card" style="--c:var(--settings)">'+
